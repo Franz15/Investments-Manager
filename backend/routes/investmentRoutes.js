@@ -321,9 +321,12 @@ router.post('/update-prices', async (req, res) => {
     // Actualizar las inversiones en la base de datos
     const updatePromises = quoteResults.map(async (result) => {
       if (result.success) {
-        const investment = investments.find(inv => 
-          (inv._id?.toString() || inv.id) === result.investmentId
-        );
+        // Buscar la inversión por ID de forma más robusta
+        const investment = investments.find(inv => {
+          const invId = inv._id?.toString() || inv.id?.toString();
+          const resultId = result.investmentId?.toString();
+          return invId === resultId;
+        });
         
         if (investment) {
           investment.currentPrice = result.price;
@@ -331,6 +334,9 @@ router.post('/update-prices', async (req, res) => {
             investment.currency = result.currency;
           }
           await investment.save();
+          console.log(`Precio actualizado para ${investment.name}: ${result.price} ${result.currency}`);
+        } else {
+          console.warn(`No se encontró inversión con ID: ${result.investmentId}`);
         }
       }
       return result;

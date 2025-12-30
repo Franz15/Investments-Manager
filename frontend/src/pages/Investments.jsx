@@ -338,19 +338,17 @@ const Investments = () => {
         // Recargar los datos
         await fetchData();
         
-        // Mostrar mensaje de éxito
-        const failedSymbols = results
-          .filter(r => !r.success)
-          .map(r => {
-            const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
-            return inv?.symbol || inv?.name || 'Desconocido';
-          });
-        
+        // Solo mostrar mensaje si hay errores
         if (failed > 0) {
+          const failedSymbols = results
+            .filter(r => !r.success)
+            .map(r => {
+              const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
+              return inv?.symbol || inv?.name || 'Desconocido';
+            });
           alert(`Precios actualizados: ${updated} exitosos, ${failed} fallidos.\n\nFallidos: ${failedSymbols.join(', ')}`);
-        } else {
-          alert(`¡Precios actualizados exitosamente! ${updated} inversiones actualizadas.`);
         }
+        // Si todo salió bien, no mostrar popup
       } else {
         alert('No se pudieron actualizar los precios. Verifica que las inversiones tengan símbolos válidos.');
       }
