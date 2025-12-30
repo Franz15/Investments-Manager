@@ -377,7 +377,13 @@ router.post('/:id/update-price', async (req, res) => {
     }
 
     // Obtener cotización actualizada
-    const quote = await getQuote(investment.symbol, investment.type, investment.currency);
+    const quote = await getQuote(
+      investment.symbol, 
+      investment.type, 
+      investment.currency,
+      investment.isin,
+      investment.name
+    );
 
     // Actualizar el precio
     investment.currentPrice = quote.price;

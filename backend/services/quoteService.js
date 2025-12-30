@@ -10,27 +10,32 @@ const yahooFinance = new YahooFinance();
  * @param {string} currency - Moneda de la inversión
  * @returns {Promise<{price: number, currency: string, change: number, changePercent: number}>}
  */
-export async function getQuote(symbol, type, currency = 'EUR') {
-  if (!symbol) {
-    throw new Error('El símbolo es requerido para obtener la cotización');
+export async function getQuote(symbol, type, currency = 'EUR', isin = null, name = null) {
+  // Para fondos de inversión, intentar primero con ISIN o búsqueda por nombre
+  if (type === 'fund' && !symbol && (isin || name)) {
+    return await getFundQuote(isin, name, currency);
+  }
+
+  if (!symbol && !isin) {
+    throw new Error('El símbolo o ISIN es requerido para obtener la cotización');
   }
 
   try {
-    // Para criptomonedas, usar CoinGecko o Yahoo Finance
+    // Para criptomonedas, usar CoinGecko
     if (type === 'crypto') {
       return await getCryptoQuote(symbol, currency);
     }
 
-    // Para acciones, ETFs, bonos, usar Yahoo Finance
+    // Para acciones, ETFs, bonos, fondos, usar Yahoo Finance
     if (['stock', 'etf', 'bond', 'fund'].includes(type)) {
-      return await getYahooQuote(symbol, currency);
+      return await getYahooQuote(symbol || isin, currency);
     }
 
     // Para otros tipos, intentar con Yahoo Finance de todas formas
-    return await getYahooQuote(symbol, currency);
+    return await getYahooQuote(symbol || isin, currency);
   } catch (error) {
-    console.error(`Error obteniendo cotización para ${symbol}:`, error.message);
-    throw new Error(`No se pudo obtener la cotización para ${symbol}: ${error.message}`);
+    console.error(`Error obteniendo cotización para ${symbol || isin}:`, error.message);
+    throw new Error(`No se pudo obtener la cotización para ${symbol || isin}: ${error.message}`);
   }
 }
 
@@ -140,6 +145,87 @@ async function getYahooQuote(symbol, currency) {
 }
 
 /**
+ * Obtiene cotización de fondos de inversión usando ISIN o búsqueda por nombre
+ */
+async function getFundQuote(isin, name, currency) {
+  // Intentar primero con ISIN si está disponible
+  if (isin) {
+    try {
+      // Yahoo Finance puede buscar por ISIN en algunos casos
+      // Formato: ISIN puede funcionar directamente o con prefijos
+      const isinVariants = [
+        isin,
+        `${isin}.F`, // Fondo
+        `${isin}.L`, // London
+        `${isin}.PA`, // Paris
+        `${isin}.DE`, // Frankfurt
+      ];
+
+      for (const variant of isinVariants) {
+        try {
+          const quote = await yahooFinance.quote(variant);
+          if (quote && quote.regularMarketPrice) {
+            const price = quote.regularMarketPrice;
+            const previousClose = quote.regularMarketPreviousClose || price;
+            const change = price - previousClose;
+            const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+
+            return {
+              price,
+              currency: quote.currency || currency,
+              change,
+              changePercent,
+              marketTime: quote.regularMarketTime,
+            };
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    } catch (error) {
+      console.log(`No se encontró por ISIN ${isin}, intentando búsqueda por nombre...`);
+    }
+  }
+
+  // Si no funciona con ISIN, intentar búsqueda por nombre
+  if (name) {
+    try {
+      const searchResults = await yahooFinance.search(name);
+      if (searchResults && searchResults.quotes && searchResults.quotes.length > 0) {
+        // Buscar el resultado más relevante (que sea un fondo)
+        const fundMatch = searchResults.quotes.find(q => 
+          q.quoteType === 'MUTUALFUND' || 
+          q.quoteType === 'FUND' ||
+          (q.shortname && q.shortname.toLowerCase().includes(name.toLowerCase()))
+        ) || searchResults.quotes[0];
+        
+        if (fundMatch && fundMatch.symbol) {
+          const quote = await yahooFinance.quote(fundMatch.symbol);
+          if (quote && quote.regularMarketPrice) {
+            const price = quote.regularMarketPrice;
+            const previousClose = quote.regularMarketPreviousClose || price;
+            const change = price - previousClose;
+            const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+
+            return {
+              price,
+              currency: quote.currency || currency,
+              change,
+              changePercent,
+              marketTime: quote.regularMarketTime,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`Búsqueda por nombre falló para ${name}`);
+    }
+  }
+
+  throw new Error(`No se encontró cotización para el fondo. Intenta agregar un ISIN o símbolo específico.`);
+}
+
+/**
  * Obtiene cotización de criptomonedas usando CoinGecko
  */
 async function getCryptoQuote(symbol, currency = 'EUR') {
@@ -234,53 +320,55 @@ async function getCryptoQuote(symbol, currency = 'EUR') {
 export async function updateMultipleQuotes(investments) {
   const results = [];
   
-  // Procesar en lotes para evitar rate limiting
-  const batchSize = 5;
-  for (let i = 0; i < investments.length; i += batchSize) {
-    const batch = investments.slice(i, i + batchSize);
+  // Yahoo Finance permite ~33 llamadas/minuto (2,000/hora)
+  // Usamos 2 segundos entre llamadas para ser conservadores (30 llamadas/minuto)
+  const delayBetweenCalls = 2000; // 2 segundos
+  
+  // Procesar una por una para respetar el rate limit estrictamente
+  for (let i = 0; i < investments.length; i++) {
+    const investment = investments[i];
     
-    const batchPromises = batch.map(async (investment) => {
-      try {
-        if (!investment.symbol) {
-          return {
-            investmentId: investment._id || investment.id,
-            symbol: investment.symbol || 'N/A',
-            success: false,
-            error: 'No tiene símbolo definido',
-          };
-        }
-
-        const quote = await getQuote(
-          investment.symbol,
-          investment.type,
-          investment.currency
-        );
-
-        return {
-          investmentId: investment._id?.toString() || investment.id?.toString(),
-          symbol: investment.symbol,
-          success: true,
-          price: quote.price,
-          currency: quote.currency,
-          change: quote.change,
-          changePercent: quote.changePercent,
-        };
-      } catch (error) {
-        return {
+    try {
+      // Filtrar inversiones sin símbolo o que sean carteras automatizadas
+      if (!investment.symbol || investment.isAutomatedPortfolio) {
+        results.push({
           investmentId: investment._id?.toString() || investment.id?.toString(),
           symbol: investment.symbol || 'N/A',
           success: false,
-          error: error.message,
-        };
+          error: investment.isAutomatedPortfolio ? 'Cartera automatizada (actualización manual)' : 'No tiene símbolo definido',
+        });
+        continue; // No hacer delay para estas
       }
-    });
 
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
+      const quote = await getQuote(
+        investment.symbol,
+        investment.type,
+        investment.currency,
+        investment.isin,
+        investment.name
+      );
 
-    // Esperar un poco entre lotes para evitar rate limiting
-    if (i + batchSize < investments.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      results.push({
+        investmentId: investment._id?.toString() || investment.id?.toString(),
+        symbol: investment.symbol,
+        success: true,
+        price: quote.price,
+        currency: quote.currency,
+        change: quote.change,
+        changePercent: quote.changePercent,
+      });
+    } catch (error) {
+      results.push({
+        investmentId: investment._id?.toString() || investment.id?.toString(),
+        symbol: investment.symbol || 'N/A',
+        success: false,
+        error: error.message,
+      });
+    }
+
+    // Esperar entre llamadas para respetar el rate limit (excepto en la última)
+    if (i < investments.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, delayBetweenCalls));
     }
   }
 
