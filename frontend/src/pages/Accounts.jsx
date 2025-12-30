@@ -2,35 +2,23 @@ import { useEffect, useState } from 'react';
 import { Plus, Wallet, Edit, Trash2, ChevronDown, ChevronRight, CreditCard, TrendingUp, PiggyBank } from 'lucide-react';
 import api from '../services/api';
 
-// Función helper para formatear precios
-// Siempre muestra 4 decimales para acciones, pero si los dos últimos son 00, muestra solo 2
-// Para carteras automatizadas siempre terminarán en 00, así que se mostrarán con 2 decimales
-const formatPrice = (value, currency = 'EUR', isAutomatedPortfolio = false) => {
+/**
+ * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
+ */
+const formatPrice = (value, currency = 'EUR') => {
   if (value === null || value === undefined || isNaN(value)) {
     return '0,00 €';
   }
   
-  // Verificar si los dos últimos decimales son 00
-  // Multiplicar por 10000 para obtener los decimales como entero
   const decimalPart = Math.abs((value * 10000) % 100);
   const hasTrailingZeros = decimalPart === 0;
+  const decimals = hasTrailingZeros ? 2 : 4;
   
-  if (hasTrailingZeros) {
-    // Si los dos últimos decimales son 00, mostrar solo 2 decimales
-    return new Intl.NumberFormat('es-ES', { 
-      style: 'currency', 
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
-  }
-  
-  // Si no termina en 00, mostrar 4 decimales
   return new Intl.NumberFormat('es-ES', { 
     style: 'currency', 
     currency: currency,
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   }).format(value);
 };
 
@@ -446,11 +434,11 @@ const Accounts = () => {
                                       <>
                                         <p><span className="font-medium">Cantidad:</span> {investment.quantity} unidades</p>
                                         {investment.averagePurchasePrice && (
-                                          <p><span className="font-medium">Precio medio:</span> {formatPrice(investment.averagePurchasePrice, investment.currency, investment.isAutomatedPortfolio)}</p>
+                                          <p><span className="font-medium">Precio medio:</span> {formatPrice(investment.averagePurchasePrice, investment.currency)}</p>
                                         )}
                                       </>
                                     )}
-                                    <p><span className="font-medium">Precio actual:</span> {formatPrice(investment.currentPrice, investment.currency, investment.isAutomatedPortfolio)}</p>
+                                    <p><span className="font-medium">Precio actual:</span> {formatPrice(investment.currentPrice, investment.currency)}</p>
                                     {investment.notes && (
                                       <p><span className="font-medium">Notas:</span> {investment.notes}</p>
                                     )}

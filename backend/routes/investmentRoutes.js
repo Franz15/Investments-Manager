@@ -299,11 +299,27 @@ router.post('/:id/add', async (req, res) => {
 // POST actualizar precios de todas las inversiones con símbolo
 router.post('/update-prices', async (req, res) => {
   try {
-    // Obtener todas las inversiones del usuario que tengan símbolo
+    // Obtener todas las inversiones del usuario que tengan símbolo y autoUpdate activado
+    // autoUpdate puede ser true o no existir (por defecto true para inversiones antiguas)
     const investments = await Investment.find({ 
       user: req.userId,
-      symbol: { $exists: true, $ne: null, $ne: '' },
-      account: { $exists: true, $ne: null },
+      $and: [
+        {
+          $or: [
+            { symbol: { $exists: true, $ne: null, $ne: '' } },
+            { isin: { $exists: true, $ne: null, $ne: '' } }
+          ]
+        },
+        {
+          account: { $exists: true, $ne: null }
+        },
+        {
+          $or: [
+            { autoUpdate: true },
+            { autoUpdate: { $exists: false } } // Inversiones antiguas sin el campo (por defecto true)
+          ]
+        }
+      ]
     });
 
     if (investments.length === 0) {
@@ -321,9 +337,12 @@ router.post('/update-prices', async (req, res) => {
     // Actualizar las inversiones en la base de datos
     const updatePromises = quoteResults.map(async (result) => {
       if (result.success) {
-        const investment = investments.find(inv => 
-          (inv._id?.toString() || inv.id) === result.investmentId
-        );
+        // Buscar la inversión por ID de forma más robusta
+        const investment = investments.find(inv => {
+          const invId = inv._id?.toString() || inv.id?.toString();
+          const resultId = result.investmentId?.toString();
+          return invId === resultId;
+        });
         
         if (investment) {
           investment.currentPrice = result.price;
@@ -371,7 +390,13 @@ router.post('/:id/update-price', async (req, res) => {
     }
 
     // Obtener cotización actualizada
-    const quote = await getQuote(investment.symbol, investment.type, investment.currency);
+    const quote = await getQuote(
+      investment.symbol, 
+      investment.type, 
+      investment.currency,
+      investment.isin,
+      investment.name
+    );
 
     // Actualizar el precio
     investment.currentPrice = quote.price;
@@ -406,6 +431,29 @@ router.post('/:id/update-price', async (req, res) => {
     });
   } catch (error) {
     console.error('Error actualizando precio:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// PATCH actualizar solo el campo autoUpdate
+router.patch('/:id/auto-update', async (req, res) => {
+  try {
+    const { autoUpdate } = req.body;
+    const investment = await Investment.findOne({ _id: req.params.id, user: req.userId });
+    
+    if (!investment) {
+      return res.status(404).json({ message: 'Inversión no encontrada' });
+    }
+    
+    investment.autoUpdate = autoUpdate !== undefined ? autoUpdate : true;
+    await investment.save();
+    
+    res.json({ 
+      message: `Actualización automática ${autoUpdate ? 'activada' : 'desactivada'}`,
+      investment 
+    });
+  } catch (error) {
+    console.error('Error actualizando autoUpdate:', error);
     res.status(500).json({ message: error.message });
   }
 });
