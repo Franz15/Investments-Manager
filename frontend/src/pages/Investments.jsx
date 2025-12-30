@@ -4,17 +4,34 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import api from '../services/api';
 
 // Función helper para formatear precios
-// isAutomatedPortfolio: true = 2 decimales (valores totales), false = 4 decimales (precios unitarios)
+// Siempre muestra 4 decimales para acciones, pero si los dos últimos son 00, muestra solo 2
+// Para carteras automatizadas siempre terminarán en 00, así que se mostrarán con 2 decimales
 const formatPrice = (value, currency = 'EUR', isAutomatedPortfolio = false) => {
   if (value === null || value === undefined || isNaN(value)) {
-    return isAutomatedPortfolio ? '0,00 €' : '0,0000 €';
+    return '0,00 €';
   }
-  const decimals = isAutomatedPortfolio ? 2 : 4;
+  
+  // Verificar si los dos últimos decimales son 00
+  // Multiplicar por 10000 para obtener los decimales como entero
+  const decimalPart = Math.abs((value * 10000) % 100);
+  const hasTrailingZeros = decimalPart === 0;
+  
+  if (hasTrailingZeros) {
+    // Si los dos últimos decimales son 00, mostrar solo 2 decimales
+    return new Intl.NumberFormat('es-ES', { 
+      style: 'currency', 
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+  
+  // Si no termina en 00, mostrar 4 decimales
   return new Intl.NumberFormat('es-ES', { 
     style: 'currency', 
     currency: currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
   }).format(value);
 };
 
