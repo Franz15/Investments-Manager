@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusCircle, DollarSign } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
@@ -70,6 +70,7 @@ const Investments = () => {
     name: '',
     type: 'stock',
     symbol: '',
+    isin: '',
     isAutomatedPortfolio: false,
     quantity: 0,
     purchasePrice: 0,
@@ -86,6 +87,23 @@ const Investments = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Actualización automática de precios cada 5 minutos
+  const updatingPricesRef = useRef(updatingPrices);
+  updatingPricesRef.current = updatingPrices;
+
+  useEffect(() => {
+    // Yahoo Finance permite ~33 llamadas/minuto, así que actualizamos cada 5 min para no saturar
+    const autoUpdateInterval = setInterval(() => {
+      // Solo actualizar si no hay una actualización manual en curso
+      if (!updatingPricesRef.current) {
+        handleUpdateAllPrices(true); // true = actualización automática (silenciosa)
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+
+    // Limpiar el intervalo al desmontar el componente
+    return () => clearInterval(autoUpdateInterval);
+  }, []); // Sin dependencias para que solo se cree una vez
 
   const fetchData = async () => {
     try {
@@ -147,6 +165,7 @@ const Investments = () => {
       name: investment.name,
       type: investment.type,
       symbol: investment.symbol || '',
+      isin: investment.isin || '',
       isAutomatedPortfolio: investment.isAutomatedPortfolio || false,
       quantity: investment.quantity,
       purchasePrice: investment.purchasePrice || 0,
@@ -279,6 +298,7 @@ const Investments = () => {
       name: '',
       type: 'stock',
       symbol: '',
+      isin: '',
       isAutomatedPortfolio: false,
       quantity: 0,
       purchasePrice: 0,
@@ -328,7 +348,7 @@ const Investments = () => {
     return ((investment.currentPrice - avgPrice) / avgPrice) * 100;
   };
 
-  const handleUpdateAllPrices = async () => {
+  const handleUpdateAllPrices = async (isAutoUpdate = false) => {
     setUpdatingPrices(true);
     try {
       const response = await api.post('/investments/update-prices');
@@ -338,8 +358,8 @@ const Investments = () => {
         // Recargar los datos
         await fetchData();
         
-        // Solo mostrar mensaje si hay errores
-        if (failed > 0) {
+        // Solo mostrar mensaje si hay errores y no es actualización automática
+        if (failed > 0 && !isAutoUpdate) {
           const failedSymbols = results
             .filter(r => !r.success)
             .map(r => {
@@ -347,15 +367,27 @@ const Investments = () => {
               return inv?.symbol || inv?.name || 'Desconocido';
             });
           alert(`Precios actualizados: ${updated} exitosos, ${failed} fallidos.\n\nFallidos: ${failedSymbols.join(', ')}`);
+        } else if (failed > 0 && isAutoUpdate) {
+          // Para actualizaciones automáticas, solo log en consola
+          const failedSymbols = results
+            .filter(r => !r.success)
+            .map(r => {
+              const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
+              return inv?.symbol || inv?.name || 'Desconocido';
+            });
+          console.log(`Actualización automática: ${updated} exitosos, ${failed} fallidos. Fallidos: ${failedSymbols.join(', ')}`);
         }
         // Si todo salió bien, no mostrar popup
-      } else {
+      } else if (!isAutoUpdate) {
         alert('No se pudieron actualizar los precios. Verifica que las inversiones tengan símbolos válidos.');
       }
     } catch (error) {
       console.error('Error actualizando precios:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
-      alert(`Error: ${errorMessage}`);
+      // Solo mostrar alerta si es actualización manual
+      if (!isAutoUpdate) {
+        const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
+        alert(`Error: ${errorMessage}`);
+      }
     } finally {
       setUpdatingPrices(false);
     }
@@ -374,10 +406,10 @@ const Investments = () => {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={handleUpdateAllPrices} 
+            onClick={() => handleUpdateAllPrices(false)} 
             disabled={updatingPrices}
             className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Actualizar precios desde APIs en tiempo real"
+            title="Actualizar precios desde APIs en tiempo real (también se actualizan automáticamente cada 5 minutos)"
           >
             <DollarSign className={`h-5 w-5 mr-2 ${updatingPrices ? 'animate-spin' : ''}`} />
             {updatingPrices ? 'Actualizando...' : 'Actualizar Precios'}
@@ -679,9 +711,32 @@ const Investments = () => {
                   className="input-field"
                   value={formData.symbol}
                   onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                  placeholder="Ej: AAPL, BTC"
+                  placeholder="Ej: AAPL, BTC, NXT.MC"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Ticker o símbolo de la inversión
+                </p>
               </div>
+              {(formData.type === 'fund' || formData.type === 'bond') && !formData.isAutomatedPortfolio && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    ISIN <span className="text-gray-400">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={formData.isin}
+                    onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                    placeholder="Ej: ES0123456789"
+                    maxLength={12}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Código ISIN para fondos de inversión y bonos (12 caracteres). Si no tienes símbolo, el sistema intentará buscar por ISIN o nombre.
+                    <br />
+                    <span className="text-amber-600 dark:text-amber-400">Nota: Las carteras automatizadas no tienen ISIN.</span>
+                  </p>
+                </div>
+              )}
               <div className="flex items-center">
                 <input
                   type="checkbox"
