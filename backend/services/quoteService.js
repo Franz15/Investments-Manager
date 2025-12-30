@@ -1,5 +1,7 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 import fetch from 'node-fetch';
+
+const yahooFinance = new YahooFinance();
 
 /**
  * Obtiene la cotización en tiempo real de una inversión
@@ -36,34 +38,105 @@ export async function getQuote(symbol, type, currency = 'EUR') {
  * Obtiene cotización de Yahoo Finance
  */
 async function getYahooQuote(symbol, currency) {
-  try {
-    // Yahoo Finance usa diferentes formatos según el mercado
-    // Para acciones europeas, puede ser necesario el sufijo del mercado (ej: "SAN.MC" para Santander en Madrid)
-    const quote = await yahooFinance.quote(symbol);
-    
-    if (!quote || !quote.regularMarketPrice) {
-      throw new Error(`No se encontró cotización para ${symbol}`);
-    }
+  // Si el símbolo ya incluye un sufijo de mercado, intentar solo con ese primero
+  if (symbol.includes('.')) {
+    try {
+      const quote = await yahooFinance.quote(symbol);
+      if (quote && quote.regularMarketPrice) {
+        const price = quote.regularMarketPrice;
+        const previousClose = quote.regularMarketPreviousClose || price;
+        const change = price - previousClose;
+        const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
 
-    const price = quote.regularMarketPrice;
-    const previousClose = quote.regularMarketPreviousClose || price;
-    const change = price - previousClose;
-    const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
-
-    return {
-      price,
-      currency: quote.currency || currency,
-      change,
-      changePercent,
-      marketTime: quote.regularMarketTime,
-    };
-  } catch (error) {
-    // Si falla, intentar con CoinGecko para crypto (por si acaso)
-    if (symbol.includes('-') || symbol.includes('USD') || symbol.includes('EUR')) {
-      throw error;
+        return {
+          price,
+          currency: quote.currency || currency,
+          change,
+          changePercent,
+          marketTime: quote.regularMarketTime,
+        };
+      }
+    } catch (error) {
+      // Si falla con el sufijo, intentar búsqueda por nombre
+      console.log(`No se encontró ${symbol}, intentando búsqueda alternativa...`);
     }
-    throw new Error(`Error obteniendo cotización de Yahoo Finance: ${error.message}`);
   }
+
+  // Intentar búsqueda por nombre si el símbolo directo no funciona
+  // Esto es útil para acciones que pueden tener diferentes formatos
+  try {
+    const searchResults = await yahooFinance.search(symbol);
+    if (searchResults && searchResults.quotes && searchResults.quotes.length > 0) {
+      // Buscar el resultado más relevante
+      const bestMatch = searchResults.quotes.find(q => 
+        q.symbol && (q.symbol.includes(symbol) || q.shortname?.toLowerCase().includes(symbol.toLowerCase()))
+      ) || searchResults.quotes[0];
+      
+      if (bestMatch && bestMatch.symbol) {
+        const quote = await yahooFinance.quote(bestMatch.symbol);
+        if (quote && quote.regularMarketPrice) {
+          const price = quote.regularMarketPrice;
+          const previousClose = quote.regularMarketPreviousClose || price;
+          const change = price - previousClose;
+          const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+
+          return {
+            price,
+            currency: quote.currency || currency,
+            change,
+            changePercent,
+            marketTime: quote.regularMarketTime,
+          };
+        }
+      }
+    }
+  } catch (searchError) {
+    // Continuar con las variantes si la búsqueda falla
+    console.log(`Búsqueda por nombre falló para ${symbol}`);
+  }
+
+  // Lista de variantes a probar para acciones españolas/europeas
+  const symbolVariants = [
+    symbol, // Intentar primero con el símbolo tal cual
+    `${symbol}.MC`, // Madrid (Mercado Continuo)
+    `${symbol}.MA`, // Madrid Alternativo
+    `${symbol}.BC`, // Barcelona
+    `${symbol}.AS`, // Amsterdam
+    `${symbol}.L`, // London
+    `${symbol}.PA`, // Paris
+    `${symbol}.DE`, // Frankfurt
+    `${symbol}.XETR`, // XETRA
+  ];
+
+  const errors = [];
+
+  for (const variant of symbolVariants) {
+    try {
+      const quote = await yahooFinance.quote(variant);
+      
+      if (quote && quote.regularMarketPrice) {
+        const price = quote.regularMarketPrice;
+        const previousClose = quote.regularMarketPreviousClose || price;
+        const change = price - previousClose;
+        const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
+
+        return {
+          price,
+          currency: quote.currency || currency,
+          change,
+          changePercent,
+          marketTime: quote.regularMarketTime,
+        };
+      }
+    } catch (error) {
+      errors.push(`${variant}: ${error.message}`);
+      // Continuar con el siguiente variant
+      continue;
+    }
+  }
+
+  // Si ninguna variante funcionó, lanzar error con detalles
+  throw new Error(`No se encontró cotización para ${symbol}. La acción puede no estar disponible en Yahoo Finance o requiere actualización manual.`);
 }
 
 /**
@@ -171,6 +244,7 @@ export async function updateMultipleQuotes(investments) {
         if (!investment.symbol) {
           return {
             investmentId: investment._id || investment.id,
+            symbol: investment.symbol || 'N/A',
             success: false,
             error: 'No tiene símbolo definido',
           };
@@ -183,7 +257,8 @@ export async function updateMultipleQuotes(investments) {
         );
 
         return {
-          investmentId: investment._id || investment.id,
+          investmentId: investment._id?.toString() || investment.id?.toString(),
+          symbol: investment.symbol,
           success: true,
           price: quote.price,
           currency: quote.currency,
@@ -192,7 +267,8 @@ export async function updateMultipleQuotes(investments) {
         };
       } catch (error) {
         return {
-          investmentId: investment._id || investment.id,
+          investmentId: investment._id?.toString() || investment.id?.toString(),
+          symbol: investment.symbol || 'N/A',
           success: false,
           error: error.message,
         };
