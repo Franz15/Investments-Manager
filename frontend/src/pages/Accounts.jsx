@@ -2,6 +2,21 @@ import { useEffect, useState } from 'react';
 import { Plus, Wallet, Edit, Trash2, ChevronDown, ChevronRight, CreditCard, TrendingUp, PiggyBank } from 'lucide-react';
 import api from '../services/api';
 
+// Función helper para formatear precios
+// isAutomatedPortfolio: true = 2 decimales (valores totales), false = 4 decimales (precios unitarios)
+const formatPrice = (value, currency = 'EUR', isAutomatedPortfolio = false) => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return isAutomatedPortfolio ? '0,00 €' : '0,0000 €';
+  }
+  const decimals = isAutomatedPortfolio ? 2 : 4;
+  return new Intl.NumberFormat('es-ES', { 
+    style: 'currency', 
+    currency: currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value);
+};
+
 const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -414,11 +429,11 @@ const Accounts = () => {
                                       <>
                                         <p><span className="font-medium">Cantidad:</span> {investment.quantity} unidades</p>
                                         {investment.averagePurchasePrice && (
-                                          <p><span className="font-medium">Precio medio:</span> {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.averagePurchasePrice)}</p>
+                                          <p><span className="font-medium">Precio medio:</span> {formatPrice(investment.averagePurchasePrice, investment.currency, investment.isAutomatedPortfolio)}</p>
                                         )}
                                       </>
                                     )}
-                                    <p><span className="font-medium">Precio actual:</span> {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.currentPrice)}</p>
+                                    <p><span className="font-medium">Precio actual:</span> {formatPrice(investment.currentPrice, investment.currency, investment.isAutomatedPortfolio)}</p>
                                     {investment.notes && (
                                       <p><span className="font-medium">Notas:</span> {investment.notes}</p>
                                     )}

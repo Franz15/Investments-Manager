@@ -3,6 +3,21 @@ import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusC
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 
+// Función helper para formatear precios
+// isAutomatedPortfolio: true = 2 decimales (valores totales), false = 4 decimales (precios unitarios)
+const formatPrice = (value, currency = 'EUR', isAutomatedPortfolio = false) => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return isAutomatedPortfolio ? '0,00 €' : '0,0000 €';
+  }
+  const decimals = isAutomatedPortfolio ? 2 : 4;
+  return new Intl.NumberFormat('es-ES', { 
+    style: 'currency', 
+    currency: currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value);
+};
+
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -422,7 +437,7 @@ const Investments = () => {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Valor actual:</span>
                       <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.currentPrice)}
+                        {formatPrice(investment.currentPrice, investment.currency, true)}
                       </span>
                     </div>
                     {investment.platformUrl && (
@@ -448,14 +463,14 @@ const Investments = () => {
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Precio medio compra:</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.averagePurchasePrice)}
+                          {formatPrice(investment.averagePurchasePrice, investment.currency, investment.isAutomatedPortfolio)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Precio actual:</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.currentPrice)}
+                        {formatPrice(investment.currentPrice, investment.currency, investment.isAutomatedPortfolio)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -715,48 +730,48 @@ const Investments = () => {
                   </select>
                 </div>
               </div>
-              {!formData.isAutomatedPortfolio && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Compra</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="input-field"
-                      value={formData.purchasePrice}
-                      onChange={(e) => setFormData({ ...formData, purchasePrice: parseFloat(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Actual</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="input-field"
-                      value={formData.currentPrice}
-                      onChange={(e) => setFormData({ ...formData, currentPrice: parseFloat(e.target.value) })}
-                      required
-                    />
-                  </div>
-                </div>
-              )}
-              {formData.isAutomatedPortfolio && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Actual</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="input-field"
-                    value={formData.currentPrice}
-                    onChange={(e) => setFormData({ ...formData, currentPrice: parseFloat(e.target.value) })}
-                    required
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Valor total actual de la cartera automatizada
-                  </p>
-                </div>
-              )}
+               {!formData.isAutomatedPortfolio && (
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Compra</label>
+                     <input
+                       type="number"
+                       step="0.0001"
+                       className="input-field"
+                       value={formData.purchasePrice}
+                       onChange={(e) => setFormData({ ...formData, purchasePrice: parseFloat(e.target.value) })}
+                       required
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Actual</label>
+                     <input
+                       type="number"
+                       step="0.0001"
+                       className="input-field"
+                       value={formData.currentPrice}
+                       onChange={(e) => setFormData({ ...formData, currentPrice: parseFloat(e.target.value) })}
+                       required
+                     />
+                   </div>
+                 </div>
+               )}
+               {formData.isAutomatedPortfolio && (
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Actual</label>
+                   <input
+                     type="number"
+                     step="0.01"
+                     className="input-field"
+                     value={formData.currentPrice}
+                     onChange={(e) => setFormData({ ...formData, currentPrice: parseFloat(e.target.value) })}
+                     required
+                   />
+                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                     Valor total actual de la cartera automatizada
+                   </p>
+                 </div>
+               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Compra</label>
                 <input
@@ -918,7 +933,7 @@ const Investments = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
                       <span className={`font-medium ${(updateFormData.currentPrice - selectedInvestment.quantity) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(updateFormData.currentPrice - selectedInvestment.quantity)}
+                        {formatPrice(updateFormData.currentPrice - selectedInvestment.quantity, selectedInvestment.currency)}
                         {' '}
                         ({((updateFormData.currentPrice - selectedInvestment.quantity) / selectedInvestment.quantity * 100).toFixed(2)}%)
                       </span>
@@ -938,17 +953,17 @@ const Investments = () => {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Actual</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="input-field"
-                      value={updateFormData.currentPrice}
-                      onChange={(e) => setUpdateFormData({ ...updateFormData, currentPrice: parseFloat(e.target.value) })}
-                      required
-                    />
-                  </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio Actual</label>
+                     <input
+                       type="number"
+                       step="0.0001"
+                       className="input-field"
+                       value={updateFormData.currentPrice}
+                       onChange={(e) => setUpdateFormData({ ...updateFormData, currentPrice: parseFloat(e.target.value) })}
+                       required
+                     />
+                   </div>
                 </>
               )}
               <div>
@@ -1008,10 +1023,17 @@ const Investments = () => {
                       <XAxis dataKey="date" stroke="#6b7280" className="dark:stroke-gray-400" />
                       <YAxis stroke="#6b7280" className="dark:stroke-gray-400" />
                       <Tooltip 
-                        formatter={(value) => new Intl.NumberFormat('es-ES', { 
-                          style: 'currency', 
-                          currency: selectedInvestment.currency 
-                        }).format(value)} 
+                        formatter={(value, name) => {
+                          // Para precios unitarios, usar 4 decimales (solo si no es cartera automatizada)
+                          if (name === 'Precio Unitario' || name === 'price') {
+                            return formatPrice(value, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio);
+                          }
+                          // Para valores totales, usar formato estándar (2 decimales)
+                          return new Intl.NumberFormat('es-ES', { 
+                            style: 'currency', 
+                            currency: selectedInvestment.currency 
+                          }).format(value);
+                        }} 
                       />
                       <Legend />
                       <Line 
@@ -1058,10 +1080,7 @@ const Investments = () => {
                             </td>
                           )}
                           <td className="text-right py-2 text-gray-600 dark:text-gray-400">
-                            {new Intl.NumberFormat('es-ES', { 
-                              style: 'currency', 
-                              currency: selectedInvestment.currency 
-                            }).format(entry.currentPrice)}
+                            {formatPrice(entry.currentPrice, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio)}
                           </td>
                           <td className="text-right py-2 font-semibold text-gray-900 dark:text-gray-100">
                             {new Intl.NumberFormat('es-ES', { 
@@ -1103,10 +1122,7 @@ const Investments = () => {
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                   <span className="font-semibold">Precio medio actual:</span>{' '}
-                  {new Intl.NumberFormat('es-ES', { 
-                    style: 'currency', 
-                    currency: selectedInvestment.currency 
-                  }).format(selectedInvestment.averagePurchasePrice)}
+                  {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Cantidad actual: {selectedInvestment.quantity} unidades
@@ -1136,31 +1152,31 @@ const Investments = () => {
                   min="0.0001"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de compra</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input-field"
-                  value={addFormData.price}
-                  onChange={(e) => setAddFormData({ ...addFormData, price: parseFloat(e.target.value) })}
-                  required
-                  min="0.01"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Precio al que compras las nuevas unidades
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio actual (opcional)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input-field"
-                  value={addFormData.currentPrice}
-                  onChange={(e) => setAddFormData({ ...addFormData, currentPrice: parseFloat(e.target.value) })}
-                  min="0.01"
-                />
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de compra</label>
+                 <input
+                   type="number"
+                   step="0.0001"
+                   className="input-field"
+                   value={addFormData.price}
+                   onChange={(e) => setAddFormData({ ...addFormData, price: parseFloat(e.target.value) })}
+                   required
+                   min="0.0001"
+                 />
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                   Precio al que compras las nuevas unidades
+                 </p>
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio actual (opcional)</label>
+                 <input
+                   type="number"
+                   step="0.0001"
+                   className="input-field"
+                   value={addFormData.currentPrice}
+                   onChange={(e) => setAddFormData({ ...addFormData, currentPrice: parseFloat(e.target.value) })}
+                   min="0.0001"
+                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Si no lo especificas, se mantendrá el precio actual de la inversión
                 </p>
@@ -1178,13 +1194,12 @@ const Investments = () => {
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nuevo precio medio calculado:</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {new Intl.NumberFormat('es-ES', { 
-                      style: 'currency', 
-                      currency: selectedInvestment.currency 
-                    }).format(
+                    {formatPrice(
                       ((selectedInvestment.quantity * selectedInvestment.averagePurchasePrice) + 
                        (addFormData.quantity * addFormData.price)) / 
-                      (selectedInvestment.quantity + addFormData.quantity)
+                      (selectedInvestment.quantity + addFormData.quantity),
+                      selectedInvestment.currency,
+                      selectedInvestment.isAutomatedPortfolio
                     )}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
