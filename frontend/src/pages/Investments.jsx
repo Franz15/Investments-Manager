@@ -1,37 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusCircle, DollarSign } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 
-// Función helper para formatear precios
-// Siempre muestra 4 decimales para acciones, pero si los dos últimos son 00, muestra solo 2
-// Para carteras automatizadas siempre terminarán en 00, así que se mostrarán con 2 decimales
-const formatPrice = (value, currency = 'EUR', isAutomatedPortfolio = false) => {
+/**
+ * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
+ */
+const formatPrice = (value, currency = 'EUR') => {
   if (value === null || value === undefined || isNaN(value)) {
     return '0,00 €';
   }
   
-  // Verificar si los dos últimos decimales son 00
-  // Multiplicar por 10000 para obtener los decimales como entero
   const decimalPart = Math.abs((value * 10000) % 100);
   const hasTrailingZeros = decimalPart === 0;
+  const decimals = hasTrailingZeros ? 2 : 4;
   
-  if (hasTrailingZeros) {
-    // Si los dos últimos decimales son 00, mostrar solo 2 decimales
-    return new Intl.NumberFormat('es-ES', { 
-      style: 'currency', 
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
-  }
-  
-  // Si no termina en 00, mostrar 4 decimales
   return new Intl.NumberFormat('es-ES', { 
     style: 'currency', 
     currency: currency,
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   }).format(value);
 };
 
@@ -70,6 +58,7 @@ const Investments = () => {
     name: '',
     type: 'stock',
     symbol: '',
+    isin: '',
     isAutomatedPortfolio: false,
     quantity: 0,
     purchasePrice: 0,
@@ -86,6 +75,23 @@ const Investments = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Actualización automática de precios cada 5 minutos
+  const updatingPricesRef = useRef(updatingPrices);
+  updatingPricesRef.current = updatingPrices;
+
+  useEffect(() => {
+    // Yahoo Finance permite ~33 llamadas/minuto, así que actualizamos cada 5 min para no saturar
+    const autoUpdateInterval = setInterval(() => {
+      // Solo actualizar si no hay una actualización manual en curso
+      if (!updatingPricesRef.current) {
+        handleUpdateAllPrices(true); // true = actualización automática (silenciosa)
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+
+    // Limpiar el intervalo al desmontar el componente
+    return () => clearInterval(autoUpdateInterval);
+  }, []); // Sin dependencias para que solo se cree una vez
 
   const fetchData = async () => {
     try {
@@ -147,6 +153,7 @@ const Investments = () => {
       name: investment.name,
       type: investment.type,
       symbol: investment.symbol || '',
+      isin: investment.isin || '',
       isAutomatedPortfolio: investment.isAutomatedPortfolio || false,
       quantity: investment.quantity,
       purchasePrice: investment.purchasePrice || 0,
@@ -279,6 +286,7 @@ const Investments = () => {
       name: '',
       type: 'stock',
       symbol: '',
+      isin: '',
       isAutomatedPortfolio: false,
       quantity: 0,
       purchasePrice: 0,
@@ -328,7 +336,7 @@ const Investments = () => {
     return ((investment.currentPrice - avgPrice) / avgPrice) * 100;
   };
 
-  const handleUpdateAllPrices = async () => {
+  const handleUpdateAllPrices = async (isAutoUpdate = false) => {
     setUpdatingPrices(true);
     try {
       const response = await api.post('/investments/update-prices');
@@ -338,26 +346,36 @@ const Investments = () => {
         // Recargar los datos
         await fetchData();
         
-        // Mostrar mensaje de éxito
-        const failedSymbols = results
-          .filter(r => !r.success)
-          .map(r => {
-            const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
-            return inv?.symbol || inv?.name || 'Desconocido';
-          });
-        
-        if (failed > 0) {
+        // Solo mostrar mensaje si hay errores y no es actualización automática
+        if (failed > 0 && !isAutoUpdate) {
+          const failedSymbols = results
+            .filter(r => !r.success)
+            .map(r => {
+              const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
+              return inv?.symbol || inv?.name || 'Desconocido';
+            });
           alert(`Precios actualizados: ${updated} exitosos, ${failed} fallidos.\n\nFallidos: ${failedSymbols.join(', ')}`);
-        } else {
-          alert(`¡Precios actualizados exitosamente! ${updated} inversiones actualizadas.`);
+        } else if (failed > 0 && isAutoUpdate) {
+          // Para actualizaciones automáticas, solo log en consola
+          const failedSymbols = results
+            .filter(r => !r.success)
+            .map(r => {
+              const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
+              return inv?.symbol || inv?.name || 'Desconocido';
+            });
+          // Log silencioso para actualizaciones automáticas
         }
-      } else {
+        // Si todo salió bien, no mostrar popup
+      } else if (!isAutoUpdate) {
         alert('No se pudieron actualizar los precios. Verifica que las inversiones tengan símbolos válidos.');
       }
     } catch (error) {
       console.error('Error actualizando precios:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
-      alert(`Error: ${errorMessage}`);
+      // Solo mostrar alerta si es actualización manual
+      if (!isAutoUpdate) {
+        const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
+        alert(`Error: ${errorMessage}`);
+      }
     } finally {
       setUpdatingPrices(false);
     }
@@ -376,10 +394,10 @@ const Investments = () => {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={handleUpdateAllPrices} 
+            onClick={() => handleUpdateAllPrices(false)} 
             disabled={updatingPrices}
             className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Actualizar precios desde APIs en tiempo real"
+            title="Actualizar precios desde APIs en tiempo real (también se actualizan automáticamente cada 5 minutos)"
           >
             <DollarSign className={`h-5 w-5 mr-2 ${updatingPrices ? 'animate-spin' : ''}`} />
             {updatingPrices ? 'Actualizando...' : 'Actualizar Precios'}
@@ -402,7 +420,7 @@ const Investments = () => {
           return (
             <div key={investment._id} className="card">
               <div className="flex items-start justify-between mb-4">
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{investment.name}</h3>
                     {investment.isAutomatedPortfolio && (
@@ -413,6 +431,9 @@ const Investments = () => {
                   </div>
                   {investment.symbol && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">{investment.symbol}</p>
+                  )}
+                  {investment.isin && !investment.symbol && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">ISIN: {investment.isin}</p>
                   )}
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{getTypeLabel(investment.type)}</p>
                   {investment.assetClass && (
@@ -439,6 +460,44 @@ const Investments = () => {
                       )}
                     </div>
                   )}
+                  {/* Checkbox para actualización automática - solo si tiene símbolo o ISIN */}
+                  {(investment.symbol || investment.isin) && !investment.isAutomatedPortfolio && (
+                    <div 
+                      className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 relative z-10"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`auto-update-${investment._id}`}
+                        checked={investment.autoUpdate !== false}
+                        onChange={async (e) => {
+                          const newValue = e.target.checked;
+                          try {
+                            await api.patch(`/investments/${investment._id}/auto-update`, {
+                              autoUpdate: newValue
+                            });
+                            // Actualizar el estado local
+                            setInvestments(prev => prev.map(inv => 
+                              inv._id === investment._id 
+                                ? { ...inv, autoUpdate: newValue }
+                                : inv
+                            ));
+                          } catch (error) {
+                            console.error('Error actualizando autoUpdate:', error);
+                            alert('Error al actualizar la configuración de actualización automática');
+                            // Revertir el cambio en caso de error
+                            e.target.checked = !newValue;
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer relative z-20"
+                      />
+                      <label 
+                        htmlFor={`auto-update-${investment._id}`}
+                        className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer relative z-20"
+                      >
+                        Actualización automática
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -454,7 +513,7 @@ const Investments = () => {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Valor actual:</span>
                       <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {formatPrice(investment.currentPrice, investment.currency, true)}
+                        {formatPrice(investment.currentPrice, investment.currency)}
                       </span>
                     </div>
                     {investment.platformUrl && (
@@ -480,14 +539,14 @@ const Investments = () => {
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Precio medio compra:</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {formatPrice(investment.averagePurchasePrice, investment.currency, investment.isAutomatedPortfolio)}
+                          {formatPrice(investment.averagePurchasePrice, investment.currency)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Precio actual:</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {formatPrice(investment.currentPrice, investment.currency, investment.isAutomatedPortfolio)}
+                        {formatPrice(investment.currentPrice, investment.currency)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -681,9 +740,32 @@ const Investments = () => {
                   className="input-field"
                   value={formData.symbol}
                   onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                  placeholder="Ej: AAPL, BTC"
+                  placeholder="Ej: AAPL, BTC, NXT.MC"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Ticker o símbolo de la inversión
+                </p>
               </div>
+              {(formData.type === 'fund' || formData.type === 'bond') && !formData.isAutomatedPortfolio && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    ISIN <span className="text-gray-400">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={formData.isin}
+                    onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                    placeholder="Ej: ES0123456789"
+                    maxLength={12}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Código ISIN para fondos de inversión y bonos (12 caracteres). Si no tienes símbolo, el sistema intentará buscar por ISIN o nombre.
+                    <br />
+                    <span className="text-amber-600 dark:text-amber-400">Nota: Las carteras automatizadas no tienen ISIN.</span>
+                  </p>
+                </div>
+              )}
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -1041,11 +1123,9 @@ const Investments = () => {
                       <YAxis stroke="#6b7280" className="dark:stroke-gray-400" />
                       <Tooltip 
                         formatter={(value, name) => {
-                          // Para precios unitarios, usar 4 decimales (solo si no es cartera automatizada)
                           if (name === 'Precio Unitario' || name === 'price') {
-                            return formatPrice(value, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio);
+                            return formatPrice(value, selectedInvestment.currency);
                           }
-                          // Para valores totales, usar formato estándar (2 decimales)
                           return new Intl.NumberFormat('es-ES', { 
                             style: 'currency', 
                             currency: selectedInvestment.currency 
@@ -1097,7 +1177,7 @@ const Investments = () => {
                             </td>
                           )}
                           <td className="text-right py-2 text-gray-600 dark:text-gray-400">
-                            {formatPrice(entry.currentPrice, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio)}
+                            {formatPrice(entry.currentPrice, selectedInvestment.currency)}
                           </td>
                           <td className="text-right py-2 font-semibold text-gray-900 dark:text-gray-100">
                             {new Intl.NumberFormat('es-ES', { 
@@ -1139,7 +1219,7 @@ const Investments = () => {
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                   <span className="font-semibold">Precio medio actual:</span>{' '}
-                  {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency, selectedInvestment.isAutomatedPortfolio)}
+                  {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Cantidad actual: {selectedInvestment.quantity} unidades
@@ -1215,8 +1295,7 @@ const Investments = () => {
                       ((selectedInvestment.quantity * selectedInvestment.averagePurchasePrice) + 
                        (addFormData.quantity * addFormData.price)) / 
                       (selectedInvestment.quantity + addFormData.quantity),
-                      selectedInvestment.currency,
-                      selectedInvestment.isAutomatedPortfolio
+                      selectedInvestment.currency
                     )}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">

@@ -31,6 +31,17 @@ const investmentSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
+    isin: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      // ISIN para fondos de inversión y otros instrumentos que no tienen ticker
+    },
+    autoUpdate: {
+      type: Boolean,
+      default: true,
+      // Si true, se actualiza automáticamente cuando se ejecuta la actualización masiva
+    },
     quantity: {
       type: Number,
       required: true,
