@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusCircle, DollarSign } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusCircle, DollarSign, MinusCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import api from '../services/api';
 
 /**
@@ -23,6 +23,85 @@ const formatPrice = (value, currency = 'EUR') => {
   }).format(value);
 };
 
+/**
+ * Genera datos mock de historial con variaciones diarias
+ */
+const generateMockHistoryData = (investment, existingHistory) => {
+  const daysToGenerate = 30;
+  const mockData = [];
+  
+  // Obtener el valor base (del historial existente o de la inversión)
+  let baseValue = investment.isAutomatedPortfolio 
+    ? (investment.currentPrice || investment.quantity || 10000)
+    : (investment.quantity || 100) * (investment.currentPrice || investment.purchasePrice || 100);
+  
+  // Si hay historial existente, usar el último valor
+  if (existingHistory.length > 0) {
+    const lastEntry = existingHistory[existingHistory.length - 1];
+    baseValue = lastEntry.totalValue || baseValue;
+  }
+  
+  // Generar datos para los últimos 30 días
+  const today = new Date();
+  for (let i = daysToGenerate - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    date.setHours(12, 0, 0, 0);
+    
+    // Generar variación aleatoria entre -3% y +3%
+    const variationPercent = (Math.random() * 6 - 3); // -3% a +3%
+    const dailyChangePercent = parseFloat(variationPercent.toFixed(2));
+    
+    // Calcular el nuevo valor
+    const previousValue = i === daysToGenerate - 1 ? baseValue : mockData[mockData.length - 1].totalValue;
+    const dailyChangeAmount = previousValue * (variationPercent / 100);
+    const totalValue = previousValue + dailyChangeAmount;
+    
+    // Calcular precio y cantidad (para inversiones no automatizadas)
+    let currentPrice = investment.currentPrice || investment.purchasePrice || 100;
+    let quantity = investment.quantity || 100;
+    
+    if (!investment.isAutomatedPortfolio) {
+      // Para inversiones tradicionales, ajustar el precio
+      currentPrice = totalValue / quantity;
+    }
+    
+    mockData.push({
+      _id: `mock_${date.getTime()}`,
+      user: investment.user,
+      investment: investment._id,
+      date: date.toISOString(),
+      currentPrice: parseFloat(currentPrice.toFixed(4)),
+      quantity: quantity,
+      totalValue: parseFloat(totalValue.toFixed(2)),
+      dailyChangeAmount: parseFloat(dailyChangeAmount.toFixed(2)),
+      dailyChangePercent: dailyChangePercent,
+      notes: i === daysToGenerate - 1 ? 'Datos mock generados' : 'Registro diario automático',
+      operation: 'update',
+    });
+  }
+  
+  // Combinar historial existente con datos mock (si hay historial, reemplazar los días que ya existen)
+  if (existingHistory.length > 0) {
+    const existingDates = new Set(
+      existingHistory.map(h => new Date(h.date).toDateString())
+    );
+    
+    // Filtrar datos mock que no coincidan con fechas existentes
+    const filteredMock = mockData.filter(mock => {
+      const mockDate = new Date(mock.date).toDateString();
+      return !existingDates.has(mockDate);
+    });
+    
+    // Combinar y ordenar por fecha
+    return [...existingHistory, ...filteredMock].sort((a, b) => 
+      new Date(a.date) - new Date(b.date)
+    );
+  }
+  
+  return mockData;
+};
+
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -32,11 +111,26 @@ const Investments = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState(null);
   const [selectedInvestment, setSelectedInvestment] = useState(null);
   const [investmentHistory, setInvestmentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showEditHistoryModal, setShowEditHistoryModal] = useState(false);
+  const [editingHistoryEntry, setEditingHistoryEntry] = useState(null);
+  const [editHistoryFormData, setEditHistoryFormData] = useState({
+    date: '',
+    currentPrice: 0,
+    quantity: 0,
+    notes: '',
+    operation: 'update',
+    operationAmount: 0,
+    operationPrice: 0,
+  });
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailInvestment, setDetailInvestment] = useState(null);
+  const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [updatingPrices, setUpdatingPrices] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState(null);
   const [updateFormData, setUpdateFormData] = useState({
@@ -51,6 +145,13 @@ const Investments = () => {
     currentPrice: 0,
     date: new Date().toISOString().split('T')[0],
     notes: '',
+  });
+  const [sellFormData, setSellFormData] = useState({
+    quantity: 0,
+    price: 0,
+    date: new Date().toISOString().split('T')[0],
+    notes: '',
+    returnToSubAccount: true,
   });
   const [formData, setFormData] = useState({
     account: '',
@@ -72,9 +173,63 @@ const Investments = () => {
     platformUrl: '',
   });
 
+  // Función para registrar valores diarios de todas las inversiones
+  const registerDailyValues = async () => {
+    try {
+      const lastRegistration = localStorage.getItem('lastDailyValuesRegistration');
+      const today = new Date().toDateString();
+      
+      // Solo registrar si no se ha registrado hoy
+      if (lastRegistration !== today) {
+        await api.post('/investment-history/register-daily-values');
+        localStorage.setItem('lastDailyValuesRegistration', today);
+        console.log('Valores diarios registrados');
+      }
+    } catch (error) {
+      console.error('Error registrando valores diarios:', error);
+      // No mostrar error al usuario, es silencioso
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    // Registrar valores diarios al cargar (solo una vez al día)
+    registerDailyValues();
   }, []);
+
+  // Bloquear scroll del body cuando cualquier modal esté abierto
+  useEffect(() => {
+    const isAnyModalOpen = showModal || showUpdateModal || showHistoryModal || 
+                          showAddModal || showSellModal || showDeleteModal || 
+                          showEditHistoryModal || showDetailModal;
+    
+    if (isAnyModalOpen) {
+      // Guardar la posición actual del scroll
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Restaurar el scroll
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+
+    return () => {
+      // Limpiar estilos al desmontar
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+    };
+  }, [showModal, showUpdateModal, showHistoryModal, showAddModal, showSellModal, showDeleteModal, showEditHistoryModal, showDetailModal]);
 
   // Actualización automática de precios cada 5 minutos
   const updatingPricesRef = useRef(updatingPrices);
@@ -86,6 +241,8 @@ const Investments = () => {
       // Solo actualizar si no hay una actualización manual en curso
       if (!updatingPricesRef.current) {
         handleUpdateAllPrices(true); // true = actualización automática (silenciosa)
+        // Registrar valores diarios después de actualizar precios
+        registerDailyValues();
       }
     }, 5 * 60 * 1000); // 5 minutos
 
@@ -213,6 +370,7 @@ const Investments = () => {
         quantity: parseFloat(updateFormData.quantity),
         date: updateFormData.date,
         notes: updateFormData.notes,
+        operation: 'update',
       });
       fetchData();
       setShowUpdateModal(false);
@@ -222,6 +380,8 @@ const Investments = () => {
         date: new Date().toISOString().split('T')[0],
         notes: '',
       });
+      // Registrar valores diarios después de actualizar manualmente
+      registerDailyValues();
     } catch (error) {
       console.error('Error actualizando inversión:', error);
     }
@@ -233,19 +393,80 @@ const Investments = () => {
     setShowHistoryModal(true);
     try {
       const response = await api.get(`/investment-history/investment/${investment._id}`);
-      setInvestmentHistory(response.data);
+      console.log('Historial recibido:', response.data);
+      setInvestmentHistory(response.data || []);
+      if (!response.data || response.data.length === 0) {
+        console.log('No hay historial para esta inversión. ID:', investment._id);
+      }
     } catch (error) {
       console.error('Error cargando historial:', error);
+      console.error('Detalles del error:', error.response?.data);
+      alert('Error al cargar el historial: ' + (error.response?.data?.message || error.message));
+      setInvestmentHistory([]);
     } finally {
       setHistoryLoading(false);
     }
+  };
+
+  const handleEditHistoryEntry = (entry) => {
+    setEditingHistoryEntry(entry);
+    setEditHistoryFormData({
+      date: new Date(entry.date).toISOString().split('T')[0],
+      currentPrice: entry.currentPrice,
+      quantity: entry.quantity,
+      notes: entry.notes || '',
+      operation: entry.operation || 'update',
+      operationAmount: entry.operationAmount || 0,
+      operationPrice: entry.operationPrice || 0,
+    });
+    setShowEditHistoryModal(true);
+  };
+
+  const handleSubmitEditHistory = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/investment-history/${editingHistoryEntry._id}`, editHistoryFormData);
+      // Recargar el historial
+      const response = await api.get(`/investment-history/investment/${selectedInvestment._id}`);
+      setInvestmentHistory(response.data);
+      setShowEditHistoryModal(false);
+      setEditingHistoryEntry(null);
+    } catch (error) {
+      console.error('Error editando historial:', error);
+      alert('Error al editar la entrada del historial');
+    }
+  };
+
+  const handleDeleteHistoryEntry = async (entryId) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta entrada del historial?')) {
+      return;
+    }
+    try {
+      await api.delete(`/investment-history/${entryId}`);
+      // Recargar el historial
+      const response = await api.get(`/investment-history/investment/${selectedInvestment._id}`);
+      setInvestmentHistory(response.data);
+    } catch (error) {
+      console.error('Error eliminando historial:', error);
+      alert('Error al eliminar la entrada del historial');
+    }
+  };
+
+  const getOperationLabel = (operation) => {
+    const labels = {
+      creation: 'Creación',
+      add: 'Añadir Capital',
+      withdraw: 'Retirar Capital',
+      update: 'Actualización',
+    };
+    return labels[operation] || operation;
   };
 
   const handleAddToInvestment = (investment) => {
     setSelectedInvestment(investment);
     setAddFormData({
       quantity: 0,
-      price: investment.currentPrice,
+      price: investment.isAutomatedPortfolio ? 0 : investment.currentPrice,
       currentPrice: investment.currentPrice,
       date: new Date().toISOString().split('T')[0],
       notes: '',
@@ -253,16 +474,36 @@ const Investments = () => {
     setShowAddModal(true);
   };
 
+  const handleSellInvestment = (investment) => {
+    setSelectedInvestment(investment);
+    setSellFormData({
+      quantity: investment.isAutomatedPortfolio ? investment.quantity : 0,
+      price: investment.currentPrice,
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+      returnToSubAccount: true,
+    });
+    setShowSellModal(true);
+  };
+
   const handleSubmitAdd = async (e) => {
     e.preventDefault();
     try {
-      await api.post(`/investments/${selectedInvestment._id}/add`, {
+      const payload = {
         quantity: parseFloat(addFormData.quantity),
-        price: parseFloat(addFormData.price),
-        currentPrice: parseFloat(addFormData.currentPrice),
         date: addFormData.date,
         notes: addFormData.notes,
-      });
+      };
+      
+      // Para inversiones tradicionales, añadir precio de compra
+      if (!selectedInvestment.isAutomatedPortfolio) {
+        payload.price = parseFloat(addFormData.price);
+        if (addFormData.currentPrice > 0) {
+          payload.currentPrice = parseFloat(addFormData.currentPrice);
+        }
+      }
+      
+      await api.post(`/investments/${selectedInvestment._id}/add`, payload);
       fetchData();
       setShowAddModal(false);
       setAddFormData({
@@ -275,6 +516,37 @@ const Investments = () => {
     } catch (error) {
       console.error('Error añadiendo a inversión:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al añadir a la inversión';
+      alert(errorMessage);
+    }
+  };
+
+  const handleSubmitSell = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await api.post(`/investments/${selectedInvestment._id}/sell`, {
+        quantity: parseFloat(sellFormData.quantity),
+        price: parseFloat(sellFormData.price),
+        date: sellFormData.date,
+        notes: sellFormData.notes,
+        returnToSubAccount: sellFormData.returnToSubAccount,
+      });
+      
+      fetchData();
+      setShowSellModal(false);
+      setSellFormData({
+        quantity: 0,
+        price: 0,
+        date: new Date().toISOString().split('T')[0],
+        notes: '',
+        returnToSubAccount: true,
+      });
+      
+      if (response.data.message && response.data.message.includes('completamente')) {
+        alert(`Retiro realizado. Monto: ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(response.data.saleAmount)}`);
+      }
+    } catch (error) {
+      console.error('Error vendiendo inversión:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Error al retirar de la inversión';
       alert(errorMessage);
     }
   };
@@ -418,7 +690,35 @@ const Investments = () => {
             : investment.quantity * investment.currentPrice;
 
           return (
-            <div key={investment._id} className="card">
+            <div 
+              key={investment._id} 
+              className="card cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={async (e) => {
+                // Evitar que se active cuando se hace clic en botones o inputs
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.closest('input')) {
+                  return;
+                }
+                setDetailInvestment(investment);
+                setShowDetailModal(true);
+                // Cargar historial para las gráficas
+                try {
+                  const response = await api.get(`/investment-history/investment/${investment._id}`);
+                  let history = response.data || [];
+                  
+                  // Si hay menos de 7 días de historial, generar datos mock
+                  if (history.length < 7) {
+                    history = generateMockHistoryData(investment, history);
+                  }
+                  
+                  setDetailInvestmentHistory(history);
+                } catch (error) {
+                  console.error('Error cargando historial para gráficas:', error);
+                  // Generar datos mock si falla la carga
+                  const mockData = generateMockHistoryData(investment, []);
+                  setDetailInvestmentHistory(mockData);
+                }
+              }}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -574,15 +874,20 @@ const Investments = () => {
               </div>
 
               <div className="flex gap-2 mt-4">
-                {!investment.isAutomatedPortfolio && (
-                  <button
-                    onClick={() => handleAddToInvestment(investment)}
-                    className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
-                    title="Añadir a inversión"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  onClick={() => handleAddToInvestment(investment)}
+                  className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                  title="Añadir capital a inversión"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleSellInvestment(investment)}
+                  className="px-4 py-2 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
+                  title="Retirar de inversión"
+                >
+                  <MinusCircle className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => handleUpdateValue(investment)}
                   className={`flex-1 btn-secondary flex items-center justify-center text-sm ${investment.isAutomatedPortfolio ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50' : ''}`}
@@ -625,8 +930,14 @@ const Investments = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          onClick={() => { setShowModal(false); resetForm(); }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {editingInvestment ? 'Editar Inversión' : 'Nueva Inversión'}
             </h2>
@@ -973,8 +1284,15 @@ const Investments = () => {
 
       {/* Modal para actualizar valor */}
       {showUpdateModal && selectedInvestment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          style={{ zIndex: 10000 }}
+          onClick={() => setShowUpdateModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Actualizar Valor - {selectedInvestment.name}
             </h2>
@@ -1093,8 +1411,15 @@ const Investments = () => {
 
       {/* Modal para ver historial */}
       {showHistoryModal && selectedInvestment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          style={{ zIndex: 10000 }}
+          onClick={() => setShowHistoryModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Historial - {selectedInvestment.name}
@@ -1149,6 +1474,7 @@ const Investments = () => {
                     <thead>
                       <tr className="border-b border-gray-200 dark:border-gray-700">
                         <th className="text-left py-2 text-gray-700 dark:text-gray-300">Fecha</th>
+                        <th className="text-left py-2 text-gray-700 dark:text-gray-300">Operación</th>
                         {!selectedInvestment.isAutomatedPortfolio && (
                           <th className="text-right py-2 text-gray-700 dark:text-gray-300">Cantidad</th>
                         )}
@@ -1159,17 +1485,28 @@ const Investments = () => {
                         {investmentHistory.some(h => h.notes) && (
                           <th className="text-left py-2 text-gray-700 dark:text-gray-300">Notas</th>
                         )}
+                        <th className="text-center py-2 text-gray-700 dark:text-gray-300">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {investmentHistory.map((entry) => (
-                        <tr key={entry._id} className="border-b border-gray-100 dark:border-gray-800">
+                        <tr key={entry._id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="py-2 text-gray-600 dark:text-gray-400">
                             {new Date(entry.date).toLocaleDateString('es-ES', { 
                               year: 'numeric', 
                               month: 'short', 
                               day: 'numeric' 
                             })}
+                          </td>
+                          <td className="py-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              entry.operation === 'creation' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                              entry.operation === 'add' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                              entry.operation === 'withdraw' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>
+                              {getOperationLabel(entry.operation)}
+                            </span>
                           </td>
                           {!selectedInvestment.isAutomatedPortfolio && (
                             <td className="text-right py-2 text-gray-600 dark:text-gray-400">
@@ -1190,6 +1527,24 @@ const Investments = () => {
                               {entry.notes || '-'}
                             </td>
                           )}
+                          <td className="py-2">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleEditHistoryEntry(entry)}
+                                className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteHistoryEntry(entry._id)}
+                                className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1198,7 +1553,17 @@ const Investments = () => {
               </>
             ) : (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No hay historial registrado para esta inversión
+                <p className="mb-2 font-medium">No hay historial registrado para esta inversión.</p>
+                <p className="text-sm mb-2">El historial se crea automáticamente cuando:</p>
+                <ul className="text-sm mt-2 list-disc list-inside space-y-1">
+                  <li>Se crea una nueva inversión</li>
+                  <li>Se añade capital a la inversión</li>
+                  <li>Se retira capital de la inversión</li>
+                  <li>Se actualiza manualmente el valor</li>
+                </ul>
+                <p className="text-xs mt-4 text-gray-400 dark:text-gray-500">
+                  Si esta inversión fue creada antes de implementar el historial, puedes crear una entrada manual usando el botón "Actualizar" de la inversión.
+                </p>
               </div>
             )}
           </div>
@@ -1207,15 +1572,33 @@ const Investments = () => {
 
       {/* Modal para añadir a inversión */}
       {showAddModal && selectedInvestment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Añadir a Inversión - {selectedInvestment.name}
+              Añadir Capital - {selectedInvestment.name}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Al añadir más unidades, se calculará automáticamente el nuevo precio medio de compra.
+              {selectedInvestment.isAutomatedPortfolio 
+                ? 'Añade más capital a tu cartera automatizada.'
+                : 'Al añadir más unidades, se calculará automáticamente el nuevo precio medio de compra.'}
             </p>
-            {selectedInvestment.averagePurchasePrice && (
+            {selectedInvestment.isAutomatedPortfolio ? (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Capital actual:</span>{' '}
+                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Valor actual: {formatPrice(selectedInvestment.currentPrice, selectedInvestment.currency)}
+                </p>
+              </div>
+            ) : selectedInvestment.averagePurchasePrice && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                   <span className="font-semibold">Precio medio actual:</span>{' '}
@@ -1237,47 +1620,69 @@ const Investments = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad a añadir</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  className="input-field"
-                  value={addFormData.quantity}
-                  onChange={(e) => setAddFormData({ ...addFormData, quantity: parseFloat(e.target.value) })}
-                  required
-                  min="0.0001"
-                />
-              </div>
-               <div>
-                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de compra</label>
-                 <input
-                   type="number"
-                   step="0.0001"
-                   className="input-field"
-                   value={addFormData.price}
-                   onChange={(e) => setAddFormData({ ...addFormData, price: parseFloat(e.target.value) })}
-                   required
-                   min="0.0001"
-                 />
-                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                   Precio al que compras las nuevas unidades
-                 </p>
-               </div>
-               <div>
-                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio actual (opcional)</label>
-                 <input
-                   type="number"
-                   step="0.0001"
-                   className="input-field"
-                   value={addFormData.currentPrice}
-                   onChange={(e) => setAddFormData({ ...addFormData, currentPrice: parseFloat(e.target.value) })}
-                   min="0.0001"
-                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Si no lo especificas, se mantendrá el precio actual de la inversión
-                </p>
-              </div>
+              {selectedInvestment.isAutomatedPortfolio ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto a añadir</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="input-field"
+                    value={addFormData.quantity}
+                    onChange={(e) => setAddFormData({ ...addFormData, quantity: parseFloat(e.target.value) })}
+                    required
+                    min="0.01"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Monto adicional que quieres invertir en la cartera automatizada
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad a añadir</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      className="input-field"
+                      value={addFormData.quantity}
+                      onChange={(e) => setAddFormData({ ...addFormData, quantity: parseFloat(e.target.value) })}
+                      required
+                      min="0.0001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de compra</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      className="input-field"
+                      value={addFormData.price}
+                      onChange={(e) => setAddFormData({ ...addFormData, price: parseFloat(e.target.value) })}
+                      required
+                      min="0.0001"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Precio al que compras las nuevas unidades
+                    </p>
+                  </div>
+                </>
+              )}
+              {!selectedInvestment.isAutomatedPortfolio && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio actual (opcional)</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    className="input-field"
+                    value={addFormData.currentPrice}
+                    onChange={(e) => setAddFormData({ ...addFormData, currentPrice: parseFloat(e.target.value) })}
+                    min="0.0001"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Si no lo especificas, se mantendrá el precio actual de la inversión
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas (opcional)</label>
                 <textarea
@@ -1287,7 +1692,15 @@ const Investments = () => {
                   onChange={(e) => setAddFormData({ ...addFormData, notes: e.target.value })}
                 />
               </div>
-              {addFormData.quantity > 0 && addFormData.price > 0 && selectedInvestment.averagePurchasePrice && (
+              {selectedInvestment.isAutomatedPortfolio && addFormData.quantity > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nuevo capital total:</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity + addFormData.quantity)}
+                  </p>
+                </div>
+              )}
+              {!selectedInvestment.isAutomatedPortfolio && addFormData.quantity > 0 && addFormData.price > 0 && selectedInvestment.averagePurchasePrice && (
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nuevo precio medio calculado:</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
@@ -1305,7 +1718,7 @@ const Investments = () => {
               )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  Añadir a Inversión
+                  {selectedInvestment.isAutomatedPortfolio ? 'Añadir Capital' : 'Añadir a Inversión'}
                 </button>
                 <button
                   type="button"
@@ -1320,10 +1733,161 @@ const Investments = () => {
         </div>
       )}
 
+      {/* Modal para vender inversión */}
+      {showSellModal && selectedInvestment && (
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          onClick={() => setShowSellModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Retirar de Inversión - {selectedInvestment.name}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {selectedInvestment.isAutomatedPortfolio 
+                ? 'Indica el monto a retirar de la cartera automatizada.'
+                : 'Al retirar, se reducirá la cantidad y el dinero se devolverá a la subcuenta (si aplica).'}
+            </p>
+            {selectedInvestment.averagePurchasePrice && !selectedInvestment.isAutomatedPortfolio && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Cantidad disponible:</span> {selectedInvestment.quantity} unidades
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <span className="font-semibold">Precio medio compra:</span>{' '}
+                  {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency)}
+                </p>
+              </div>
+            )}
+            {selectedInvestment.isAutomatedPortfolio && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Monto disponible:</span>{' '}
+                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity)}
+                </p>
+              </div>
+            )}
+            <form onSubmit={handleSubmitSell} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={sellFormData.date}
+                  onChange={(e) => setSellFormData({ ...sellFormData, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {selectedInvestment.isAutomatedPortfolio ? 'Monto a retirar' : 'Cantidad a retirar'}
+                </label>
+                <input
+                  type="number"
+                  step={selectedInvestment.isAutomatedPortfolio ? "0.01" : "0.0001"}
+                  className="input-field"
+                  value={sellFormData.quantity}
+                  onChange={(e) => setSellFormData({ ...sellFormData, quantity: parseFloat(e.target.value) })}
+                  required
+                  min="0.0001"
+                  max={selectedInvestment.quantity}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {selectedInvestment.isAutomatedPortfolio 
+                    ? `Máximo: ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity)}`
+                    : `Máximo: ${selectedInvestment.quantity} unidades`}
+                </p>
+              </div>
+              {!selectedInvestment.isAutomatedPortfolio && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de retiro</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    className="input-field"
+                    value={sellFormData.price}
+                    onChange={(e) => setSellFormData({ ...sellFormData, price: parseFloat(e.target.value) })}
+                    required
+                    min="0.0001"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Precio al que retiras las unidades
+                  </p>
+                </div>
+              )}
+              {selectedInvestment.subAccount && (
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="returnToSubAccount"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    checked={sellFormData.returnToSubAccount}
+                    onChange={(e) => setSellFormData({ ...sellFormData, returnToSubAccount: e.target.checked })}
+                  />
+                  <label htmlFor="returnToSubAccount" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    Devolver dinero a la subcuenta
+                  </label>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas (opcional)</label>
+                <textarea
+                  className="input-field"
+                  rows="3"
+                  value={sellFormData.notes}
+                  onChange={(e) => setSellFormData({ ...sellFormData, notes: e.target.value })}
+                />
+              </div>
+              {sellFormData.quantity > 0 && (
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Monto a retirar:</p>
+                  <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                    {selectedInvestment.isAutomatedPortfolio
+                      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(sellFormData.quantity)
+                      : new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(sellFormData.quantity * sellFormData.price)}
+                  </p>
+                  {!selectedInvestment.isAutomatedPortfolio && sellFormData.quantity < selectedInvestment.quantity && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      Cantidad restante: {selectedInvestment.quantity - sellFormData.quantity} unidades
+                    </p>
+                  )}
+                  {sellFormData.quantity >= selectedInvestment.quantity && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-semibold">
+                      ⚠️ Se retirará toda la inversión y será eliminada
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="flex-1 btn-primary bg-orange-600 hover:bg-orange-700">
+                  Retirar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSellModal(false)}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal de confirmación de eliminación */}
       {showDeleteModal && investmentToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Eliminar Inversión
             </h2>
@@ -1374,6 +1938,640 @@ const Investments = () => {
                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar entrada del historial */}
+      {showEditHistoryModal && editingHistoryEntry && selectedInvestment && (
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          style={{ zIndex: 10001 }}
+          onClick={() => setShowEditHistoryModal(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Editar Entrada del Historial
+            </h2>
+            <form onSubmit={handleSubmitEditHistory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={editHistoryFormData.date}
+                  onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Operación</label>
+                <select
+                  className="input-field"
+                  value={editHistoryFormData.operation}
+                  onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, operation: e.target.value })}
+                  required
+                >
+                  <option value="creation">Creación</option>
+                  <option value="add">Añadir Capital</option>
+                  <option value="withdraw">Retirar Capital</option>
+                  <option value="update">Actualización</option>
+                </select>
+              </div>
+              {!selectedInvestment.isAutomatedPortfolio && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    className="input-field"
+                    value={editHistoryFormData.quantity}
+                    onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, quantity: parseFloat(e.target.value) })}
+                    required
+                    min="0"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {selectedInvestment.isAutomatedPortfolio ? 'Valor Total' : 'Precio Unitario'}
+                </label>
+                <input
+                  type="number"
+                  step={selectedInvestment.isAutomatedPortfolio ? "0.01" : "0.0001"}
+                  className="input-field"
+                  value={editHistoryFormData.currentPrice}
+                  onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, currentPrice: parseFloat(e.target.value) })}
+                  required
+                  min="0"
+                />
+              </div>
+              {(editHistoryFormData.operation === 'add' || editHistoryFormData.operation === 'withdraw') && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto de la Operación</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input-field"
+                      value={editHistoryFormData.operationAmount}
+                      onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, operationAmount: parseFloat(e.target.value) })}
+                      min="0"
+                    />
+                  </div>
+                  {!selectedInvestment.isAutomatedPortfolio && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de la Operación</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        className="input-field"
+                        value={editHistoryFormData.operationPrice}
+                        onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, operationPrice: parseFloat(e.target.value) })}
+                        min="0"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas</label>
+                <textarea
+                  className="input-field"
+                  rows="3"
+                  value={editHistoryFormData.notes}
+                  onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, notes: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="flex-1 btn-primary">
+                  Guardar Cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditHistoryModal(false);
+                    setEditingHistoryEntry(null);
+                  }}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de detalles de inversión */}
+      {showDetailModal && detailInvestment && (
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          style={{ zIndex: 9999 }}
+          onClick={() => {
+            setShowDetailModal(false);
+            setDetailInvestment(null);
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg max-w-5xl w-full p-4 h-[90vh] flex flex-col m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4 flex-shrink-0">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {detailInvestment.name}
+                </h2>
+                {detailInvestment.symbol && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{detailInvestment.symbol}</p>
+                )}
+                {detailInvestment.isin && !detailInvestment.symbol && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ISIN: {detailInvestment.isin}</p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setDetailInvestment(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
+              {/* Columna izquierda */}
+              <div className="space-y-4 overflow-y-auto pr-2 h-full">
+                {/* Información básica */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Básica</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{getTypeLabel(detailInvestment.type)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{detailInvestment.currency}</span>
+                  </div>
+                  {(detailInvestment.account || detailInvestment.subAccount) && (
+                    <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                      <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
+                      <div className="mt-1">
+                        {detailInvestment.account && (
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {detailInvestment.account.name || detailInvestment.account.bankName || 'N/A'}
+                          </span>
+                        )}
+                        {detailInvestment.subAccount && (
+                          <span className="ml-2 text-gray-600 dark:text-gray-400">
+                            → {detailInvestment.subAccount.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {detailInvestment.assetClass && (
+                    <div className="col-span-2">
+                      <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
+                      <div className="mt-1">
+                        {detailInvestment.assetClass === 'fixed_income' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                            Renta Fija (100%)
+                          </span>
+                        )}
+                        {detailInvestment.assetClass === 'variable_income' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                            Renta Variable (100%)
+                          </span>
+                        )}
+                        {detailInvestment.assetClass === 'mixed' && (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                              Mixto
+                            </span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              RF: {detailInvestment.fixedIncomePercentage || 0}% | RV: {detailInvestment.variableIncomePercentage || 0}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {detailInvestment.isAutomatedPortfolio && (
+                    <div className="col-span-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                        Cartera Automatizada
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Información financiera */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Financiera</h3>
+                <div className="space-y-3 text-sm">
+                  {detailInvestment.isAutomatedPortfolio ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Monto invertido:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(detailInvestment.quantity)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
+                        <span className="font-bold text-gray-900 dark:text-gray-100">
+                          {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{detailInvestment.quantity} unidades</span>
+                      </div>
+                      {detailInvestment.averagePurchasePrice && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Precio medio compra:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {formatPrice(detailInvestment.averagePurchasePrice, detailInvestment.currency)}
+                          </span>
+                        </div>
+                      )}
+                      {detailInvestment.purchasePrice && !detailInvestment.averagePurchasePrice && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Precio de compra:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {formatPrice(detailInvestment.purchasePrice, detailInvestment.currency)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
+                        <span className="font-bold text-gray-900 dark:text-gray-100">
+                          {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(
+                            detailInvestment.quantity * detailInvestment.currentPrice
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
+                    <span className={`font-bold flex items-center ${
+                      calculateProfitLoss(detailInvestment) >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {calculateProfitLoss(detailInvestment) >= 0 ? (
+                        <TrendingUp className="h-4 w-4 mr-1" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 mr-1" />
+                      )}
+                      {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(calculateProfitLoss(detailInvestment))}
+                      <span className="ml-2">({calculateProfitLossPercentage(detailInvestment).toFixed(2)}%)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fechas */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
+                <div className="space-y-2 text-sm">
+                  {detailInvestment.purchaseDate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {new Date(detailInvestment.purchaseDate).toLocaleDateString('es-ES')}
+                      </span>
+                    </div>
+                  )}
+                  {detailInvestment.createdAt && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Fecha de creación:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {new Date(detailInvestment.createdAt).toLocaleDateString('es-ES')}
+                      </span>
+                    </div>
+                  )}
+                  {detailInvestment.updatedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Última actualización:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {new Date(detailInvestment.updatedAt).toLocaleDateString('es-ES')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Configuración */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuración</h3>
+                <div className="space-y-2 text-sm">
+                  {(detailInvestment.symbol || detailInvestment.isin) && !detailInvestment.isAutomatedPortfolio && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Actualización automática:</span>
+                      <span 
+                        onClick={async () => {
+                          const newValue = !(detailInvestment.autoUpdate !== false);
+                          const originalValue = detailInvestment.autoUpdate;
+                          // Actualizar estado local inmediatamente
+                          setDetailInvestment(prev => ({ ...prev, autoUpdate: newValue }));
+                          // Actualizar también en la lista de inversiones
+                          setInvestments(prev => prev.map(inv => 
+                            inv._id === detailInvestment._id 
+                              ? { ...inv, autoUpdate: newValue }
+                              : inv
+                          ));
+                          try {
+                            await api.patch(`/investments/${detailInvestment._id}/auto-update`, {
+                              autoUpdate: newValue
+                            });
+                          } catch (error) {
+                            console.error('Error actualizando autoUpdate:', error);
+                            alert('Error al actualizar la configuración de actualización automática');
+                            // Revertir el cambio si falla
+                            setDetailInvestment(prev => ({ ...prev, autoUpdate: originalValue }));
+                            setInvestments(prev => prev.map(inv => 
+                              inv._id === detailInvestment._id 
+                                ? { ...inv, autoUpdate: originalValue }
+                                : inv
+                            ));
+                          }
+                        }}
+                        className={`font-medium cursor-pointer hover:underline transition-colors ${
+                          detailInvestment.autoUpdate !== false ? 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        {detailInvestment.autoUpdate !== false ? 'Activada' : 'Desactivada'}
+                      </span>
+                    </div>
+                  )}
+                  {detailInvestment.platformUrl && (
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
+                      <a
+                        href={detailInvestment.platformUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {detailInvestment.platformUrl}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notas */}
+              {detailInvestment.notes && (
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{detailInvestment.notes}</p>
+                </div>
+              )}
+            </div>
+
+              {/* Columna derecha */}
+              <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
+
+                {/* Gráfica de evolución del valor */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Evolución del Valor</h3>
+                {detailInvestmentHistory.length > 0 ? (
+                  <div style={{ height: '290px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={detailInvestmentHistory.map(h => ({
+                        date: new Date(h.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                        value: h.totalValue,
+                        dailyChange: h.dailyChangeAmount || 0,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#6b7280" 
+                          className="dark:stroke-gray-400"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis 
+                          stroke="#6b7280" 
+                          className="dark:stroke-gray-400"
+                          tickFormatter={(value) => {
+                            return new Intl.NumberFormat('es-ES', { 
+                              style: 'currency', 
+                              currency: detailInvestment.currency,
+                              notation: 'compact',
+                              maximumFractionDigits: 0
+                            }).format(value);
+                          }}
+                        />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload || !payload.length) return null;
+                            
+                            const data = payload[0]?.payload;
+                            const totalValue = data?.value || 0;
+                            
+                            const formattedValue = new Intl.NumberFormat('es-ES', { 
+                              style: 'currency', 
+                              currency: detailInvestment.currency 
+                            }).format(totalValue);
+                            
+                            return (
+                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                                <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                  {label}
+                                </p>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600 dark:text-gray-400 text-sm">Valor Total:</span>
+                                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                      {formattedValue}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="value" 
+                          stroke="#0ea5e9" 
+                          name="Valor Total"
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p className="text-sm">No hay datos de historial para mostrar</p>
+                    <p className="text-xs mt-2">El historial se genera automáticamente con las operaciones</p>
+                  </div>
+                )}
+                </div>
+
+                {/* Gráfica de variación diaria */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Variación Diaria</h3>
+                {detailInvestmentHistory.length > 0 ? (
+                  <div style={{ height: '290px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={detailInvestmentHistory.map(h => ({
+                        date: new Date(h.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                        dailyChange: h.dailyChangeAmount || 0,
+                        dailyChangePositive: (h.dailyChangeAmount || 0) >= 0 ? (h.dailyChangeAmount || 0) : 0,
+                        dailyChangeNegative: (h.dailyChangeAmount || 0) < 0 ? (h.dailyChangeAmount || 0) : 0,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#6b7280" 
+                          className="dark:stroke-gray-400"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis 
+                          stroke="#6b7280" 
+                          className="dark:stroke-gray-400"
+                          tickFormatter={(value) => {
+                            return new Intl.NumberFormat('es-ES', { 
+                              style: 'currency', 
+                              currency: detailInvestment.currency,
+                              notation: 'compact',
+                              maximumFractionDigits: 0
+                            }).format(value);
+                          }}
+                        />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload || !payload.length) return null;
+                            
+                            const data = payload[0]?.payload;
+                            const dailyChange = data?.dailyChange || 0;
+                            const dailyChangePercent = detailInvestmentHistory.find(h => {
+                              const hDate = new Date(h.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                              return hDate === label;
+                            })?.dailyChangePercent;
+                            
+                            const formattedChange = dailyChange !== 0 
+                              ? new Intl.NumberFormat('es-ES', { 
+                                  style: 'currency', 
+                                  currency: detailInvestment.currency 
+                                }).format(Math.abs(dailyChange))
+                              : null;
+                            
+                            return (
+                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                                <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                  {label}
+                                </p>
+                                <div className="space-y-1">
+                                  {formattedChange && (
+                                    <>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600 dark:text-gray-400 text-sm">Cambio Diario:</span>
+                                        <span className={`font-medium text-sm ${
+                                          dailyChange >= 0 
+                                            ? 'text-green-600 dark:text-green-400' 
+                                            : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                          {dailyChange >= 0 ? '+' : '-'}{formattedChange}
+                                        </span>
+                                      </div>
+                                      {dailyChangePercent !== null && dailyChangePercent !== undefined && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
+                                          <span className={`font-medium text-sm ${
+                                            dailyChangePercent >= 0 
+                                              ? 'text-green-600 dark:text-green-400' 
+                                              : 'text-red-600 dark:text-red-400'
+                                          }`}>
+                                            {dailyChangePercent >= 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar 
+                          dataKey="dailyChangePositive" 
+                          fill="#10b981"
+                          name="Ganancia"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey="dailyChangeNegative" 
+                          fill="#ef4444"
+                          name="Pérdida"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p className="text-sm">No hay datos de variación diaria para mostrar</p>
+                    <p className="text-xs mt-2">El historial se genera automáticamente con las operaciones</p>
+                  </div>
+                )}
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <button
+                onClick={() => {
+                  handleViewHistory(detailInvestment);
+                }}
+                className="flex-1 btn-secondary flex items-center justify-center"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Ver Historial
+              </button>
+              <button
+                onClick={() => {
+                  handleUpdateValue(detailInvestment);
+                }}
+                className="flex-1 btn-secondary flex items-center justify-center"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Actualizar
+              </button>
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setDetailInvestment(null);
+                }}
+                className="flex-1 btn-primary"
+              >
+                Cerrar
               </button>
             </div>
           </div>
