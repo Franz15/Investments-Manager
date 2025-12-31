@@ -10,6 +10,48 @@ const router = express.Router();
 // Aplicar middleware a todas las rutas
 router.use(getUserFromRequest);
 
+// Función helper para calcular diferencias respecto al día anterior
+async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
+  try {
+    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+    // Buscar el registro más reciente anterior a hoy
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const previousEntry = await InvestmentHistory.findOne({
+      investment: investmentId,
+      user: userId,
+      date: { $lt: today },
+    })
+      .sort({ date: -1 })
+      .limit(1);
+    
+    if (previousEntry && previousEntry.totalValue) {
+      const changeAmount = currentTotalValue - previousEntry.totalValue;
+      const changePercent = previousEntry.totalValue !== 0 
+        ? (changeAmount / previousEntry.totalValue) * 100 
+        : 0;
+      
+      return {
+        dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
+        dailyChangePercent: parseFloat(changePercent.toFixed(2)),
+      };
+    }
+    
+    // Si no hay registro anterior, no hay cambio
+    return {
+      dailyChangeAmount: null,
+      dailyChangePercent: null,
+    };
+  } catch (error) {
+    console.error('Error calculando diferencias diarias:', error);
+    return {
+      dailyChangeAmount: null,
+      dailyChangePercent: null,
+    };
+  }
+}
+
 // GET todas las inversiones
 router.get('/', async (req, res) => {
   try {
@@ -158,6 +200,39 @@ router.post('/', async (req, res) => {
       populatedInvestment = await Investment.populate(populatedInvestment, populatePath);
     }
     
+    // Crear entrada inicial en el historial
+    try {
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const historyDate = req.body.purchaseDate ? new Date(req.body.purchaseDate) : (req.body.date ? new Date(req.body.date) : new Date());
+      const currentPrice = savedInvestment.currentPrice || savedInvestment.purchasePrice || (savedInvestment.isAutomatedPortfolio ? savedInvestment.quantity : 0);
+      const totalValue = savedInvestment.isAutomatedPortfolio 
+        ? (savedInvestment.currentPrice || savedInvestment.quantity)
+        : savedInvestment.quantity * (savedInvestment.currentPrice || savedInvestment.purchasePrice || 0);
+      
+      // Calcular diferencias respecto al día anterior (será null para la primera entrada)
+      const dailyChanges = await calculateDailyChanges(savedInvestment._id, req.userId, totalValue);
+      
+      const initialHistoryEntry = new InvestmentHistory({
+        user: req.userId,
+        investment: savedInvestment._id,
+        date: historyDate,
+        currentPrice: currentPrice,
+        quantity: savedInvestment.quantity,
+        totalValue: totalValue,
+        notes: req.body.notes || 'Inversión inicial',
+        operation: 'creation',
+        operationAmount: investmentAmount,
+        operationPrice: savedInvestment.isAutomatedPortfolio ? null : savedInvestment.purchasePrice,
+        dailyChangeAmount: dailyChanges.dailyChangeAmount,
+        dailyChangePercent: dailyChanges.dailyChangePercent,
+      });
+      await initialHistoryEntry.save();
+      console.log('Historial inicial creado para inversión:', savedInvestment._id);
+    } catch (historyError) {
+      console.error('Error creando historial inicial:', historyError);
+      // No fallar la creación de la inversión si falla el historial
+    }
+    
     res.status(201).json(populatedInvestment);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -268,16 +343,26 @@ router.post('/:id/add', async (req, res) => {
     // Crear entrada en el historial si se proporciona fecha
     if (date) {
       const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const totalValue = investment.isAutomatedPortfolio 
+        ? investment.currentPrice 
+        : investment.quantity * investment.currentPrice;
+      
+      // Calcular diferencias respecto al día anterior
+      const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+      
       const historyEntry = new InvestmentHistory({
         user: req.userId,
         investment: investment._id,
         date: date || new Date(),
         currentPrice: investment.currentPrice,
         quantity: investment.quantity,
-        totalValue: investment.isAutomatedPortfolio 
-          ? investment.currentPrice 
-          : investment.quantity * investment.currentPrice,
-        notes: notes || `Añadido: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'} a ${price}${investment.isAutomatedPortfolio ? '€' : ''}`,
+        totalValue: totalValue,
+        notes: notes || `Añadido: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ''}`,
+        operation: 'add',
+        operationAmount: additionalAmount,
+        operationPrice: investment.isAutomatedPortfolio ? null : price,
+        dailyChangeAmount: dailyChanges.dailyChangeAmount,
+        dailyChangePercent: dailyChanges.dailyChangePercent,
       });
       await historyEntry.save();
     }
@@ -292,6 +377,160 @@ router.post('/:id/add', async (req, res) => {
     
     res.json(populatedInvestment);
   } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// POST retirar parte o toda una inversión
+router.post('/:id/sell', async (req, res) => {
+  try {
+    const { quantity, price, date, notes, returnToSubAccount = true } = req.body;
+    const investment = await Investment.findOne({ _id: req.params.id, user: req.userId })
+      .populate({
+        path: 'subAccount',
+        match: { user: req.userId },
+      })
+      .populate({
+        path: 'account',
+        match: { user: req.userId },
+      });
+    
+    if (!investment) {
+      return res.status(404).json({ message: 'Inversión no encontrada' });
+    }
+    
+    // Validar cantidad a retirar
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: 'La cantidad a retirar debe ser mayor que 0' });
+    }
+    
+    if (quantity > investment.quantity) {
+      return res.status(400).json({ 
+        message: `No puedes retirar más de lo que tienes. Cantidad disponible: ${investment.quantity}` 
+      });
+    }
+    
+    // Calcular el monto del retiro
+    let saleAmount = 0;
+    if (investment.isAutomatedPortfolio) {
+      // Para carteras automatizadas, quantity es el monto a retirar
+      saleAmount = quantity;
+    } else {
+      // Para inversiones tradicionales, quantity * price
+      if (!price || price <= 0) {
+        return res.status(400).json({ message: 'El precio de venta es requerido' });
+      }
+      saleAmount = quantity * price;
+    }
+    
+    // Reducir la cantidad
+    const remainingQuantity = investment.quantity - quantity;
+    
+    // Si se retira todo, eliminar la inversión
+    if (remainingQuantity <= 0) {
+      // Devolver el dinero a la subcuenta si existe y se solicita
+      if (returnToSubAccount && investment.subAccount) {
+        investment.subAccount.balance += saleAmount;
+        await investment.subAccount.save();
+      }
+      
+      // Crear entrada en el historial antes de eliminar
+      if (date) {
+        const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+        const totalValue = 0; // Se vendió todo
+        
+        // Calcular diferencias respecto al día anterior
+        const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+        
+        const historyEntry = new InvestmentHistory({
+          user: req.userId,
+          investment: investment._id,
+          date: date || new Date(),
+          currentPrice: investment.isAutomatedPortfolio ? saleAmount : price,
+          quantity: 0, // Se vendió todo
+          totalValue: totalValue,
+          notes: notes || `Retiro completo: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'} a ${investment.isAutomatedPortfolio ? '' : price + '€'}`,
+          dailyChangeAmount: dailyChanges.dailyChangeAmount,
+          dailyChangePercent: dailyChanges.dailyChangePercent,
+        });
+        await historyEntry.save();
+      }
+      
+      // Eliminar la inversión
+      await Investment.findByIdAndDelete(investment._id);
+      
+      return res.json({ 
+        message: 'Inversión retirada completamente y eliminada',
+        saleAmount,
+        returnedToSubAccount: returnToSubAccount && investment.subAccount ? true : false
+      });
+    }
+    
+    // Si queda cantidad, actualizar la inversión
+    investment.quantity = remainingQuantity;
+    
+    // Para inversiones tradicionales, actualizar el precio actual si se proporciona
+    if (!investment.isAutomatedPortfolio && price) {
+      investment.currentPrice = price;
+    }
+    
+    await investment.save();
+    
+    // Devolver el dinero a la subcuenta si existe y se solicita
+    if (returnToSubAccount && investment.subAccount) {
+      investment.subAccount.balance += saleAmount;
+      await investment.subAccount.save();
+    }
+    
+    // Crear entrada en el historial
+    if (date) {
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const totalValue = investment.isAutomatedPortfolio 
+        ? investment.currentPrice 
+        : remainingQuantity * price;
+      
+      // Calcular diferencias respecto al día anterior
+      const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+      
+      const historyEntry = new InvestmentHistory({
+        user: req.userId,
+        investment: investment._id,
+        date: date || new Date(),
+        currentPrice: investment.isAutomatedPortfolio ? investment.currentPrice : price,
+        quantity: remainingQuantity,
+        totalValue: totalValue,
+        notes: notes || `Retiro parcial: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ''}. Restante: ${remainingQuantity}`,
+        operation: 'withdraw',
+        operationAmount: saleAmount,
+        operationPrice: investment.isAutomatedPortfolio ? null : price,
+        dailyChangeAmount: dailyChanges.dailyChangeAmount,
+        dailyChangePercent: dailyChanges.dailyChangePercent,
+      });
+      await historyEntry.save();
+    }
+    
+    const populatedInvestment = await Investment.findById(investment._id)
+      .populate({
+        path: 'subAccount',
+        match: { user: req.userId },
+        populate: {
+          path: 'account',
+          match: { user: req.userId },
+        },
+      })
+      .populate({
+        path: 'account',
+        match: { user: req.userId },
+      });
+    
+    res.json({
+      investment: populatedInvestment,
+      saleAmount,
+      remainingQuantity,
+      returnedToSubAccount: returnToSubAccount && investment.subAccount ? true : false
+    });
+  } catch (error) {
+    console.error('Error retirando de inversión:', error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -334,7 +573,13 @@ router.post('/update-prices', async (req, res) => {
     // Actualizar precios usando el servicio de cotizaciones
     const quoteResults = await updateMultipleQuotes(investments);
 
-    // Actualizar las inversiones en la base de datos
+    // Actualizar las inversiones en la base de datos y registrar en historial
+    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const updatePromises = quoteResults.map(async (result) => {
       if (result.success) {
         // Buscar la inversión por ID de forma más robusta
@@ -350,6 +595,55 @@ router.post('/update-prices', async (req, res) => {
             investment.currency = result.currency;
           }
           await investment.save();
+
+          // Registrar o actualizar historial diario
+          try {
+            const existingHistory = await InvestmentHistory.findOne({
+              investment: investment._id,
+              user: req.userId,
+              date: { $gte: today, $lt: tomorrow },
+            });
+
+            const totalValue = investment.isAutomatedPortfolio
+              ? investment.currentPrice
+              : investment.quantity * investment.currentPrice;
+
+            // Calcular diferencias respecto al día anterior
+            const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+
+            if (existingHistory) {
+              // Actualizar registro existente con los valores más recientes
+              existingHistory.currentPrice = investment.currentPrice;
+              existingHistory.quantity = investment.quantity;
+              existingHistory.totalValue = totalValue;
+              existingHistory.date = new Date(); // Actualizar hora también
+              existingHistory.dailyChangeAmount = dailyChanges.dailyChangeAmount;
+              existingHistory.dailyChangePercent = dailyChanges.dailyChangePercent;
+              // Mantener las notas originales si no son de actualización automática
+              if (!existingHistory.notes || existingHistory.notes === 'Actualización automática diaria') {
+                existingHistory.notes = 'Actualización automática diaria';
+              }
+              await existingHistory.save();
+            } else {
+              // Crear nuevo registro si no existe
+              const historyEntry = new InvestmentHistory({
+                user: req.userId,
+                investment: investment._id,
+                date: new Date(),
+                currentPrice: investment.currentPrice,
+                quantity: investment.quantity,
+                totalValue: totalValue,
+                notes: 'Actualización automática diaria',
+                operation: 'update',
+                dailyChangeAmount: dailyChanges.dailyChangeAmount,
+                dailyChangePercent: dailyChanges.dailyChangePercent,
+              });
+              await historyEntry.save();
+            }
+          } catch (historyError) {
+            console.error('Error registrando historial diario:', historyError);
+            // No fallar la actualización si falla el historial
+          }
         }
       }
       return result;
@@ -404,6 +698,61 @@ router.post('/:id/update-price', async (req, res) => {
       investment.currency = quote.currency;
     }
     await investment.save();
+
+    // Registrar o actualizar historial diario
+    try {
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const existingHistory = await InvestmentHistory.findOne({
+        investment: investment._id,
+        user: req.userId,
+        date: { $gte: today, $lt: tomorrow },
+      });
+
+      const totalValue = investment.isAutomatedPortfolio
+        ? investment.currentPrice
+        : investment.quantity * investment.currentPrice;
+
+      // Calcular diferencias respecto al día anterior
+      const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+
+      if (existingHistory) {
+        // Actualizar registro existente con los valores más recientes
+        existingHistory.currentPrice = investment.currentPrice;
+        existingHistory.quantity = investment.quantity;
+        existingHistory.totalValue = totalValue;
+        existingHistory.date = new Date(); // Actualizar hora también
+        existingHistory.dailyChangeAmount = dailyChanges.dailyChangeAmount;
+        existingHistory.dailyChangePercent = dailyChanges.dailyChangePercent;
+        // Mantener las notas originales si no son de actualización automática
+        if (!existingHistory.notes || existingHistory.notes === 'Actualización automática diaria') {
+          existingHistory.notes = 'Actualización manual de precio';
+        }
+        await existingHistory.save();
+      } else {
+        // Crear nuevo registro si no existe
+        const historyEntry = new InvestmentHistory({
+          user: req.userId,
+          investment: investment._id,
+          date: new Date(),
+          currentPrice: investment.currentPrice,
+          quantity: investment.quantity,
+          totalValue: totalValue,
+          notes: 'Actualización manual de precio',
+          operation: 'update',
+          dailyChangeAmount: dailyChanges.dailyChangeAmount,
+          dailyChangePercent: dailyChanges.dailyChangePercent,
+        });
+        await historyEntry.save();
+      }
+    } catch (historyError) {
+      console.error('Error registrando historial diario:', historyError);
+      // No fallar la actualización si falla el historial
+    }
 
     // Populate para devolver la inversión completa
     const populatedInvestment = await Investment.findById(investment._id)

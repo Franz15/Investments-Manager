@@ -35,6 +35,29 @@ const investmentHistorySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    operation: {
+      type: String,
+      enum: ['creation', 'add', 'withdraw', 'update'],
+      default: 'update',
+    },
+    // Campos adicionales para operaciones específicas
+    operationAmount: {
+      type: Number,
+      // Monto añadido o retirado en esta operación
+    },
+    operationPrice: {
+      type: Number,
+      // Precio de compra/venta en esta operación (para add/withdraw)
+    },
+    // Diferencias respecto al día anterior
+    dailyChangeAmount: {
+      type: Number,
+      // Diferencia en euros/moneda respecto al día anterior
+    },
+    dailyChangePercent: {
+      type: Number,
+      // Diferencia en porcentaje respecto al día anterior
+    },
   },
   {
     timestamps: true,
