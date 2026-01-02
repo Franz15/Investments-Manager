@@ -43,11 +43,18 @@ export async function getQuote(symbol, type, currency = 'EUR', isin = null, name
  * Obtiene cotización de Yahoo Finance
  */
 async function getYahooQuote(symbol, currency) {
-  // Si el símbolo ya incluye un sufijo de mercado, intentar solo con ese primero
-  if (symbol.includes('.')) {
+  // Extraer el símbolo base (sin sufijo de mercado)
+  const baseSymbol = symbol.includes('.') ? symbol.split('.')[0] : symbol;
+  const hasSuffix = symbol.includes('.');
+
+  // Función auxiliar para intentar obtener cotización
+  const tryGetQuote = async (symbolToTry) => {
     try {
-      const quote = await yahooFinance.quote(symbol);
-      if (quote && quote.regularMarketPrice) {
+      console.log(`Intentando obtener cotización para: ${symbolToTry}`);
+      const quote = await yahooFinance.quote(symbolToTry);
+      console.log(`Resultado para ${symbolToTry}:`, quote ? 'OK' : 'Sin datos');
+      
+      if (quote && quote.regularMarketPrice !== undefined && quote.regularMarketPrice !== null) {
         const price = quote.regularMarketPrice;
         const previousClose = quote.regularMarketPreviousClose || price;
         const change = price - previousClose;
@@ -62,80 +69,72 @@ async function getYahooQuote(symbol, currency) {
         };
       }
     } catch (error) {
-      // Si falla con el sufijo, continuar con búsqueda alternativa
+      console.log(`Error obteniendo cotización para ${symbolToTry}:`, error.message);
+      return null;
     }
+    return null;
+  };
+
+  // 1. Intentar primero con el símbolo tal cual (si tiene sufijo, probarlo primero)
+  if (hasSuffix) {
+    const result = await tryGetQuote(symbol);
+    if (result) return result;
   }
 
-  // Intentar búsqueda por nombre si el símbolo directo no funciona
-  // Esto es útil para acciones que pueden tener diferentes formatos
+  // 2. Intentar con el símbolo base sin sufijo
+  const baseResult = await tryGetQuote(baseSymbol);
+  if (baseResult) return baseResult;
+
+  // 3. Intentar búsqueda por nombre/símbolo
   try {
-    const searchResults = await yahooFinance.search(symbol);
+    const searchSymbol = hasSuffix ? baseSymbol : symbol;
+    const searchResults = await yahooFinance.search(searchSymbol);
     if (searchResults && searchResults.quotes && searchResults.quotes.length > 0) {
       // Buscar el resultado más relevante
       const bestMatch = searchResults.quotes.find(q => 
-        q.symbol && (q.symbol.includes(symbol) || q.shortname?.toLowerCase().includes(symbol.toLowerCase()))
+        q.symbol && (
+          q.symbol.toUpperCase() === symbol.toUpperCase() ||
+          q.symbol.toUpperCase() === baseSymbol.toUpperCase() ||
+          q.symbol.toUpperCase().includes(baseSymbol.toUpperCase()) ||
+          q.shortname?.toLowerCase().includes(baseSymbol.toLowerCase())
+        )
       ) || searchResults.quotes[0];
       
       if (bestMatch && bestMatch.symbol) {
-        const quote = await yahooFinance.quote(bestMatch.symbol);
-        if (quote && quote.regularMarketPrice) {
-          const price = quote.regularMarketPrice;
-          const previousClose = quote.regularMarketPreviousClose || price;
-          const change = price - previousClose;
-          const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
-
-          return {
-            price,
-            currency: quote.currency || currency,
-            change,
-            changePercent,
-            marketTime: quote.regularMarketTime,
-          };
-        }
+        const result = await tryGetQuote(bestMatch.symbol);
+        if (result) return result;
       }
     }
   } catch (searchError) {
     // Continuar con las variantes si la búsqueda falla
   }
 
-  // Lista de variantes a probar para acciones españolas/europeas
-  const symbolVariants = [
-    symbol, // Intentar primero con el símbolo tal cual
-    `${symbol}.MC`, // Madrid (Mercado Continuo)
-    `${symbol}.MA`, // Madrid Alternativo
-    `${symbol}.BC`, // Barcelona
-    `${symbol}.AS`, // Amsterdam
-    `${symbol}.L`, // London
-    `${symbol}.PA`, // Paris
-    `${symbol}.DE`, // Frankfurt
-    `${symbol}.XETR`, // XETRA
-  ];
+  // 4. Lista de variantes a probar para acciones españolas/europeas
+  // Solo agregar variantes si el símbolo original no tiene sufijo
+  const symbolVariants = hasSuffix 
+    ? [
+        symbol, // Ya probado, pero lo incluimos por si acaso
+        baseSymbol, // Ya probado, pero lo incluimos por si acaso
+      ]
+    : [
+        symbol, // Ya probado
+        `${baseSymbol}.MC`, // Madrid (Mercado Continuo)
+        `${baseSymbol}.MA`, // Madrid Alternativo
+        `${baseSymbol}.BC`, // Barcelona
+        `${baseSymbol}.AS`, // Amsterdam
+        `${baseSymbol}.L`, // London
+        `${baseSymbol}.PA`, // Paris
+        `${baseSymbol}.DE`, // Frankfurt
+        `${baseSymbol}.XETR`, // XETRA
+      ];
 
-  const errors = [];
-
+  // Probar todas las variantes
   for (const variant of symbolVariants) {
-    try {
-      const quote = await yahooFinance.quote(variant);
-      
-      if (quote && quote.regularMarketPrice) {
-        const price = quote.regularMarketPrice;
-        const previousClose = quote.regularMarketPreviousClose || price;
-        const change = price - previousClose;
-        const changePercent = previousClose ? ((change / previousClose) * 100) : 0;
-
-        return {
-          price,
-          currency: quote.currency || currency,
-          change,
-          changePercent,
-          marketTime: quote.regularMarketTime,
-        };
-      }
-    } catch (error) {
-      errors.push(`${variant}: ${error.message}`);
-      // Continuar con el siguiente variant
-      continue;
-    }
+    // Evitar duplicados (ya probamos symbol y baseSymbol)
+    if (variant === symbol || variant === baseSymbol) continue;
+    
+    const result = await tryGetQuote(variant);
+    if (result) return result;
   }
 
   // Si ninguna variante funcionó, lanzar error con detalles
