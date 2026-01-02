@@ -23,85 +23,6 @@ const formatPrice = (value, currency = 'EUR') => {
   }).format(value);
 };
 
-/**
- * Genera datos mock de historial con variaciones diarias
- */
-const generateMockHistoryData = (investment, existingHistory) => {
-  const daysToGenerate = 30;
-  const mockData = [];
-  
-  // Obtener el valor base (del historial existente o de la inversión)
-  let baseValue = investment.isAutomatedPortfolio 
-    ? (investment.currentPrice || investment.quantity || 10000)
-    : (investment.quantity || 100) * (investment.currentPrice || investment.purchasePrice || 100);
-  
-  // Si hay historial existente, usar el último valor
-  if (existingHistory.length > 0) {
-    const lastEntry = existingHistory[existingHistory.length - 1];
-    baseValue = lastEntry.totalValue || baseValue;
-  }
-  
-  // Generar datos para los últimos 30 días
-  const today = new Date();
-  for (let i = daysToGenerate - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    date.setHours(12, 0, 0, 0);
-    
-    // Generar variación aleatoria entre -3% y +3%
-    const variationPercent = (Math.random() * 6 - 3); // -3% a +3%
-    const dailyChangePercent = parseFloat(variationPercent.toFixed(2));
-    
-    // Calcular el nuevo valor
-    const previousValue = i === daysToGenerate - 1 ? baseValue : mockData[mockData.length - 1].totalValue;
-    const dailyChangeAmount = previousValue * (variationPercent / 100);
-    const totalValue = previousValue + dailyChangeAmount;
-    
-    // Calcular precio y cantidad (para inversiones no automatizadas)
-    let currentPrice = investment.currentPrice || investment.purchasePrice || 100;
-    let quantity = investment.quantity || 100;
-    
-    if (!investment.isAutomatedPortfolio) {
-      // Para inversiones tradicionales, ajustar el precio
-      currentPrice = totalValue / quantity;
-    }
-    
-    mockData.push({
-      _id: `mock_${date.getTime()}`,
-      user: investment.user,
-      investment: investment._id,
-      date: date.toISOString(),
-      currentPrice: parseFloat(currentPrice.toFixed(4)),
-      quantity: quantity,
-      totalValue: parseFloat(totalValue.toFixed(2)),
-      dailyChangeAmount: parseFloat(dailyChangeAmount.toFixed(2)),
-      dailyChangePercent: dailyChangePercent,
-      notes: i === daysToGenerate - 1 ? 'Datos mock generados' : 'Registro diario automático',
-      operation: 'update',
-    });
-  }
-  
-  // Combinar historial existente con datos mock (si hay historial, reemplazar los días que ya existen)
-  if (existingHistory.length > 0) {
-    const existingDates = new Set(
-      existingHistory.map(h => new Date(h.date).toDateString())
-    );
-    
-    // Filtrar datos mock que no coincidan con fechas existentes
-    const filteredMock = mockData.filter(mock => {
-      const mockDate = new Date(mock.date).toDateString();
-      return !existingDates.has(mockDate);
-    });
-    
-    // Combinar y ordenar por fecha
-    return [...existingHistory, ...filteredMock].sort((a, b) => 
-      new Date(a.date) - new Date(b.date)
-    );
-  }
-  
-  return mockData;
-};
-
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -703,19 +624,11 @@ const Investments = () => {
                 // Cargar historial para las gráficas
                 try {
                   const response = await api.get(`/investment-history/investment/${investment._id}`);
-                  let history = response.data || [];
-                  
-                  // Si hay menos de 7 días de historial, generar datos mock
-                  if (history.length < 7) {
-                    history = generateMockHistoryData(investment, history);
-                  }
-                  
+                  const history = response.data || [];
                   setDetailInvestmentHistory(history);
                 } catch (error) {
                   console.error('Error cargando historial para gráficas:', error);
-                  // Generar datos mock si falla la carga
-                  const mockData = generateMockHistoryData(investment, []);
-                  setDetailInvestmentHistory(mockData);
+                  setDetailInvestmentHistory([]);
                 }
               }}
             >
