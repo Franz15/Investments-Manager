@@ -4,7 +4,10 @@ import SubAccount from '../models/SubAccount.js';
 import Transaction from '../models/Transaction.js';
 import Investment from '../models/Investment.js';
 import Debt from '../models/Debt.js';
+import InvestmentHistory from '../models/InvestmentHistory.js';
 import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { getQuote } from '../services/quoteService.js';
+import YahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
 
@@ -134,8 +137,6 @@ router.get('/balance-chart', async (req, res) => {
     const currentTotalDebts = activeDebts.reduce((sum, debt) => sum + debt.remainingAmount, 0);
     
     // Obtener historial de inversiones
-    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
-    
     for (let i = parseInt(months) - 1; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
@@ -449,6 +450,160 @@ router.get('/distribution-by-bank', async (req, res) => {
     
     res.json(data);
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET rendimiento anualizado (CAGR) y comparación con S&P 500
+router.get('/performance', async (req, res) => {
+  try {
+    // Obtener todas las inversiones del usuario
+    const investments = await Investment.find({ 
+      user: req.userId,
+      account: { $exists: true, $ne: null }
+    });
+
+    if (investments.length === 0) {
+      return res.json({
+        annualizedReturn: null,
+        totalReturn: null,
+        sp500Comparison: null,
+        period: null,
+        message: 'No hay inversiones para calcular el rendimiento'
+      });
+    }
+
+    // Obtener el primer registro de historial (valor inicial)
+    const firstHistoryEntries = await InvestmentHistory.find({
+      user: req.userId,
+      investment: { $in: investments.map(inv => inv._id) },
+      operation: 'creation'
+    })
+      .sort({ date: 1 })
+      .limit(1);
+
+    // Si no hay registro de creación, usar el registro más antiguo
+    let firstHistoryEntry = firstHistoryEntries[0];
+    if (!firstHistoryEntry) {
+      const oldestEntries = await InvestmentHistory.find({
+        user: req.userId,
+        investment: { $in: investments.map(inv => inv._id) }
+      })
+        .sort({ date: 1 })
+        .limit(1);
+      firstHistoryEntry = oldestEntries[0];
+    }
+
+    // Si aún no hay historial, calcular basándose en purchaseDate
+    let initialValue = 0;
+    let startDate = new Date();
+    
+    if (firstHistoryEntry) {
+      initialValue = firstHistoryEntry.totalValue || 0;
+      startDate = new Date(firstHistoryEntry.date);
+    } else {
+      // Calcular valor inicial basado en purchaseDate y purchasePrice
+      investments.forEach(inv => {
+        if (inv.isAutomatedPortfolio) {
+          initialValue += inv.quantity || 0; // Para carteras, quantity es el capital inicial
+        } else {
+          const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
+          initialValue += (inv.quantity || 0) * avgPrice;
+        }
+        const purchaseDate = new Date(inv.purchaseDate);
+        if (purchaseDate < startDate) {
+          startDate = purchaseDate;
+        }
+      });
+    }
+
+    // Calcular valor actual
+    let currentValue = 0;
+    investments.forEach(inv => {
+      if (inv.isAutomatedPortfolio) {
+        currentValue += inv.currentPrice || 0;
+      } else {
+        currentValue += (inv.quantity || 0) * (inv.currentPrice || 0);
+      }
+    });
+
+    // Calcular rendimiento total
+    const totalReturn = currentValue - initialValue;
+    const totalReturnPercent = initialValue > 0 ? ((currentValue / initialValue) - 1) * 100 : 0;
+
+    // Calcular tiempo transcurrido en años
+    const endDate = new Date();
+    const timeDiff = endDate - startDate;
+    const years = timeDiff / (1000 * 60 * 60 * 24 * 365.25); // Años con decimales
+
+    // Calcular CAGR (Compound Annual Growth Rate)
+    // CAGR = (Valor Final / Valor Inicial)^(1/Años) - 1
+    let annualizedReturn = null;
+    if (initialValue > 0 && years > 0) {
+      const cagr = (Math.pow(currentValue / initialValue, 1 / years) - 1) * 100;
+      annualizedReturn = parseFloat(cagr.toFixed(2));
+    }
+
+    // Obtener datos del S&P 500 para comparación
+    // Usamos el rendimiento histórico promedio del S&P 500 (~10% anual)
+    // ya que obtener datos históricos precisos requeriría una API especializada
+    const sp500HistoricalReturn = 10; // % anual promedio histórico (últimos ~100 años)
+    
+    // Calcular qué habría sido el rendimiento del S&P 500 en el mismo período
+    const sp500ProjectedReturn = years > 0 
+      ? (Math.pow(1 + sp500HistoricalReturn / 100, years) - 1) * 100
+      : 0;
+
+    let sp500Comparison = {
+      historicalAnnualReturn: sp500HistoricalReturn,
+      projectedReturn: parseFloat(sp500ProjectedReturn.toFixed(2)),
+      outperformance: annualizedReturn !== null 
+        ? parseFloat((annualizedReturn - sp500HistoricalReturn).toFixed(2))
+        : null,
+      outperformancePercent: annualizedReturn !== null && sp500HistoricalReturn !== 0
+        ? parseFloat(((annualizedReturn / sp500HistoricalReturn - 1) * 100).toFixed(2))
+        : null
+    };
+
+    // Intentar obtener precio actual del S&P 500 (opcional, no crítico para la comparación)
+    try {
+      const yahooFinance = new YahooFinance();
+      
+      // Intentar primero con ^GSPC (índice directo)
+      try {
+        const sp500Quote = await yahooFinance.quote('^GSPC');
+        if (sp500Quote && sp500Quote.regularMarketPrice) {
+          sp500Comparison.currentPrice = sp500Quote.regularMarketPrice;
+        }
+      } catch (gspcError) {
+        // Si ^GSPC falla, intentar con SPY (ETF que replica el S&P 500)
+        try {
+          const spyQuote = await yahooFinance.quote('SPY');
+          if (spyQuote && spyQuote.regularMarketPrice) {
+            sp500Comparison.currentPrice = spyQuote.regularMarketPrice;
+          }
+        } catch (spyError) {
+          // Si ambos fallan, continuar sin precio actual (no es crítico)
+        }
+      }
+    } catch (sp500Error) {
+      // No es crítico, continuamos sin el precio actual
+      // La comparación de rendimiento funciona perfectamente sin el precio actual
+    }
+
+    res.json({
+      annualizedReturn,
+      totalReturn,
+      totalReturnPercent: parseFloat(totalReturnPercent.toFixed(2)),
+      initialValue,
+      currentValue,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      years: parseFloat(years.toFixed(2)),
+      sp500Comparison,
+    });
+  } catch (error) {
+    console.error('Error calculando rendimiento:', error);
     res.status(500).json({ message: error.message });
   }
 });
