@@ -15,9 +15,5 @@ const envPath = path.join(__dirname, '.env');
 
 if (!fs.existsSync(envPath)) {
   fs.writeFileSync(envPath, envContent);
-  console.log('✅ Archivo .env creado exitosamente');
-} else {
-  console.log('⚠️  El archivo .env ya existe. No se ha sobrescrito.');
-  console.log('Si deseas actualizarlo, elimínalo primero y vuelve a ejecutar este script.');
 }
 

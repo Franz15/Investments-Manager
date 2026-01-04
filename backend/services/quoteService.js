@@ -26,6 +26,19 @@ export async function getQuote(symbol, type, currency = 'EUR', isin = null, name
       return await getCryptoQuote(symbol, currency);
     }
 
+    // Para fondos de inversión, intentar primero con StockEvents si hay ISIN
+    if (type === 'fund' && isin) {
+      try {
+        const stockEventsQuote = await getStockEventsQuote(isin, symbol, currency);
+        if (stockEventsQuote) {
+          return stockEventsQuote;
+        }
+      } catch (stockEventsError) {
+        // Continuar con Yahoo Finance si StockEvents falla
+        console.log(`[StockEvents] No se pudo obtener cotización, intentando Yahoo Finance: ${stockEventsError.message}`);
+      }
+    }
+
     // Para acciones, ETFs, bonos, fondos, usar Yahoo Finance
     if (['stock', 'etf', 'bond', 'fund'].includes(type)) {
       return await getYahooQuote(symbol || isin, currency);
@@ -34,8 +47,119 @@ export async function getQuote(symbol, type, currency = 'EUR', isin = null, name
     // Para otros tipos, intentar con Yahoo Finance de todas formas
     return await getYahooQuote(symbol || isin, currency);
   } catch (error) {
-    console.error(`Error obteniendo cotización para ${symbol || isin}:`, error.message);
+    // Si Yahoo Finance falla y tenemos ISIN, intentar StockEvents como fallback
+    if (isin && type === 'fund') {
+      try {
+        const stockEventsQuote = await getStockEventsQuote(isin, symbol, currency);
+        if (stockEventsQuote) {
+          return stockEventsQuote;
+        }
+      } catch (stockEventsError) {
+        // Si ambos fallan, lanzar el error original
+      }
+    }
     throw new Error(`No se pudo obtener la cotización para ${symbol || isin}: ${error.message}`);
+  }
+}
+
+/**
+ * Obtiene cotización de StockEvents.app usando ISIN o símbolo
+ */
+async function getStockEventsQuote(isin, symbol, currency = 'EUR') {
+  try {
+    // StockEvents usa formato: https://stockevents.app/es/stock/ISIN.FUND
+    // O también puede ser: https://stockevents.app/es/stock/SYMBOL
+    let url;
+    
+    if (isin) {
+      // Intentar con ISIN (formato: ISIN.FUND)
+      url = `https://stockevents.app/es/stock/${isin}.FUND`;
+    } else if (symbol) {
+      // Intentar con símbolo
+      url = `https://stockevents.app/es/stock/${symbol}`;
+    } else {
+      return null;
+    }
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        'Referer': 'https://stockevents.app/',
+      },
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    // Buscar el precio en el HTML usando diferentes patrones
+    // StockEvents probablemente tiene el precio en formato JSON embebido o en elementos específicos
+    let price = null;
+    let change = 0;
+    let changePercent = 0;
+    
+    // Patrón 1: Buscar en JSON embebido (común en aplicaciones React/Next.js)
+    const jsonPattern = /"price":\s*([\d,]+\.?\d*)/i;
+    const jsonMatch = html.match(jsonPattern);
+    if (jsonMatch && jsonMatch[1]) {
+      price = parseFloat(jsonMatch[1].replace(',', '.'));
+    }
+    
+    // Patrón 2: Buscar en atributos data-*
+    if (!price) {
+      const dataPricePattern = /data-price=["']([\d,]+\.?\d*)["']/i;
+      const dataMatch = html.match(dataPricePattern);
+      if (dataMatch && dataMatch[1]) {
+        price = parseFloat(dataMatch[1].replace(',', '.'));
+      }
+    }
+    
+    // Patrón 3: Buscar en elementos con clases comunes de precio
+    if (!price) {
+      const classPricePattern = /class="[^"]*price[^"]*"[^>]*>[\s€$]*([\d,]+\.?\d*)/i;
+      const classMatch = html.match(classPricePattern);
+      if (classMatch && classMatch[1]) {
+        price = parseFloat(classMatch[1].replace(',', '.'));
+      }
+    }
+    
+    // Patrón 4: Buscar cambio porcentual
+    const changePattern = /([+-]?[\d,]+\.?\d*)%/i;
+    const changeMatches = html.match(changePattern);
+    if (changeMatches && changeMatches.length > 0) {
+      // Buscar el primer porcentaje que parezca un cambio (no el precio)
+      for (const match of changeMatches) {
+        const percent = parseFloat(match.replace(',', '.').replace('+', '').replace('%', ''));
+        if (percent !== price && Math.abs(percent) < 100) {
+          changePercent = percent;
+          break;
+        }
+      }
+    }
+    
+    if (price && price > 0) {
+      // Calcular cambio si tenemos el porcentaje
+      if (changePercent !== 0) {
+        change = (price * changePercent) / 100;
+      }
+      
+      return {
+        price,
+        currency,
+        change,
+        changePercent,
+        source: 'stockevents',
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[StockEvents] Error obteniendo cotización:', error.message);
+    return null;
   }
 }
 
@@ -50,9 +174,7 @@ async function getYahooQuote(symbol, currency) {
   // Función auxiliar para intentar obtener cotización
   const tryGetQuote = async (symbolToTry) => {
     try {
-      console.log(`Intentando obtener cotización para: ${symbolToTry}`);
       const quote = await yahooFinance.quote(symbolToTry);
-      console.log(`Resultado para ${symbolToTry}:`, quote ? 'OK' : 'Sin datos');
       
       if (quote && quote.regularMarketPrice !== undefined && quote.regularMarketPrice !== null) {
         const price = quote.regularMarketPrice;
@@ -69,7 +191,6 @@ async function getYahooQuote(symbol, currency) {
         };
       }
     } catch (error) {
-      console.log(`Error obteniendo cotización para ${symbolToTry}:`, error.message);
       return null;
     }
     return null;
