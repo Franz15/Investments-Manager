@@ -26,6 +26,7 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [investments, setInvestments] = useState([]);
+  const [dailyVariations, setDailyVariations] = useState({}); // { investmentId: { changeAmount, changePercent } }
   const [loading, setLoading] = useState(true);
   const [expandedAccounts, setExpandedAccounts] = useState(new Set());
   const [expandedSubAccounts, setExpandedSubAccounts] = useState(new Set());
@@ -49,6 +50,7 @@ const Accounts = () => {
     balance: 0,
     currency: 'EUR',
     description: '',
+    initialDate: '',
   });
 
   useEffect(() => {
@@ -65,9 +67,53 @@ const Accounts = () => {
       setAccounts(accountsRes.data);
       setSubAccounts(subAccountsRes.data);
       setInvestments(investmentsRes.data);
+      
+      // Obtener variaciones diarias de todas las inversiones
+      const variationsMap = {};
+      await Promise.all(
+        investmentsRes.data.map(async (inv) => {
+          try {
+            // Obtener la variación más reciente (sin limit para obtener todas y luego tomar la última)
+            const variationsRes = await api.get(`/investment-history/investment/${inv._id}/daily-variations`);
+            if (variationsRes.data && variationsRes.data.length > 0) {
+              // Ordenar por fecha descendente y tomar la más reciente
+              const sorted = variationsRes.data.sort((a, b) => {
+                const dateA = new Date(a.date || a.createdAt);
+                const dateB = new Date(b.date || b.createdAt);
+                return dateB - dateA;
+              });
+              const latest = sorted[0];
+              
+              // Validar que la variación sea razonable (no más del 100% del valor actual)
+              const currentValue = inv.isAutomatedPortfolio 
+                ? inv.currentPrice 
+                : inv.quantity * inv.currentPrice;
+              const changeAmount = latest.dailyChangeAmount || latest.changeAmount || 0;
+              
+              // Si la variación es mayor al 100% del valor actual, probablemente es un error
+              if (Math.abs(changeAmount) > currentValue * 1.5) {
+                console.warn(`[Accounts] Variación sospechosa para ${inv.name}: ${changeAmount}€ (valor actual: ${currentValue}€)`);
+                variationsMap[inv._id] = { changeAmount: 0, changePercent: 0 };
+              } else {
+                variationsMap[inv._id] = {
+                  changeAmount: changeAmount,
+                  changePercent: latest.dailyChangePercent || latest.changePercent || 0,
+                };
+              }
+            } else {
+              variationsMap[inv._id] = { changeAmount: 0, changePercent: 0 };
+            }
+          } catch (error) {
+            console.error(`[Accounts] Error obteniendo variación para ${inv.name}:`, error);
+            // Si no hay variaciones, usar 0
+            variationsMap[inv._id] = { changeAmount: 0, changePercent: 0 };
+          }
+        })
+      );
+      setDailyVariations(variationsMap);
+      
       setLoading(false);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       setLoading(false);
     }
   };
@@ -139,6 +185,71 @@ const Accounts = () => {
     return subsBalance + investmentsValue;
   };
 
+  // Calcular variación total de inversiones de un banco
+  const calculateAccountInvestmentsVariation = (accountId) => {
+    const accountInvestments = getInvestmentsForAccount(accountId);
+    const subs = getSubAccountsForAccount(accountId);
+    
+    // Sumar variaciones de inversiones directas
+    let totalChangeAmount = 0;
+    accountInvestments.forEach(inv => {
+      const variation = dailyVariations[inv._id];
+      if (variation) {
+        totalChangeAmount += variation.changeAmount || 0;
+      }
+    });
+    
+    // Sumar variaciones de inversiones en subcuentas
+    subs.forEach(sub => {
+      const subAccountInvestments = getInvestmentsForSubAccount(sub._id);
+      subAccountInvestments.forEach(inv => {
+        const variation = dailyVariations[inv._id];
+        if (variation) {
+          totalChangeAmount += variation.changeAmount || 0;
+        }
+      });
+    });
+    
+    return totalChangeAmount;
+  };
+
+  // Calcular variación total de inversiones de una subcuenta
+  const calculateSubAccountInvestmentsVariation = (subAccountId) => {
+    const subAccountInvestments = getInvestmentsForSubAccount(subAccountId);
+    
+    let totalChangeAmount = 0;
+    subAccountInvestments.forEach(inv => {
+      const variation = dailyVariations[inv._id];
+      if (variation) {
+        const changeAmount = variation.changeAmount || 0;
+        totalChangeAmount += changeAmount;
+        
+        // Log para depuración si la variación es muy grande
+        if (Math.abs(changeAmount) > 1000) {
+          console.log(`[Accounts DEBUG] Variación grande en ${inv.name}:`, {
+            investmentId: inv._id,
+            changeAmount: changeAmount,
+            changePercent: variation.changePercent,
+            currentValue: inv.isAutomatedPortfolio ? inv.currentPrice : inv.quantity * inv.currentPrice,
+          });
+        }
+      }
+    });
+    
+    // Log si la variación total es sospechosa
+    if (Math.abs(totalChangeAmount) > 1000) {
+      console.log(`[Accounts DEBUG] Variación total sospechosa en subcuenta ${subAccountId}:`, {
+        totalChangeAmount: totalChangeAmount,
+        investments: subAccountInvestments.map(inv => ({
+          name: inv.name,
+          variation: dailyVariations[inv._id],
+        })),
+      });
+    }
+    
+    return totalChangeAmount;
+  };
+
   const handleAccountSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -151,18 +262,27 @@ const Accounts = () => {
       setShowAccountModal(false);
       resetAccountForm();
     } catch (error) {
-      console.error('Error guardando cuenta:', error);
     }
   };
 
   const handleSubAccountSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Preparar datos: si initialDate está vacío, no enviarlo (o enviarlo como null)
+      const formData = { ...subAccountFormData };
+      if (!formData.initialDate || formData.initialDate === '') {
+        // Si está vacío, no incluir el campo o enviarlo como null
+        delete formData.initialDate;
+      } else {
+        // Convertir la fecha a formato ISO para el backend
+        formData.initialDate = new Date(formData.initialDate).toISOString();
+      }
+      
       if (editingSubAccount) {
-        await api.put(`/subaccounts/${editingSubAccount._id}`, subAccountFormData);
+        await api.put(`/subaccounts/${editingSubAccount._id}`, formData);
       } else {
         await api.post('/subaccounts', {
-          ...subAccountFormData,
+          ...formData,
           account: selectedAccountId,
         });
       }
@@ -170,7 +290,6 @@ const Accounts = () => {
       setShowSubAccountModal(false);
       resetSubAccountForm();
     } catch (error) {
-      console.error('Error guardando subcuenta:', error);
     }
   };
 
@@ -190,12 +309,17 @@ const Accounts = () => {
 
   const handleEditSubAccount = (subAccount) => {
     setEditingSubAccount(subAccount);
+    // Formatear la fecha para el input type="date" (YYYY-MM-DD)
+    const initialDate = subAccount.initialDate 
+      ? new Date(subAccount.initialDate).toISOString().split('T')[0]
+      : '';
     setSubAccountFormData({
       name: subAccount.name,
       type: subAccount.type,
       balance: subAccount.balance,
       currency: subAccount.currency,
       description: subAccount.description || '',
+      initialDate: initialDate,
     });
     setSelectedAccountId(subAccount.account?._id || subAccount.account);
     setShowSubAccountModal(true);
@@ -207,7 +331,6 @@ const Accounts = () => {
         await api.delete(`/accounts/${id}`);
         fetchData();
       } catch (error) {
-        console.error('Error eliminando cuenta:', error);
       }
     }
   };
@@ -218,7 +341,6 @@ const Accounts = () => {
         await api.delete(`/subaccounts/${id}`);
         fetchData();
       } catch (error) {
-        console.error('Error eliminando subcuenta:', error);
       }
     }
   };
@@ -243,6 +365,7 @@ const Accounts = () => {
       balance: 0,
       currency: 'EUR',
       description: '',
+      initialDate: '',
     });
     setEditingSubAccount(null);
     setSelectedAccountId(null);
@@ -334,6 +457,17 @@ const Accounts = () => {
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: account.currency }).format(totalBalance)}
                     </p>
+                    {(() => {
+                      const totalVariation = calculateAccountInvestmentsVariation(account._id);
+                      if (totalVariation !== 0) {
+                        return (
+                          <p className={`text-xs mt-1 ${totalVariation >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {totalVariation >= 0 ? '+' : ''}{new Intl.NumberFormat('es-ES', { style: 'currency', currency: account.currency }).format(totalVariation)}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -504,6 +638,17 @@ const Accounts = () => {
                                           Inversiones: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: subAccount.currency }).format(investmentsValue)}
                                         </p>
                                       )}
+                                      {(() => {
+                                        const subAccountVariation = calculateSubAccountInvestmentsVariation(subAccount._id);
+                                        if (subAccountVariation !== 0) {
+                                          return (
+                                            <p className={`text-xs mt-1 ${subAccountVariation >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                              {subAccountVariation >= 0 ? '+' : ''}{new Intl.NumberFormat('es-ES', { style: 'currency', currency: subAccount.currency }).format(subAccountVariation)}
+                                            </p>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
                                   ) : (
                                     <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -783,6 +928,22 @@ const Accounts = () => {
                   onChange={(e) => setSubAccountFormData({ ...subAccountFormData, description: e.target.value })}
                 />
               </div>
+              {(subAccountFormData.type === 'cash' || subAccountFormData.type === 'savings') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fecha de Creación del Efectivo
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field"
+                    value={subAccountFormData.initialDate}
+                    onChange={(e) => setSubAccountFormData({ ...subAccountFormData, initialDate: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Fecha en la que se creó esta subcuenta o se añadió este efectivo. Se usará para calcular el balance histórico.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
                   {editingSubAccount ? 'Actualizar' : 'Crear'}

@@ -34,7 +34,6 @@ const Transactions = () => {
       setSubAccounts(subAccountsRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       setLoading(false);
     }
   };
@@ -51,7 +50,6 @@ const Transactions = () => {
       setShowModal(false);
       resetForm();
     } catch (error) {
-      console.error('Error guardando transacción:', error);
     }
   };
 
@@ -75,7 +73,6 @@ const Transactions = () => {
         await api.delete(`/transactions/${id}`);
         fetchData();
       } catch (error) {
-        console.error('Error eliminando transacción:', error);
       }
     }
   };

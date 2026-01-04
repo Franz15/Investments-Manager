@@ -45,7 +45,6 @@ const Debts = () => {
       setSubAccounts(subAccountsRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       setLoading(false);
     }
   };
@@ -62,7 +61,6 @@ const Debts = () => {
       setShowModal(false);
       resetForm();
     } catch (error) {
-      console.error('Error guardando deuda:', error);
     }
   };
 
@@ -75,7 +73,6 @@ const Debts = () => {
       setSelectedDebtForPayment(null);
       setPaymentData({ amount: 0, date: new Date().toISOString().split('T')[0] });
     } catch (error) {
-      console.error('Error registrando pago:', error);
     }
   };
 
@@ -106,7 +103,6 @@ const Debts = () => {
         await api.delete(`/debts/${id}`);
         fetchData();
       } catch (error) {
-        console.error('Error eliminando deuda:', error);
       }
     }
   };
