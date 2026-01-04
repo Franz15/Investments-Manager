@@ -4,6 +4,8 @@ import SubAccount from '../models/SubAccount.js';
 import Account from '../models/Account.js';
 import { getUserFromRequest } from '../middleware/userMiddleware.js';
 import { updateMultipleQuotes, getQuote } from '../services/quoteService.js';
+import { saveDailyVariation } from '../services/dailyVariationService.js';
+import { calculateHistoricalVariations } from '../services/historicalVariationService.js';
 
 const router = express.Router();
 
@@ -44,7 +46,6 @@ async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
       dailyChangePercent: null,
     };
   } catch (error) {
-    console.error('Error calculando diferencias diarias:', error);
     return {
       dailyChangeAmount: null,
       dailyChangePercent: null,
@@ -227,10 +228,17 @@ router.post('/', async (req, res) => {
         dailyChangePercent: dailyChanges.dailyChangePercent,
       });
       await initialHistoryEntry.save();
-      console.log('Historial inicial creado para inversión:', savedInvestment._id);
     } catch (historyError) {
-      console.error('Error creando historial inicial:', historyError);
       // No fallar la creación de la inversión si falla el historial
+    }
+    
+    // Calcular variaciones históricas desde la fecha de compra hasta hoy (en segundo plano)
+    // Solo si tiene símbolo y no es cartera automatizada
+    if (savedInvestment.symbol && !savedInvestment.isAutomatedPortfolio) {
+      calculateHistoricalVariations(savedInvestment._id, req.userId, savedInvestment)
+        .catch(() => {
+          // Fallar silenciosamente, no es crítico
+        });
     }
     
     res.status(201).json(populatedInvestment);
@@ -242,6 +250,38 @@ router.post('/', async (req, res) => {
 // PUT actualizar inversión
 router.put('/:id', async (req, res) => {
   try {
+    // Obtener la inversión actual antes de actualizarla para comparar cambios críticos
+    const oldInvestment = await Investment.findOne({ _id: req.params.id, user: req.userId });
+    
+    if (!oldInvestment) {
+      return res.status(404).json({ message: 'Inversión no encontrada' });
+    }
+    
+    // Detectar si se están editando valores críticos que invalidarían el historial
+    const criticalFieldsChanged = 
+      (req.body.purchaseDate && new Date(req.body.purchaseDate).getTime() !== new Date(oldInvestment.purchaseDate).getTime()) ||
+      (req.body.purchasePrice && req.body.purchasePrice !== oldInvestment.purchasePrice) ||
+      (req.body.quantity && req.body.quantity !== oldInvestment.quantity && oldInvestment.quantity > 0) ||
+      (req.body.name && req.body.name !== oldInvestment.name);
+    
+    // Si se cambian valores críticos, eliminar el historial anterior
+    // porque los datos históricos ya no serían correctos
+    if (criticalFieldsChanged) {
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const DailyVariation = (await import('../models/DailyVariation.js')).default;
+      
+      const deletedHistory = await InvestmentHistory.deleteMany({
+        user: req.userId,
+        investment: oldInvestment._id
+      });
+      
+      const deletedVariations = await DailyVariation.deleteMany({
+        user: req.userId,
+        investment: oldInvestment._id
+      });
+      
+    }
+    
     const investment = await Investment.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
       req.body,
@@ -456,6 +496,24 @@ router.post('/:id/sell', async (req, res) => {
         await historyEntry.save();
       }
       
+      const investmentId = investment._id;
+      
+      // IMPORTANTE: Eliminar TODOS los registros históricos de esta inversión
+      // Si se elimina una inversión, debe desaparecer completamente del historial
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const DailyVariation = (await import('../models/DailyVariation.js')).default;
+      
+      const deletedHistory = await InvestmentHistory.deleteMany({
+        user: req.userId,
+        investment: investmentId
+      });
+      
+      const deletedVariations = await DailyVariation.deleteMany({
+        user: req.userId,
+        investment: investmentId
+      });
+      
+      
       // Eliminar la inversión
       await Investment.findByIdAndDelete(investment._id);
       
@@ -530,7 +588,6 @@ router.post('/:id/sell', async (req, res) => {
       returnedToSubAccount: returnToSubAccount && investment.subAccount ? true : false
     });
   } catch (error) {
-    console.error('Error retirando de inversión:', error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -641,7 +698,6 @@ router.post('/update-prices', async (req, res) => {
               await historyEntry.save();
             }
           } catch (historyError) {
-            console.error('Error registrando historial diario:', historyError);
             // No fallar la actualización si falla el historial
           }
         }
@@ -661,7 +717,6 @@ router.post('/update-prices', async (req, res) => {
       results: quoteResults,
     });
   } catch (error) {
-    console.error('Error actualizando precios:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -717,40 +772,9 @@ router.post('/:id/update-price', async (req, res) => {
         ? investment.currentPrice
         : investment.quantity * investment.currentPrice;
 
-      // Calcular diferencias respecto al día anterior
-      const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
-
-      if (existingHistory) {
-        // Actualizar registro existente con los valores más recientes
-        existingHistory.currentPrice = investment.currentPrice;
-        existingHistory.quantity = investment.quantity;
-        existingHistory.totalValue = totalValue;
-        existingHistory.date = new Date(); // Actualizar hora también
-        existingHistory.dailyChangeAmount = dailyChanges.dailyChangeAmount;
-        existingHistory.dailyChangePercent = dailyChanges.dailyChangePercent;
-        // Mantener las notas originales si no son de actualización automática
-        if (!existingHistory.notes || existingHistory.notes === 'Actualización automática diaria') {
-          existingHistory.notes = 'Actualización manual de precio';
-        }
-        await existingHistory.save();
-      } else {
-        // Crear nuevo registro si no existe
-        const historyEntry = new InvestmentHistory({
-          user: req.userId,
-          investment: investment._id,
-          date: new Date(),
-          currentPrice: investment.currentPrice,
-          quantity: investment.quantity,
-          totalValue: totalValue,
-          notes: 'Actualización manual de precio',
-          operation: 'update',
-          dailyChangeAmount: dailyChanges.dailyChangeAmount,
-          dailyChangePercent: dailyChanges.dailyChangePercent,
-        });
-        await historyEntry.save();
-      }
+      // Guardar variación diaria en la colección ligera
+      await saveDailyVariation(investment._id, req.userId, totalValue);
     } catch (historyError) {
-      console.error('Error registrando historial diario:', historyError);
       // No fallar la actualización si falla el historial
     }
 
@@ -779,7 +803,6 @@ router.post('/:id/update-price', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error actualizando precio:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -802,7 +825,6 @@ router.patch('/:id/auto-update', async (req, res) => {
       investment 
     });
   } catch (error) {
-    console.error('Error actualizando autoUpdate:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -838,6 +860,24 @@ router.delete('/:id', async (req, res) => {
       investment.subAccount.balance += originalAmount;
       await investment.subAccount.save();
     }
+    
+    const investmentId = investment._id;
+    
+    // IMPORTANTE: Eliminar TODOS los registros históricos de esta inversión
+    // Si se elimina una inversión, debe desaparecer completamente del historial
+    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+    const DailyVariation = (await import('../models/DailyVariation.js')).default;
+    
+    const deletedHistory = await InvestmentHistory.deleteMany({
+      user: req.userId,
+      investment: investmentId
+    });
+    
+    const deletedVariations = await DailyVariation.deleteMany({
+      user: req.userId,
+      investment: investmentId
+    });
+    
     
     // Eliminar la inversión
     await Investment.findByIdAndDelete(req.params.id);

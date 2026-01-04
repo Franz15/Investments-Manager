@@ -52,6 +52,7 @@ const Investments = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailInvestment, setDetailInvestment] = useState(null);
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
+  const [detailDailyVariations, setDetailDailyVariations] = useState([]);
   const [updatingPrices, setUpdatingPrices] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState(null);
   const [updateFormData, setUpdateFormData] = useState({
@@ -104,10 +105,8 @@ const Investments = () => {
       if (lastRegistration !== today) {
         await api.post('/investment-history/register-daily-values');
         localStorage.setItem('lastDailyValuesRegistration', today);
-        console.log('Valores diarios registrados');
       }
     } catch (error) {
-      console.error('Error registrando valores diarios:', error);
       // No mostrar error al usuario, es silencioso
     }
   };
@@ -183,7 +182,6 @@ const Investments = () => {
       setAccounts(accountsRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       setLoading(false);
     }
   };
@@ -217,7 +215,6 @@ const Investments = () => {
       setShowModal(false);
       resetForm();
     } catch (error) {
-      console.error('Error guardando inversión:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al guardar la inversión';
       alert(errorMessage);
     }
@@ -265,7 +262,6 @@ const Investments = () => {
       setShowDeleteModal(false);
       setInvestmentToDelete(null);
     } catch (error) {
-      console.error('Error eliminando inversión:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al eliminar la inversión';
       alert(errorMessage);
     }
@@ -304,7 +300,6 @@ const Investments = () => {
       // Registrar valores diarios después de actualizar manualmente
       registerDailyValues();
     } catch (error) {
-      console.error('Error actualizando inversión:', error);
     }
   };
 
@@ -314,14 +309,8 @@ const Investments = () => {
     setShowHistoryModal(true);
     try {
       const response = await api.get(`/investment-history/investment/${investment._id}`);
-      console.log('Historial recibido:', response.data);
       setInvestmentHistory(response.data || []);
-      if (!response.data || response.data.length === 0) {
-        console.log('No hay historial para esta inversión. ID:', investment._id);
-      }
     } catch (error) {
-      console.error('Error cargando historial:', error);
-      console.error('Detalles del error:', error.response?.data);
       alert('Error al cargar el historial: ' + (error.response?.data?.message || error.message));
       setInvestmentHistory([]);
     } finally {
@@ -353,7 +342,6 @@ const Investments = () => {
       setShowEditHistoryModal(false);
       setEditingHistoryEntry(null);
     } catch (error) {
-      console.error('Error editando historial:', error);
       alert('Error al editar la entrada del historial');
     }
   };
@@ -368,7 +356,6 @@ const Investments = () => {
       const response = await api.get(`/investment-history/investment/${selectedInvestment._id}`);
       setInvestmentHistory(response.data);
     } catch (error) {
-      console.error('Error eliminando historial:', error);
       alert('Error al eliminar la entrada del historial');
     }
   };
@@ -435,7 +422,6 @@ const Investments = () => {
         notes: '',
       });
     } catch (error) {
-      console.error('Error añadiendo a inversión:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al añadir a la inversión';
       alert(errorMessage);
     }
@@ -466,7 +452,6 @@ const Investments = () => {
         alert(`Retiro realizado. Monto: ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(response.data.saleAmount)}`);
       }
     } catch (error) {
-      console.error('Error vendiendo inversión:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al retirar de la inversión';
       alert(errorMessage);
     }
@@ -563,7 +548,6 @@ const Investments = () => {
         alert('No se pudieron actualizar los precios. Verifica que las inversiones tengan símbolos válidos.');
       }
     } catch (error) {
-      console.error('Error actualizando precios:', error);
       // Solo mostrar alerta si es actualización manual
       if (!isAutoUpdate) {
         const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
@@ -621,14 +605,17 @@ const Investments = () => {
                 }
                 setDetailInvestment(investment);
                 setShowDetailModal(true);
-                // Cargar historial para las gráficas
+                // Cargar historial y variaciones diarias para las gráficas
                 try {
-                  const response = await api.get(`/investment-history/investment/${investment._id}`);
-                  const history = response.data || [];
-                  setDetailInvestmentHistory(history);
+                  const [historyRes, variationsRes] = await Promise.all([
+                    api.get(`/investment-history/investment/${investment._id}`),
+                    api.get(`/investment-history/investment/${investment._id}/daily-variations`)
+                  ]);
+                  setDetailInvestmentHistory(historyRes.data || []);
+                  setDetailDailyVariations(variationsRes.data || []);
                 } catch (error) {
-                  console.error('Error cargando historial para gráficas:', error);
                   setDetailInvestmentHistory([]);
+                  setDetailDailyVariations([]);
                 }
               }}
             >
@@ -695,7 +682,6 @@ const Investments = () => {
                                 : inv
                             ));
                           } catch (error) {
-                            console.error('Error actualizando autoUpdate:', error);
                             alert('Error al actualizar la configuración de actualización automática');
                             // Revertir el cambio en caso de error
                             e.target.checked = !newValue;
@@ -2216,7 +2202,6 @@ const Investments = () => {
                               autoUpdate: newValue
                             });
                           } catch (error) {
-                            console.error('Error actualizando autoUpdate:', error);
                             alert('Error al actualizar la configuración de actualización automática');
                             // Revertir el cambio si falla
                             setDetailInvestment(prev => ({ ...prev, autoUpdate: originalValue }));
@@ -2347,15 +2332,19 @@ const Investments = () => {
                 {/* Gráfica de variación diaria */}
                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Variación Diaria</h3>
-                {detailInvestmentHistory.length > 0 ? (
+                {detailDailyVariations.length > 0 ? (
                   <div style={{ height: '290px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={detailInvestmentHistory.map(h => ({
-                        date: new Date(h.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
-                        dailyChange: h.dailyChangeAmount || 0,
-                        dailyChangePositive: (h.dailyChangeAmount || 0) >= 0 ? (h.dailyChangeAmount || 0) : 0,
-                        dailyChangeNegative: (h.dailyChangeAmount || 0) < 0 ? (h.dailyChangeAmount || 0) : 0,
-                      }))}>
+                      <BarChart data={detailDailyVariations.map(v => {
+                        const changeAmount = v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined ? v.dailyChangeAmount : 0;
+                        return {
+                          date: new Date(v.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+                          dailyChange: changeAmount,
+                          dailyChangePercent: v.dailyChangePercent !== null && v.dailyChangePercent !== undefined ? v.dailyChangePercent : null,
+                          dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
+                          dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
+                        };
+                      })}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
                         <XAxis 
                           dataKey="date" 
@@ -2382,18 +2371,13 @@ const Investments = () => {
                             if (!active || !payload || !payload.length) return null;
                             
                             const data = payload[0]?.payload;
-                            const dailyChange = data?.dailyChange || 0;
-                            const dailyChangePercent = detailInvestmentHistory.find(h => {
-                              const hDate = new Date(h.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-                              return hDate === label;
-                            })?.dailyChangePercent;
+                            const dailyChange = data?.dailyChange !== null && data?.dailyChange !== undefined ? data.dailyChange : 0;
+                            const dailyChangePercent = data?.dailyChangePercent;
                             
-                            const formattedChange = dailyChange !== 0 
-                              ? new Intl.NumberFormat('es-ES', { 
-                                  style: 'currency', 
-                                  currency: detailInvestment.currency 
-                                }).format(Math.abs(dailyChange))
-                              : null;
+                            const formattedChange = new Intl.NumberFormat('es-ES', { 
+                              style: 'currency', 
+                              currency: detailInvestment.currency 
+                            }).format(Math.abs(dailyChange));
                             
                             return (
                               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
@@ -2401,31 +2385,39 @@ const Investments = () => {
                                   {label}
                                 </p>
                                 <div className="space-y-1">
-                                  {formattedChange && (
-                                    <>
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">Cambio Diario:</span>
-                                        <span className={`font-medium text-sm ${
-                                          dailyChange >= 0 
-                                            ? 'text-green-600 dark:text-green-400' 
-                                            : 'text-red-600 dark:text-red-400'
-                                        }`}>
-                                          {dailyChange >= 0 ? '+' : '-'}{formattedChange}
-                                        </span>
-                                      </div>
-                                      {dailyChangePercent !== null && dailyChangePercent !== undefined && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
-                                          <span className={`font-medium text-sm ${
-                                            dailyChangePercent >= 0 
-                                              ? 'text-green-600 dark:text-green-400' 
-                                              : 'text-red-600 dark:text-red-400'
-                                          }`}>
-                                            {dailyChangePercent >= 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}%
-                                          </span>
-                                        </div>
-                                      )}
-                                    </>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600 dark:text-gray-400 text-sm">Cambio Diario:</span>
+                                    <span className={`font-medium text-sm ${
+                                      dailyChange > 0 
+                                        ? 'text-green-600 dark:text-green-400' 
+                                        : dailyChange < 0
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-gray-500 dark:text-gray-400'
+                                    }`}>
+                                      {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}{formattedChange}
+                                      {dailyChange === 0 && ' (Sin variación)'}
+                                    </span>
+                                  </div>
+                                  {dailyChangePercent !== null && dailyChangePercent !== undefined ? (
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
+                                      <span className={`font-medium text-sm ${
+                                        dailyChangePercent > 0 
+                                          ? 'text-green-600 dark:text-green-400' 
+                                          : dailyChangePercent < 0
+                                          ? 'text-red-600 dark:text-red-400'
+                                          : 'text-gray-500 dark:text-gray-400'
+                                      }`}>
+                                        {dailyChangePercent > 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
+                                      <span className="text-gray-500 dark:text-gray-400 text-sm">
+                                        Sin datos previos
+                                      </span>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -2450,7 +2442,7 @@ const Investments = () => {
                 ) : (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <p className="text-sm">No hay datos de variación diaria para mostrar</p>
-                    <p className="text-xs mt-2">El historial se genera automáticamente con las operaciones</p>
+                    <p className="text-xs mt-2">Las variaciones se generan automáticamente al actualizar precios</p>
                   </div>
                 )}
                 </div>

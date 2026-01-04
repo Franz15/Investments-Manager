@@ -37,6 +37,11 @@ const subAccountSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    initialDate: {
+      type: Date,
+      // Fecha en la que se creó la subcuenta o se añadió el efectivo inicial
+      // Solo relevante para subcuentas de tipo cash/savings
+    },
     isActive: {
       type: Boolean,
       default: true,

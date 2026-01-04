@@ -48,9 +48,6 @@ export const ThemeProvider = ({ children }) => {
     
     // Guardar preferencia en localStorage
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    
-    console.log('Theme changed to:', isDark ? 'dark' : 'light');
-    console.log('HTML classes:', root.className);
   }, [isDark]);
 
   const toggleTheme = () => {
