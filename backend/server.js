@@ -48,13 +48,13 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log('✅ Conectado a MongoDB');
+    console.log('MongoDB conectado correctamente');
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
   })
   .catch((error) => {
-    console.error('❌ Error conectando a MongoDB:', error);
+    console.error('Error conectando a MongoDB:', error);
     process.exit(1);
   });
 

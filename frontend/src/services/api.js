@@ -17,7 +17,6 @@ api.interceptors.request.use(
         const user = JSON.parse(savedUser);
         config.headers['x-user-id'] = user.id;
       } catch (error) {
-        console.error('Error parsing currentUser from localStorage:', error);
       }
     }
     return config;
