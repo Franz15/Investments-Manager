@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit, Trash2, History, RefreshCw, PlusCircle, DollarSign, MinusCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -559,7 +560,7 @@ const Investments = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-600 dark:text-gray-400">Cargando...</div>;
+    return <LoadingSpinner />;
   }
 
   return (
@@ -597,7 +598,7 @@ const Investments = () => {
           return (
             <div 
               key={investment._id} 
-              className="card cursor-pointer hover:shadow-lg transition-shadow"
+              className="card cursor-pointer hover:shadow-lg transition-shadow flex flex-col h-[405px]"
               onClick={async (e) => {
                 // Evitar que se active cuando se hace clic en botones o inputs
                 if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.closest('input')) {
@@ -619,7 +620,7 @@ const Investments = () => {
                 }
               }}
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-4 flex-shrink-0">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{investment.name}</h3>
@@ -663,7 +664,7 @@ const Investments = () => {
                   {/* Checkbox para actualización automática - solo si tiene símbolo o ISIN */}
                   {(investment.symbol || investment.isin) && !investment.isAutomatedPortfolio && (
                     <div 
-                      className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 relative z-10"
+                      className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700"
                     >
                       <input
                         type="checkbox"
@@ -687,11 +688,11 @@ const Investments = () => {
                             e.target.checked = !newValue;
                           }
                         }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer relative z-20"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                       />
                       <label 
                         htmlFor={`auto-update-${investment._id}`}
-                        className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer relative z-20"
+                        className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer"
                       >
                         Actualización automática
                       </label>
@@ -700,7 +701,7 @@ const Investments = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 flex-1 min-h-0">
                 {investment.isAutomatedPortfolio ? (
                   <>
                     <div className="flex justify-between">
@@ -772,7 +773,7 @@ const Investments = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2 mt-auto pt-4 flex-shrink-0">
                 <button
                   onClick={() => handleAddToInvestment(investment)}
                   className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
@@ -1331,7 +1332,7 @@ const Investments = () => {
             </div>
             
             {historyLoading ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">Cargando...</div>
+              <LoadingSpinner message="Cargando historial..." />
             ) : investmentHistory.length > 0 ? (
               <>
                 <div className="mb-6" style={{ height: '300px' }}>

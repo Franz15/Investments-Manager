@@ -104,7 +104,7 @@ const Layout = ({ children }) => {
             <div className={`flex items-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'w-full justify-center gap-0' : 'flex-1 gap-3'}`}>
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="w-7 h-7 rounded flex items-center justify-center transition-colors duration-150 cursor-pointer flex-shrink-0"
+                className={`rounded flex items-center justify-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer flex-shrink-0 ${sidebarCollapsed ? 'w-7 h-7' : 'w-10 h-10'}`}
                 style={{ 
                   backgroundColor: 'var(--user-color-600)',
                 }}
@@ -112,7 +112,7 @@ const Layout = ({ children }) => {
                 onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--user-color-600)'}
                 aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
               >
-                <Wallet className="h-4 w-4 text-white" strokeWidth={2} />
+                <Wallet className={`text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'h-4 w-4' : 'h-6 w-6'}`} strokeWidth={2} />
               </button>
               <h1 className={`text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 scale-95' : 'max-w-[200px] opacity-100 scale-100'}`}>
                 TC Manager
@@ -157,7 +157,7 @@ const Layout = ({ children }) => {
                 title={sidebarCollapsed ? 'Cerrar Sesión' : ''}
               >
                 <LogOut 
-                  className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-3.5 w-3.5'}`} 
+                  className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-6 w-6'}`} 
                   strokeWidth={2} 
                 />
                 <span className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0 text-xs'}`}>
@@ -191,7 +191,7 @@ const Layout = ({ children }) => {
         </main>
 
         {/* Footer */}
-        <footer className={`fixed bottom-0 right-0 border-t border-gray-200/30 dark:border-[#404040]/30 bg-white/70 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'} left-0`} style={{ backdropFilter: 'blur(20px) saturate(180%)' }}>
+        <footer className={`fixed bottom-0 right-0 z-40 border-t border-gray-200/30 dark:border-[#404040]/30 bg-white/50 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'} left-0`} style={{ backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' }}>
           <div className="px-4 py-3">
             <div className="flex items-center justify-end max-w-7xl mx-auto">
               <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">

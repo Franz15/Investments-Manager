@@ -3,6 +3,7 @@ import { Plus, ArrowUp, ArrowDown, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -91,7 +92,7 @@ const Transactions = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-600 dark:text-gray-400">Cargando...</div>;
+    return <LoadingSpinner />;
   }
 
   return (
