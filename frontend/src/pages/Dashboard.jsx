@@ -673,7 +673,7 @@ const Dashboard = () => {
         {/* Gráfica de Evolución del Patrimonio Total */}
         {balanceChart.length > 0 && (
           <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución del Patrimonio Total</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.totalNetWorthEvolution')}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={balanceChart.map((item, index) => {
                 const balanceValue = parseFloat(item.balance) || 0;
@@ -719,7 +719,7 @@ const Dashboard = () => {
                   type="linear" 
                   dataKey="balance" 
                   stroke="#0ea5e9" 
-                  name="Patrimonio Total"
+                  name={t('dashboard.totalNetWorth')}
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}

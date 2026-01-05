@@ -19,7 +19,6 @@ const userSchema = new mongoose.Schema(
     },
     color: {
       type: String,
-      required: true,
       default: '#3b82f6',
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },

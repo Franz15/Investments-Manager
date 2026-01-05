@@ -101,7 +101,7 @@ const Debts = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta deuda?')) {
+    if (window.confirm(t('debts.deleteConfirm'))) {
       try {
         await api.delete(`/debts/${id}`);
         fetchData();
@@ -233,7 +233,7 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Deudas Activas</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.activeDebts')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {activeDebts.length}
               </p>
@@ -271,20 +271,20 @@ const Debts = () => {
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Monto Total:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.totalAmountLabel')}</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.totalAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Pendiente:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.remainingLabel')}</span>
                   <span className="text-sm font-bold text-red-600 dark:text-red-400">
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.remainingAmount)}
                   </span>
                 </div>
                 {debt.monthlyPayment > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Cuota Mensual:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.monthlyPaymentLabel')}</span>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.monthlyPayment)}
                     </span>
@@ -292,7 +292,7 @@ const Debts = () => {
                 )}
                 {debt.interestRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Tasa de Interés:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.interestRateLabel')}</span>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {debt.interestRate}%
                     </span>
@@ -314,7 +314,7 @@ const Debts = () => {
 
               {debt.lender && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Prestamista: {debt.lender}
+                  {t('debts.modals.lender')}: {debt.lender}
                 </p>
               )}
 
@@ -396,7 +396,7 @@ const Debts = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto Total</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.totalAmount')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -414,7 +414,7 @@ const Debts = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto Pendiente</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.remainingAmount')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -428,7 +428,7 @@ const Debts = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tasa de Interés (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.interestRate')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -438,7 +438,7 @@ const Debts = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cuota Mensual</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.monthlyPayment')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -463,7 +463,7 @@ const Debts = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Inicio</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.startDate')}</label>
                   <input
                     type="date"
                     className="input-field"
@@ -473,7 +473,7 @@ const Debts = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Vencimiento</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.dueDate')}</label>
                   <input
                     type="date"
                     className="input-field"
@@ -485,17 +485,17 @@ const Debts = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prestamista</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.lender')}</label>
                   <input
                     type="text"
                     className="input-field"
                     value={formData.lender}
                     onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-                    placeholder="Banco o entidad"
+                    placeholder={t('debts.modals.lenderPlaceholder')}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Cuenta/Contrato</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.accountNumber')}</label>
                   <input
                     type="text"
                     className="input-field"
@@ -506,13 +506,13 @@ const Debts = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subcuenta (Opcional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.subAccountOptional')}</label>
                 <select
                   className="input-field"
                   value={formData.subAccount}
                   onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
                 >
-                  <option value="">Sin vincular</option>
+                  <option value="">{t('debts.modals.unlinked')}</option>
                   {subAccounts.map((subAccount) => (
                     <option key={subAccount._id} value={subAccount._id}>
                       {subAccount.account?.name || subAccount.account} - {subAccount.name}
@@ -522,20 +522,20 @@ const Debts = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.status')}</label>
                 <select
                   className="input-field"
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 >
-                  <option value="active">Activa</option>
-                  <option value="paid">Pagada</option>
-                  <option value="default">En Mora</option>
+                  <option value="active">{t('debts.modals.statusActive')}</option>
+                  <option value="paid">{t('debts.modals.statusPaid')}</option>
+                  <option value="default">{t('debts.modals.statusDefault')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.description')}</label>
                 <textarea
                   className="input-field"
                   rows="3"
@@ -546,14 +546,14 @@ const Debts = () => {
 
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  {editingDebt ? 'Actualizar' : 'Crear'}
+                  {editingDebt ? t('debts.modals.update') : t('debts.modals.create')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); resetForm(); }}
                   className="flex-1 btn-secondary"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
