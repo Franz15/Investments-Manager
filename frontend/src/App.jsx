@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
+import { TranslationProvider } from './contexts/TranslationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -85,13 +86,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <UserProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </UserProvider>
-    </ThemeProvider>
+    <TranslationProvider>
+      <ThemeProvider>
+        <UserProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </UserProvider>
+      </ThemeProvider>
+    </TranslationProvider>
   );
 }
 

@@ -5,6 +5,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../contexts/TranslationContext';
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -27,6 +28,7 @@ const formatPrice = (value, currency = 'EUR') => {
 };
 
 const Accounts = () => {
+  const { t } = useTranslation();
   const [accounts, setAccounts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [investments, setInvestments] = useState([]);
@@ -538,12 +540,12 @@ const Accounts = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Cuentas</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Gestiona tus cuentas bancarias y subcuentas</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t('accounts.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{t('accounts.subtitle')}</p>
         </div>
         <button onClick={() => { resetAccountForm(); setShowAccountModal(true); }} className="btn-primary flex items-center">
           <CgAdd className="h-5 w-5 mr-2" />
-          Nueva Cuenta
+          {t('accounts.newAccount')}
         </button>
       </div>
 
@@ -575,7 +577,7 @@ const Accounts = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400">{account.bankName}</p>
                   </div>
                   <div className="text-right mr-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('accounts.total')}</p>
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: account.currency }).format(totalBalance)}
                     </p>
@@ -606,7 +608,7 @@ const Accounts = () => {
                     className="btn-secondary text-sm flex items-center"
                   >
                     <CgAdd className="h-4 w-4 mr-1" />
-                    Subcuenta
+                    {t('accounts.newSubAccount')}
                   </button>
                   <button
                     onClick={() => handleEditAccount(account)}
@@ -627,7 +629,7 @@ const Accounts = () => {
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   {accountSubAccounts.length === 0 && getInvestmentsForAccount(account._id).length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                      No hay subcuentas ni inversiones. Crea una para empezar.
+                      {t('accounts.noSubAccountsOrInvestments')}
                     </p>
                   ) : (
                     <div className="space-y-2">
