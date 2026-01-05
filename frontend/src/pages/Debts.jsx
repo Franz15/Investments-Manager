@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, AlertCircle, Edit, Trash2, CreditCard, Home, Car, GraduationCap, FileText } from 'lucide-react';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Debts = () => {
   const [debts, setDebts] = useState([]);
@@ -177,7 +178,7 @@ const Debts = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-600 dark:text-gray-400">Cargando...</div>;
+    return <LoadingSpinner />;
   }
 
   const activeDebts = debts.filter(d => d.status === 'active');

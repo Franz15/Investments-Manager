@@ -1197,6 +1197,7 @@ router.get('/investments-detailed', async (req, res) => {
       const latestVariation = await getLatestDailyVariation(inv._id, req.userId);
       
       return {
+        _id: inv._id,
         name: inv.name,
         value: totalValue,
         currency: inv.currency,
@@ -1205,6 +1206,10 @@ router.get('/investments-detailed', async (req, res) => {
         totalReturnPercent: totalReturnPercent,
         dailyChangePercent: latestVariation?.changePercent || null,
         dailyChangeAmount: latestVariation?.changeAmount || null,
+        symbol: inv.symbol,
+        isin: inv.isin,
+        type: inv.type,
+        isAutomatedPortfolio: inv.isAutomatedPortfolio,
       };
     }));
     

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Wallet, Edit, Trash2, ChevronDown, ChevronRight, CreditCard, TrendingUp, PiggyBank } from 'lucide-react';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -409,7 +410,7 @@ const Accounts = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-600 dark:text-gray-400">Cargando...</div>;
+    return <LoadingSpinner />;
   }
 
   return (
