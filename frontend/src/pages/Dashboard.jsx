@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Wallet, TrendingUp, ArrowUp, ArrowDown, DollarSign, AlertCircle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Treemap } from 'recharts';
 import api from '../services/api';
@@ -11,6 +11,7 @@ const Dashboard = () => {
   const [investmentsDetailed, setInvestmentsDetailed] = useState([]);
   const [distributionByBank, setDistributionByBank] = useState([]);
   const [performance, setPerformance] = useState(null);
+  const resizeTimeoutRef = useRef(null);
 
   const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
   
@@ -176,6 +177,8 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
+
+
   const fetchDashboardData = async () => {
     try {
       const [statsRes, balanceRes, evolutionRes, assetClassRes, detailedRes, bankRes, performanceRes] = await Promise.all([
@@ -206,438 +209,16 @@ const Dashboard = () => {
   if (!stats) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500 dark:text-gray-400">Cargando...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'var(--user-color-500)', borderTopColor: 'transparent' }}></div>
+          <div className="text-gray-500 dark:text-gray-400 font-medium">Cargando...</div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Resumen de tus finanzas e inversiones</p>
-      </div>
-
-      {/* Primera fila: Resumen financiero */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        <div className="card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Balance Total</p>
-              <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 break-words">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalBalance)}
-              </p>
-            </div>
-            <div className="flex-shrink-0 p-2 sm:p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
-              <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary-600 dark:text-primary-400" />
-            </div>
-          </div>
-        </div>
-
-        {performance && performance.annualizedReturn !== null && (
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Capital Aportado</p>
-                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 break-words">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.additionalCapital || 0)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Aportado después del inicio
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-amber-400" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Efectivo</p>
-              <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 break-words">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalCashSavings || 0)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Líquido disponible
-              </p>
-            </div>
-            <div className="flex-shrink-0 p-2 sm:p-3 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
-              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Capital Invertido</p>
-              <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 break-words">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalInvestments)}
-              </p>
-            </div>
-            <div className="flex-shrink-0 p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </div>
-
-        {performance && performance.annualizedReturn !== null && (
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rendimiento Acumulado</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${(performance.accumulatedReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(performance.accumulatedReturnPercent || 0) >= 0 ? '+' : ''}{(performance.accumulatedReturnPercent || 0).toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.accumulatedReturn || 0)}
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                <DollarSign className={`h-5 w-5 sm:h-6 sm:w-6 ${(performance.accumulatedReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Deuda</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 mt-1 break-words">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalDebts || 0)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalMonthlyDebtPayments || 0)}/mes
-              </p>
-            </div>
-            <div className="flex-shrink-0 p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Segunda fila: Rendimientos ordenados de mayor a menor plazo */}
-      {performance && performance.annualizedReturn !== null && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rendimiento Anual</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${(performance.annualReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(performance.annualReturnPercent || 0) >= 0 ? '+' : ''}{(performance.annualReturnPercent || 0).toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.annualReturn || 0)}
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                <DollarSign className={`h-5 w-5 sm:h-6 sm:w-6 ${performance.totalReturnPercent >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rendimiento Trimestral</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(performance.quarterlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.quarterlyReturnPercent || 0).toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.quarterlyReturn || 0)}
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-teal-100 dark:bg-teal-900 rounded-lg">
-                <TrendingUp className={`h-5 w-5 sm:h-6 sm:w-6 ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rendimiento Mensual</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.monthlyReturnPercent || 0).toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.monthlyReturn || 0)}
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-cyan-100 dark:bg-cyan-900 rounded-lg">
-                <TrendingUp className={`h-5 w-5 sm:h-6 sm:w-6 ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Cambio Diario</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.dailyReturnPercent || 0).toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.dailyReturn || 0)}
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <TrendingUp className={`h-5 w-5 sm:h-6 sm:w-6 ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rendimiento Anualizado (CAGR)</p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${performance.annualizedReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {performance.annualizedReturn >= 0 ? '+' : ''}{performance.annualizedReturn.toFixed(2)}%
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Período: {performance.years.toFixed(1)} años
-                </p>
-              </div>
-              <div className="flex-shrink-0 p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <TrendingUp className={`h-5 w-5 sm:h-6 sm:w-6 ${performance.annualizedReturn >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-              </div>
-            </div>
-          </div>
-
-          {performance.sp500Comparison && (
-            <div className="card">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">vs S&P 500</p>
-                  {performance.sp500Comparison.outperformance !== null ? (
-                    <>
-                      <p className={`text-lg sm:text-xl font-bold mt-1 break-words ${performance.sp500Comparison.outperformance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {performance.sp500Comparison.outperformance >= 0 ? '+' : ''}{performance.sp500Comparison.outperformance.toFixed(2)}%
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Tu CAGR: {performance.annualizedReturn.toFixed(2)}% | S&P 500: {performance.sp500Comparison.historicalAnnualReturn}%
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mt-1 break-words">
-                      {performance.annualizedReturn.toFixed(2)}% vs {performance.sp500Comparison.historicalAnnualReturn}%
-                    </p>
-                  )}
-                </div>
-                <div className="flex-shrink-0 p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  {performance.sp500Comparison.outperformance !== null && performance.sp500Comparison.outperformance >= 0 ? (
-                    <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
-                  ) : (
-                    <ArrowDown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Gráficas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfica de Evolución del Patrimonio Total */}
-        {balanceChart.length > 0 && (
-          <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución del Patrimonio Total</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={balanceChart.map((item, index) => {
-                const balanceValue = parseFloat(item.balance) || 0;
-                const dateStr = new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
-                
-                // Verificar que los valores sean correctos en algunos puntos clave
-                if (index === 0 || index === Math.floor(balanceChart.length / 2) || index === balanceChart.length - 1) {
-                }
-                
-                return {
-                  date: dateStr,
-                  balance: balanceValue,
-                };
-              })}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  tickFormatter={(value) => new Intl.NumberFormat('es-ES', { 
-                    style: 'currency', 
-                    currency: 'EUR',
-                    notation: 'compact',
-                    maximumFractionDigits: 0
-                  }).format(value)}
-                />
-                <Tooltip 
-                  formatter={(value) => new Intl.NumberFormat('es-ES', { 
-                    style: 'currency', 
-                    currency: 'EUR' 
-                  }).format(value)} 
-                  labelFormatter={(label) => `Fecha: ${label}`}
-                />
-                <Legend />
-                <Line 
-                  type="linear" 
-                  dataKey="balance" 
-                  stroke="#0ea5e9" 
-                  name="Patrimonio Total"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                  connectNulls={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Clase de Activo</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={distributionByAssetClass}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent, value }) => 
-                  `${name}: ${(percent * 100).toFixed(1)}%`
-                }
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {distributionByAssetClass.map((entry, index) => {
-                  const color = ASSET_CLASS_COLORS[entry.name] || COLORS[index % COLORS.length];
-                  return (
-                    <Cell 
-                      key={`asset-${index}`} 
-                      fill={color}
-                    />
-                  );
-                })}
-              </Pie>
-              <Tooltip 
-                formatter={(value) => new Intl.NumberFormat('es-ES', { 
-                  style: 'currency', 
-                  currency: 'EUR' 
-                }).format(value)} 
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Segunda fila: Evolución de Inversiones y Distribución por Banco */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfica de evolución de inversiones */}
-        {investmentsEvolution.length > 0 && (
-          <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución de Inversiones</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={investmentsEvolution.map(item => ({
-                date: new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
-                value: item.totalValue,
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                <XAxis dataKey="date" stroke="#6b7280" className="dark:stroke-gray-400" />
-                <YAxis stroke="#6b7280" className="dark:stroke-gray-400" />
-                <Tooltip 
-                  formatter={(value) => new Intl.NumberFormat('es-ES', { 
-                    style: 'currency', 
-                    currency: 'EUR' 
-                  }).format(value)} 
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#8b5cf6" 
-                  name="Valor Total Inversiones"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Gráfica de distribución por banco */}
-        {distributionByBank && distributionByBank.length > 0 && (
-          <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Banco</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={prepareBankChartData()}
-                layout="vertical"
-                margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                <XAxis type="number" stroke="#6b7280" className="dark:stroke-gray-400" />
-                <YAxis 
-                  type="category" 
-                  dataKey="bank" 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  width={90}
-                />
-                <Tooltip
-                  formatter={(value, name, props) => {
-                    // Encontrar el nombre de la subcuenta
-                    const subAccountName = props.payload[`${name}_name`] || 'Subcuenta';
-                    return [
-                      new Intl.NumberFormat('es-ES', { 
-                        style: 'currency', 
-                        currency: 'EUR' 
-                      }).format(value),
-                      subAccountName
-                    ];
-                  }}
-                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #e5e7eb' }}
-                />
-                {distributionByBank.map((bank, bankIndex) => {
-                  const bankColors = generateBankColors(bank.bankName, bank.subAccounts.length, bank.color);
-                  return bank.subAccounts.map((subAccount, subIndex) => (
-                    <Bar
-                      key={`${bank.bankName}-${subIndex}`}
-                      dataKey={`${bank.bankName}_sub_${subIndex}`}
-                      stackId={bank.bankName}
-                      fill={bankColors.variations[subIndex] || bankColors.base}
-                      radius={subIndex === bank.subAccounts.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]}
-                    />
-                  ));
-                })}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Gráfica de inversiones detalladas */}
-      {investmentsDetailed && investmentsDetailed.length > 0 && (
-        <div className="card w-full">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Inversión Individual</h2>
-          <ResponsiveContainer width="100%" height={500}>
-            <Treemap
-              data={investmentsDetailed}
-              dataKey="value"
-              nameKey="name"
-              stroke="#fff"
-              fill="#8884d8"
-              content={({ x, y, width, height, index, payload, root }) => {
+  // Función para renderizar el contenido del Treemap
+  const renderTreemapContent = ({ x, y, width, height, index, payload, root }) => {
                   // En recharts Treemap, los datos pueden estar en payload o en root.children
                   let dataItem = payload;
                   if (!dataItem && root && root.children && root.children[index]) {
@@ -754,7 +335,452 @@ const Dashboard = () => {
                       )}
                     </g>
                   );
-                }}
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="mb-2">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
+          Dashboard
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 tracking-tight">Resumen de tus finanzas e inversiones</p>
+      </div>
+
+      {/* Primera fila: Resumen financiero */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 auto-rows-fr">
+        <div className="stat-card row-span-2 col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-2 flex flex-col">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Balance Total</p>
+              <p className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 break-words">
+                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(stats.totalBalance)}
+              </p>
+              {performance && performance.annualizedReturn !== null && performance.additionalCapital !== null && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                  Capital Aportado: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.additionalCapital || 0)}
+                </p>
+              )}
+            </div>
+            <div className="flex-shrink-0 p-2.5 rounded" style={{ backgroundColor: 'var(--user-color-600)' }}>
+              <Wallet className="h-4 w-4 text-white" strokeWidth={2} />
+            </div>
+          </div>
+          
+          {/* Barra de distribución */}
+          {(() => {
+            const totalAssets = (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
+            const cashPercent = totalAssets > 0 ? ((stats.totalCashSavings || 0) / totalAssets) * 100 : 0;
+            const investmentPercent = totalAssets > 0 ? ((stats.totalInvestments || 0) / totalAssets) * 100 : 0;
+            const cashColor = ASSET_CLASS_COLORS['Efectivo'] || '#f59e0b';
+            
+            return (
+              <div className="space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full flex">
+                      {investmentPercent > 0 && (
+                        <div 
+                          className="bg-green-500 dark:bg-green-600 transition-all duration-300"
+                          style={{ width: `${investmentPercent}%` }}
+                        />
+                      )}
+                      {cashPercent > 0 && (
+                        <div 
+                          className="transition-all duration-300"
+                          style={{ width: `${cashPercent}%`, backgroundColor: cashColor }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-600"></div>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Invertido: {investmentPercent.toFixed(1)}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cashColor }}></div>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Efectivo: {cashPercent.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-3 space-y-2.5 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Capital Invertido</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalInvestments || 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalCashSavings || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+
+        {/* Primera fila: Cambio Diario, Rendimiento Mensual, Rendimiento Acumulado, Deuda */}
+        {performance && performance.annualizedReturn !== null && (
+          <>
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Cambio Diario</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.dailyReturnPercent || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.dailyReturn || 0)}
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${(performance.dailyReturnPercent || 0) >= 0 ? 'bg-purple-500 dark:bg-purple-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Mensual</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.monthlyReturnPercent || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.monthlyReturn || 0)}
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${(performance.monthlyReturnPercent || 0) >= 0 ? 'bg-cyan-500 dark:bg-cyan-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Acumulado</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.accumulatedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {(performance.accumulatedReturnPercent || 0) >= 0 ? '+' : ''}{(performance.accumulatedReturnPercent || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.accumulatedReturn || 0)}
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${(performance.accumulatedReturnPercent || 0) >= 0 ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <DollarSign className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="stat-card">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Deuda</p>
+              <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 break-words">
+                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalDebts || 0)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalMonthlyDebtPayments || 0)}/mes
+              </p>
+            </div>
+            <div className="flex-shrink-0 p-2.5 bg-red-500 dark:bg-red-600 rounded">
+              <AlertCircle className="h-4 w-4 text-white" strokeWidth={2} />
+            </div>
+          </div>
+        </div>
+
+        {/* Segunda fila: Rendimiento Trimestral, Rendimiento Anual, Rendimiento Anualizado, vs SP500 */}
+        {performance && performance.annualizedReturn !== null && (
+          <>
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Trimestral</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {(performance.quarterlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.quarterlyReturnPercent || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.quarterlyReturn || 0)}
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'bg-teal-500 dark:bg-teal-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Anual</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.annualReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {(performance.annualReturnPercent || 0) >= 0 ? '+' : ''}{(performance.annualReturnPercent || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.annualReturn || 0)}
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${(performance.annualReturnPercent || 0) >= 0 ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <DollarSign className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Anualizado (CAGR)</p>
+                  <p className={`text-2xl sm:text-3xl font-bold break-words ${performance.annualizedReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {performance.annualizedReturn >= 0 ? '+' : ''}{performance.annualizedReturn.toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Período: {performance.years.toFixed(1)} años
+                  </p>
+                </div>
+                <div className={`flex-shrink-0 p-2.5 rounded ${performance.annualizedReturn >= 0 ? 'bg-blue-500 dark:bg-blue-600' : 'bg-red-500 dark:bg-red-600'}`}>
+                  <TrendingUp className="h-4 w-4 text-white" strokeWidth={2} />
+                </div>
+              </div>
+            </div>
+
+            {performance.sp500Comparison && (
+              <div className="stat-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">vs S&P 500</p>
+                    {performance.sp500Comparison.outperformance !== null ? (
+                      <>
+                        <p className={`text-2xl sm:text-3xl font-bold break-words ${performance.sp500Comparison.outperformance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {performance.sp500Comparison.outperformance >= 0 ? '+' : ''}{performance.sp500Comparison.outperformance.toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Tu CAGR: {performance.annualizedReturn.toFixed(2)}% | S&P 500: {performance.sp500Comparison.historicalAnnualReturn}%
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
+                        {performance.annualizedReturn.toFixed(2)}% vs {performance.sp500Comparison.historicalAnnualReturn}%
+                      </p>
+                    )}
+                  </div>
+                  <div className={`flex-shrink-0 p-2.5 rounded ${performance.sp500Comparison.outperformance !== null && performance.sp500Comparison.outperformance >= 0 ? 'bg-purple-500 dark:bg-purple-600' : 'bg-gray-500 dark:bg-gray-600'}`}>
+                    {performance.sp500Comparison.outperformance !== null && performance.sp500Comparison.outperformance >= 0 ? (
+                      <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
+                    ) : (
+                      <ArrowDown className="h-4 w-4 text-white" strokeWidth={2} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Gráficas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfica de Evolución del Patrimonio Total */}
+        {balanceChart.length > 0 && (
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución del Patrimonio Total</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={balanceChart.map((item, index) => {
+                const balanceValue = parseFloat(item.balance) || 0;
+                const dateStr = new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+                
+                // Verificar que los valores sean correctos en algunos puntos clave
+                if (index === 0 || index === Math.floor(balanceChart.length / 2) || index === balanceChart.length - 1) {
+                }
+                
+                return {
+                  date: dateStr,
+                  balance: balanceValue,
+                };
+              })}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280" 
+                  className="dark:stroke-gray-400"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
+                  stroke="#6b7280" 
+                  className="dark:stroke-gray-400"
+                  tickFormatter={(value) => new Intl.NumberFormat('es-ES', { 
+                    style: 'currency', 
+                    currency: 'EUR',
+                    notation: 'compact',
+                    maximumFractionDigits: 0
+                  }).format(value)}
+                />
+                <Tooltip 
+                  formatter={(value) => new Intl.NumberFormat('es-ES', { 
+                    style: 'currency', 
+                    currency: 'EUR' 
+                  }).format(value)} 
+                  labelFormatter={(label) => `Fecha: ${label}`}
+                />
+                <Legend />
+                <Line 
+                  type="linear" 
+                  dataKey="balance" 
+                  stroke="#0ea5e9" 
+                  name="Patrimonio Total"
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Clase de Activo</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={distributionByAssetClass}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent, value }) => 
+                  `${name}: ${(percent * 100).toFixed(1)}%`
+                }
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {distributionByAssetClass.map((entry, index) => {
+                  const color = ASSET_CLASS_COLORS[entry.name] || COLORS[index % COLORS.length];
+                  return (
+                    <Cell 
+                      key={`asset-${index}`} 
+                      fill={color}
+                    />
+                  );
+                })}
+              </Pie>
+              <Tooltip 
+                formatter={(value) => new Intl.NumberFormat('es-ES', { 
+                  style: 'currency', 
+                  currency: 'EUR' 
+                }).format(value)} 
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Segunda fila: Evolución de Inversiones y Distribución por Banco */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfica de evolución de inversiones */}
+        {investmentsEvolution.length > 0 && (
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución de Inversiones</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={investmentsEvolution.map(item => ({
+                date: new Date(item.date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+                value: item.totalValue,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                <XAxis dataKey="date" stroke="#6b7280" className="dark:stroke-gray-400" />
+                <YAxis stroke="#6b7280" className="dark:stroke-gray-400" />
+                <Tooltip 
+                  formatter={(value) => new Intl.NumberFormat('es-ES', { 
+                    style: 'currency', 
+                    currency: 'EUR' 
+                  }).format(value)} 
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#8b5cf6" 
+                  name="Valor Total Inversiones"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Gráfica de distribución por banco */}
+        {distributionByBank && distributionByBank.length > 0 && (
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Banco</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={prepareBankChartData()}
+                layout="vertical"
+                margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                <XAxis type="number" stroke="#6b7280" className="dark:stroke-gray-400" />
+                <YAxis 
+                  type="category" 
+                  dataKey="bank" 
+                  stroke="#6b7280" 
+                  className="dark:stroke-gray-400"
+                  width={90}
+                />
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    // Encontrar el nombre de la subcuenta
+                    const subAccountName = props.payload[`${name}_name`] || 'Subcuenta';
+                    return [
+                      new Intl.NumberFormat('es-ES', { 
+                        style: 'currency', 
+                        currency: 'EUR' 
+                      }).format(value),
+                      subAccountName
+                    ];
+                  }}
+                />
+                {distributionByBank.map((bank, bankIndex) => {
+                  const bankColors = generateBankColors(bank.bankName, bank.subAccounts.length, bank.color);
+                  return bank.subAccounts.map((subAccount, subIndex) => (
+                    <Bar
+                      key={`${bank.bankName}-${subIndex}`}
+                      dataKey={`${bank.bankName}_sub_${subIndex}`}
+                      stackId={bank.bankName}
+                      fill={bankColors.variations[subIndex] || bankColors.base}
+                      radius={subIndex === bank.subAccounts.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+                    />
+                  ));
+                })}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Gráfica de inversiones detalladas */}
+      {investmentsDetailed && investmentsDetailed.length > 0 && (
+        <div className="card w-full overflow-hidden">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Inversión Individual</h2>
+          <div className="w-full overflow-hidden" style={{ height: '500px', minHeight: '500px', maxWidth: '100%' }} data-treemap-container>
+            <ResponsiveContainer width="100%" height="100%" debounce={300}>
+              <Treemap
+                data={investmentsDetailed}
+                dataKey="value"
+                nameKey="name"
+                stroke="#fff"
+                fill="#8884d8"
+                isAnimationActive={false}
+                content={renderTreemapContent}
             >
                 <Tooltip 
                   formatter={(value, name) => [
@@ -767,6 +793,7 @@ const Dashboard = () => {
                 />
               </Treemap>
             </ResponsiveContainer>
+          </div>
         </div>
       )}
 

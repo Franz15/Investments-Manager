@@ -445,8 +445,8 @@ const Accounts = () => {
                       <ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                     )}
                   </button>
-                  <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg">
-                    <Wallet className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                  <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--user-color-100)' }}>
+                    <Wallet className="h-5 w-5" style={{ color: 'var(--user-color-600)' }} />
                   </div>
                   <div className="ml-3 flex-1">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">{account.name}</h3>
@@ -731,7 +731,7 @@ const Accounts = () => {
       {/* Modal para Cuenta Principal */}
       {showAccountModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+          <div className="modal-content max-w-md w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {editingAccount ? 'Editar Cuenta' : 'Nueva Cuenta Bancaria'}
             </h2>
@@ -848,7 +848,7 @@ const Accounts = () => {
       {/* Modal para Subcuenta */}
       {showSubAccountModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+          <div className="modal-content max-w-md w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {editingSubAccount ? 'Editar Subcuenta' : 'Nueva Subcuenta'}
             </h2>

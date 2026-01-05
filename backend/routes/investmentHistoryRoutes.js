@@ -287,7 +287,58 @@ router.post('/', async (req, res) => {
     if (!investment) {
       return res.status(404).json({ message: 'Inversión no encontrada' });
     }
-    
+
+    const operation = req.body.operation || 'update';
+    const entryDate = date ? new Date(date) : new Date();
+    entryDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(entryDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    // Regla: UNA cotización por día y por inversión.
+    // Si la operación es 'update' y ya existe una entrada de ese día,
+    // la nueva actualización pisa a la anterior (no se crea otra fila).
+    if (operation === 'update') {
+      const existingSameDayEntry = await InvestmentHistory.findOne({
+        user: req.userId,
+        investment: investmentId,
+        date: { $gte: entryDate, $lt: nextDay },
+        operation: 'update',
+      }).sort({ date: -1 });
+
+      if (existingSameDayEntry) {
+        // Calcular el valor total con los nuevos datos
+        let totalValueUpdate;
+        if (investment.isAutomatedPortfolio) {
+          totalValueUpdate = currentPrice;
+        } else {
+          totalValueUpdate = quantity * currentPrice;
+        }
+
+        // Recalcular diferencias respecto al día anterior
+        const dailyChangesUpdate = await calculateDailyChanges(investmentId, req.userId, totalValueUpdate);
+
+        existingSameDayEntry.date = date || existingSameDayEntry.date;
+        existingSameDayEntry.currentPrice = currentPrice;
+        existingSameDayEntry.quantity = quantity;
+        existingSameDayEntry.totalValue = totalValueUpdate;
+        existingSameDayEntry.notes = notes;
+        existingSameDayEntry.operationAmount = req.body.operationAmount;
+        existingSameDayEntry.operationPrice = req.body.operationPrice;
+        existingSameDayEntry.dailyChangeAmount = dailyChangesUpdate.dailyChangeAmount;
+        existingSameDayEntry.dailyChangePercent = dailyChangesUpdate.dailyChangePercent;
+
+        const updatedEntry = await existingSameDayEntry.save();
+
+        // Actualizar la inversión con los nuevos valores
+        investment.currentPrice = currentPrice;
+        investment.quantity = quantity;
+        await investment.save();
+
+        return res.status(200).json(updatedEntry);
+      }
+    }
+
+    // Si no hay entrada previa ese día (o no es 'update'), crear una nueva
     // Calcular el valor total
     let totalValue;
     if (investment.isAutomatedPortfolio) {
@@ -310,7 +361,7 @@ router.post('/', async (req, res) => {
       quantity,
       totalValue,
       notes,
-      operation: req.body.operation || 'update',
+      operation,
       operationAmount: req.body.operationAmount,
       operationPrice: req.body.operationPrice,
       dailyChangeAmount: dailyChanges.dailyChangeAmount,
@@ -392,26 +443,21 @@ router.get('/evolution', async (req, res) => {
     startDate.setHours(0, 0, 0, 0);
     
     
-    // Obtener TODAS las variaciones diarias y entradas de historial de una vez para optimizar
+    // Obtener TODAS las entradas de historial de una vez para optimizar
+    // IMPORTANTE: dejamos de usar DailyVariation aquí para evitar arrastrar datos antiguos o inconsistentes
+    // El valor histórico se recalcula siempre a partir de InvestmentHistory + estado actual de Investment
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
     
-    const [allDailyVariations, allHistoryEntries] = await Promise.all([
-      DailyVariation.find({
-        user: req.userId,
-        investment: { $in: activeInvestmentIds }, // Solo inversiones activas
-        date: { $gte: startDate, $lte: endDate }
-      }).sort({ date: 1, investment: 1 }),
-      InvestmentHistory.find({
-        user: req.userId,
-        investment: { $in: activeInvestmentIds }, // Solo inversiones activas
-        date: { $gte: startDate, $lte: endDate },
-        $or: [
-          { totalValue: { $exists: true, $ne: null, $gt: 0 } },
-          { operation: { $in: ['creation', 'add', 'withdraw'] }, operationAmount: { $exists: true, $ne: null } }
-        ]
-      }).sort({ date: 1, investment: 1 })
-    ]);
+    const allHistoryEntries = await InvestmentHistory.find({
+      user: req.userId,
+      investment: { $in: activeInvestmentIds }, // Solo inversiones activas
+      date: { $gte: startDate, $lte: endDate },
+      $or: [
+        { totalValue: { $exists: true, $ne: null, $gt: 0 } },
+        { operation: { $in: ['creation', 'add', 'withdraw'] }, operationAmount: { $exists: true, $ne: null } }
+      ]
+    }).sort({ date: 1, investment: 1 });
     
     
     // Generar todas las fechas desde la primera inversión hasta hoy
@@ -465,44 +511,36 @@ router.get('/evolution', async (req, res) => {
         if (isToday || daysSinceToday <= 3) {
           invValue = currentInvestmentValues.get(inv._id.toString()) || 0;
         } else {
-          // Para días más antiguos, buscar en DailyVariation primero (valores más actualizados)
-          const lastVariation = allDailyVariations
-            .filter(v => v.investment.toString() === inv._id.toString() && v.date <= dateEnd)
+          // Para días más antiguos, usar exclusivamente InvestmentHistory
+          // De esta forma, si borras/ajustas cotizaciones antiguas, el Dashboard se actualiza en tiempo real
+          const lastHistory = allHistoryEntries
+            .filter(h => h.investment.toString() === inv._id.toString() && 
+                        h.date <= dateEnd && 
+                        h.totalValue && h.totalValue > 0)
             .sort((a, b) => b.date - a.date)[0];
           
-          if (lastVariation && lastVariation.totalValue) {
-            invValue = lastVariation.totalValue;
+          if (lastHistory && lastHistory.totalValue) {
+            invValue = lastHistory.totalValue;
           } else {
-            // Si no hay DailyVariation, buscar en InvestmentHistory
-            const lastHistory = allHistoryEntries
-              .filter(h => h.investment.toString() === inv._id.toString() && 
-                          h.date <= dateEnd && 
-                          h.totalValue && h.totalValue > 0)
-              .sort((a, b) => b.date - a.date)[0];
+            // Si no hay datos históricos, calcular el capital invertido hasta esta fecha
+            const capitalOperations = allHistoryEntries.filter(h => 
+              h.investment.toString() === inv._id.toString() && 
+              h.date <= dateEnd &&
+              ['creation', 'add', 'withdraw'].includes(h.operation) &&
+              h.operationAmount
+            );
             
-            if (lastHistory && lastHistory.totalValue) {
-              invValue = lastHistory.totalValue;
-            } else {
-              // Si no hay datos históricos, calcular el capital invertido hasta esta fecha
-              const capitalOperations = allHistoryEntries.filter(h => 
-                h.investment.toString() === inv._id.toString() && 
-                h.date <= dateEnd &&
-                ['creation', 'add', 'withdraw'].includes(h.operation) &&
-                h.operationAmount
-              );
-              
-              let capital = 0;
-              capitalOperations.forEach(op => {
-                if (op.operation === 'creation' || op.operation === 'add') {
-                  capital += (op.operationAmount || 0);
-                } else if (op.operation === 'withdraw') {
-                  capital -= Math.abs(op.operationAmount || 0);
-                }
-              });
-              
-              if (capital > 0) {
-                invValue = capital;
+            let capital = 0;
+            capitalOperations.forEach(op => {
+              if (op.operation === 'creation' || op.operation === 'add') {
+                capital += (op.operationAmount || 0);
+              } else if (op.operation === 'withdraw') {
+                capital -= Math.abs(op.operationAmount || 0);
               }
+            });
+            
+            if (capital > 0) {
+              invValue = capital;
             }
           }
         }
