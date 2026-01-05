@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { Wallet } from 'lucide-react';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -102,9 +103,7 @@ const Login = () => {
 
         <div className="space-y-3">
           {loading ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Cargando usuarios...
-            </div>
+            <LoadingSpinner message="Cargando usuarios..." />
           ) : (
             users.map((user) => (
             <button
