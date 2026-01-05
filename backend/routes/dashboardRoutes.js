@@ -321,39 +321,39 @@ router.get('/balance-chart', async (req, res) => {
           let invValue = 0;
           let source = 'none';
           
-          // Buscar la variación más reciente de esta inversión antes del fin del mes
-          // Priorizar variaciones del último día del mes si existen
-          const lastVariationForInv = await DailyVariation.findOne({
+          // Buscar el valor más reciente de esta inversión antes del fin del mes
+          // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
+          const lastHistoryForInv = await InvestmentHistory.findOne({
             user: req.userId,
             investment: inv._id,
-            date: { $lte: monthEndDate }
+            date: { $lte: monthEndDate },
+            totalValue: { $exists: true, $ne: null, $gt: 0 }
           })
             .sort({ date: -1 })
             .limit(1);
           
-          if (lastVariationForInv && lastVariationForInv.totalValue) {
-            invValue = lastVariationForInv.totalValue;
-            source = 'variation';
+          if (lastHistoryForInv && lastHistoryForInv.totalValue) {
+            invValue = lastHistoryForInv.totalValue;
+            source = 'history';
             investmentsValue += invValue;
-            foundVariations++;
+            foundHistories++;
           } else {
-            // Si no hay DailyVariation, buscar en InvestmentHistory
-            const lastHistoryForInv = await InvestmentHistory.findOne({
+            // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
+            const lastVariationForInv = await DailyVariation.findOne({
               user: req.userId,
               investment: inv._id,
-              date: { $lte: monthEndDate },
-              totalValue: { $exists: true, $ne: null, $gt: 0 }
+              date: { $lte: monthEndDate }
             })
               .sort({ date: -1 })
               .limit(1);
             
-            if (lastHistoryForInv && lastHistoryForInv.totalValue) {
-              invValue = lastHistoryForInv.totalValue;
-              source = 'history';
+            if (lastVariationForInv && lastVariationForInv.totalValue) {
+              invValue = lastVariationForInv.totalValue;
+              source = 'variation';
               investmentsValue += invValue;
-              foundHistories++;
+              foundVariations++;
             } else {
-              // Si no hay datos históricos, calcular el capital invertido hasta ese momento
+              // PRIORIDAD 3: Calcular el capital invertido hasta ese momento
               const invHistoryBeforeMonth = allCapitalOperations.filter(op => {
                 const opInvId = op.investment?.toString() || (typeof op.investment === 'object' ? op.investment._id?.toString() : null);
                 const opDate = new Date(op.date);
@@ -827,42 +827,42 @@ router.get('/balance-daily', async (req, res) => {
               ? inv.currentPrice || 0
               : (inv.quantity || 0) * (inv.currentPrice || 0);
           } else {
-            // Para días pasados, buscar en DailyVariation o InvestmentHistory
-            // PRIORIDAD 1: DailyVariation
-            const variationsForThisInv = allDailyVariations.filter(v => 
-              v.investment.toString() === inv._id.toString()
+            // Para días pasados, buscar en InvestmentHistory o DailyVariation
+            // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
+            const historyForThisInv = allHistoryEntries.filter(h => 
+              h.investment.toString() === inv._id.toString()
             );
             
-            const lastVariation = variationsForThisInv
-              .filter(v => {
-                const vDate = new Date(v.date);
-                vDate.setHours(0, 0, 0, 0);
-                const vDateEnd = new Date(vDate);
-                vDateEnd.setHours(23, 59, 59, 999);
-                return vDateEnd <= dateEndNormalized;
+            const lastHistory = historyForThisInv
+              .filter(h => {
+                const hDate = new Date(h.date);
+                hDate.setHours(0, 0, 0, 0);
+                const hDateEnd = new Date(hDate);
+                hDateEnd.setHours(23, 59, 59, 999);
+                return hDateEnd <= dateEndNormalized && h.totalValue && h.totalValue > 0;
               })
               .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
             
-            if (lastVariation && lastVariation.totalValue && lastVariation.totalValue > 0) {
-              invValue = lastVariation.totalValue;
+            if (lastHistory && lastHistory.totalValue) {
+              invValue = lastHistory.totalValue;
             } else {
-              // PRIORIDAD 2: InvestmentHistory totalValue
-              const historyForThisInv = allHistoryEntries.filter(h => 
-                h.investment.toString() === inv._id.toString()
+              // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
+              const variationsForThisInv = allDailyVariations.filter(v => 
+                v.investment.toString() === inv._id.toString()
               );
               
-              const lastHistory = historyForThisInv
-                .filter(h => {
-                  const hDate = new Date(h.date);
-                  hDate.setHours(0, 0, 0, 0);
-                  const hDateEnd = new Date(hDate);
-                  hDateEnd.setHours(23, 59, 59, 999);
-                  return hDateEnd <= dateEndNormalized && h.totalValue && h.totalValue > 0;
+              const lastVariation = variationsForThisInv
+                .filter(v => {
+                  const vDate = new Date(v.date);
+                  vDate.setHours(0, 0, 0, 0);
+                  const vDateEnd = new Date(vDate);
+                  vDateEnd.setHours(23, 59, 59, 999);
+                  return vDateEnd <= dateEndNormalized;
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
               
-              if (lastHistory && lastHistory.totalValue) {
-                invValue = lastHistory.totalValue;
+              if (lastVariation && lastVariation.totalValue && lastVariation.totalValue > 0) {
+                invValue = lastVariation.totalValue;
               } else {
                 // PRIORIDAD 3: Calcular capital acumulado
                 const capitalOperations = historyForThisInv.filter(h => {
