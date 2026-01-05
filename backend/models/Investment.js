@@ -104,6 +104,37 @@ const investmentSchema = new mongoose.Schema(
       trim: true,
       // URL o referencia a la plataforma (ej: MyInvestor, Indexa Capital, etc.)
     },
+    // DCA (Dollar Cost Averaging)
+    dcaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    dcaAmount: {
+      type: Number,
+      min: 0,
+      // Cantidad a invertir en cada período
+    },
+    dcaFrequency: {
+      type: String,
+      enum: ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly'],
+      // Frecuencia de las compras automáticas
+    },
+    dcaStartDate: {
+      type: Date,
+      // Fecha de inicio del DCA
+    },
+    dcaNextDate: {
+      type: Date,
+      // Próxima fecha de ejecución del DCA
+    },
+    dcaEndDate: {
+      type: Date,
+      // Fecha de fin del DCA (opcional)
+    },
+    dcaDeactivatedDate: {
+      type: Date,
+      // Fecha en que se desactivó el DCA (para historial)
+    },
   },
   {
     timestamps: true,

@@ -892,5 +892,178 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST ejecutar compras DCA automáticas
+router.post('/execute-dca', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Buscar todas las inversiones con DCA habilitado y próxima fecha <= hoy
+    const investments = await Investment.find({
+      user: req.userId,
+      dcaEnabled: true,
+      dcaNextDate: { $lte: today },
+      $or: [
+        { dcaEndDate: { $exists: false } },
+        { dcaEndDate: null },
+        { dcaEndDate: { $gte: today } }
+      ]
+    });
+    
+    const results = [];
+    
+    for (const investment of investments) {
+      try {
+        // Verificar que la inversión tenga los datos necesarios
+        if (!investment.dcaAmount || investment.dcaAmount <= 0) {
+          continue;
+        }
+        
+        // Obtener precio actual
+        let currentPrice = investment.currentPrice;
+        if (investment.symbol && investment.autoUpdate !== false) {
+          try {
+            const quote = await getQuote(investment.symbol, investment.isin);
+            if (quote && quote.price) {
+              currentPrice = quote.price;
+              investment.currentPrice = currentPrice;
+            }
+          } catch (error) {
+            // Si falla la obtención de cotización, usar el precio actual
+            console.error(`Error obteniendo cotización para ${investment.symbol}:`, error);
+          }
+        }
+        
+        if (!currentPrice || currentPrice <= 0) {
+          results.push({
+            investmentId: investment._id,
+            name: investment.name,
+            success: false,
+            message: 'No se pudo obtener el precio actual'
+          });
+          continue;
+        }
+        
+        // Calcular cantidad a comprar
+        let quantity = 0;
+        let price = 0;
+        
+        if (investment.isAutomatedPortfolio) {
+          // Para carteras automatizadas, la cantidad es el monto
+          quantity = investment.dcaAmount;
+          price = null;
+        } else {
+          // Para inversiones tradicionales, calcular cantidad basada en el precio
+          quantity = investment.dcaAmount / currentPrice;
+          price = currentPrice;
+        }
+        
+        // Ejecutar la compra usando la lógica del endpoint /:id/add
+        const additionalAmount = investment.dcaAmount;
+        
+        if (investment.isAutomatedPortfolio) {
+          investment.quantity += quantity;
+        } else {
+          const currentQuantity = investment.quantity;
+          const currentAvgPrice = investment.averagePurchasePrice || investment.purchasePrice;
+          const newQuantity = currentQuantity + quantity;
+          const newAveragePrice = ((currentQuantity * currentAvgPrice) + (quantity * price)) / newQuantity;
+          
+          investment.quantity = newQuantity;
+          investment.averagePurchasePrice = newAveragePrice;
+        }
+        
+        // Actualizar precio actual si se obtuvo uno nuevo
+        if (currentPrice !== investment.currentPrice) {
+          investment.currentPrice = currentPrice;
+        }
+        
+        // Calcular próxima fecha de DCA
+        const daysToAdd = {
+          daily: 1,
+          weekly: 7,
+          biweekly: 14,
+          monthly: 30,
+          quarterly: 90,
+        };
+        
+        let nextDate = new Date(today);
+        nextDate.setDate(nextDate.getDate() + daysToAdd[investment.dcaFrequency]);
+        
+        // Verificar si hay fecha de fin
+        if (investment.dcaEndDate) {
+          const endDate = new Date(investment.dcaEndDate);
+          if (nextDate > endDate) {
+            investment.dcaNextDate = null;
+            investment.dcaEnabled = false;
+          } else {
+            investment.dcaNextDate = nextDate;
+          }
+        } else {
+          investment.dcaNextDate = nextDate;
+        }
+        
+        await investment.save();
+        
+        // Actualizar balance de subcuenta si existe
+        if (investment.subAccount) {
+          const subAccount = await SubAccount.findById(investment.subAccount);
+          if (subAccount) {
+            subAccount.balance += additionalAmount;
+            await subAccount.save();
+          }
+        }
+        
+        // Crear entrada en el historial
+        const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+        const totalValue = investment.isAutomatedPortfolio 
+          ? investment.currentPrice 
+          : investment.quantity * investment.currentPrice;
+        
+        const dailyChanges = await calculateDailyChanges(investment._id, req.userId, totalValue);
+        
+        const historyEntry = new InvestmentHistory({
+          user: req.userId,
+          investment: investment._id,
+          date: today,
+          currentPrice: investment.currentPrice,
+          quantity: investment.quantity,
+          totalValue: totalValue,
+          notes: `Compra DCA automática: ${investment.dcaAmount}${investment.isAutomatedPortfolio ? '€' : ` (${quantity.toFixed(4)} unidades a ${price.toFixed(4)}€)`}`,
+          operation: 'add',
+          operationAmount: additionalAmount,
+          operationPrice: investment.isAutomatedPortfolio ? null : price,
+          dailyChangeAmount: dailyChanges.dailyChangeAmount,
+          dailyChangePercent: dailyChanges.dailyChangePercent,
+        });
+        await historyEntry.save();
+        
+        results.push({
+          investmentId: investment._id,
+          name: investment.name,
+          success: true,
+          amount: investment.dcaAmount,
+          nextDate: investment.dcaNextDate
+        });
+      } catch (error) {
+        results.push({
+          investmentId: investment._id,
+          name: investment.name,
+          success: false,
+          message: error.message
+        });
+      }
+    }
+    
+    res.json({
+      executed: results.filter(r => r.success).length,
+      total: investments.length,
+      results: results
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
 

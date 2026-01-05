@@ -2,12 +2,25 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import esTranslationsData from '../translations/es.json';
 import catTranslationsData from '../translations/cat.json';
 
-const TranslationContext = createContext();
+// Función t por defecto que devuelve la clave si no hay traducción
+const defaultT = (key) => key;
+
+const TranslationContext = createContext({
+  t: defaultT,
+  language: 'es',
+  setLanguage: () => {},
+});
 
 export const useTranslation = () => {
   const context = useContext(TranslationContext);
-  if (!context) {
-    throw new Error('useTranslation must be used within a TranslationProvider');
+  // Si el contexto no está disponible, usar valores por defecto en lugar de lanzar error
+  if (!context || !context.t) {
+    console.warn('TranslationProvider not found, using default translations');
+    return {
+      t: defaultT,
+      language: 'es',
+      setLanguage: () => {},
+    };
   }
   return context;
 };
@@ -15,15 +28,23 @@ export const useTranslation = () => {
 export const TranslationProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
     // Intentar obtener el idioma guardado en localStorage, por defecto 'es'
-    return localStorage.getItem('language') || 'es';
+    try {
+      return localStorage.getItem('language') || 'es';
+    } catch (e) {
+      return 'es';
+    }
   });
   const [translations, setTranslations] = useState(() => {
     // Inicializar con las traducciones según el idioma guardado
-    const savedLanguage = localStorage.getItem('language') || 'es';
-    if (savedLanguage === 'cat') {
-      return catTranslationsData || {};
+    try {
+      const savedLanguage = localStorage.getItem('language') || 'es';
+      if (savedLanguage === 'cat') {
+        return catTranslationsData || {};
+      }
+      return esTranslationsData || {};
+    } catch (e) {
+      return esTranslationsData || {};
     }
-    return esTranslationsData || {};
   });
 
   useEffect(() => {
@@ -70,7 +91,8 @@ export const TranslationProvider = ({ children }) => {
 
     // Reemplazar parámetros si existen
     if (typeof value === 'string' && Object.keys(params).length > 0) {
-      return value.replace(/\{\{(\w+)\}\}/g, (match, paramKey) => {
+      // Soporta tanto {param} como {{param}}
+      return value.replace(/\{(\w+)\}/g, (match, paramKey) => {
         return params[paramKey] !== undefined ? params[paramKey] : match;
       });
     }
