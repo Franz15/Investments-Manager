@@ -673,7 +673,7 @@ const Dashboard = () => {
         {/* Gráfica de Evolución del Patrimonio Total */}
         {balanceChart.length > 0 && (
           <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Evolución del Patrimonio Total</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.totalNetWorthEvolution')}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={balanceChart.map((item, index) => {
                 const balanceValue = parseFloat(item.balance) || 0;
@@ -719,7 +719,7 @@ const Dashboard = () => {
                   type="linear" 
                   dataKey="balance" 
                   stroke="#0ea5e9" 
-                  name="Patrimonio Total"
+                  name={t('dashboard.totalNetWorth')}
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
@@ -1163,18 +1163,18 @@ const Dashboard = () => {
                         <div className="mt-1">
                           {selectedTreemapInvestment.assetClass === 'fixed_income' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              Renta Fija (100%)
+                              {t('investments.assetClassLabels.fixedIncome')}
                             </span>
                           )}
                           {selectedTreemapInvestment.assetClass === 'variable_income' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                              Renta Variable (100%)
+                              {t('investments.assetClassLabels.variableIncome')}
                             </span>
                           )}
                           {selectedTreemapInvestment.assetClass === 'mixed' && (
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                Mixto
+                                {t('investments.assetClassLabels.mixed')}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
                                 RF: {selectedTreemapInvestment.fixedIncomePercentage || 0}% | RV: {selectedTreemapInvestment.variableIncomePercentage || 0}%

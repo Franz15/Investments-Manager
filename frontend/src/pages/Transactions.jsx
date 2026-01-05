@@ -202,14 +202,14 @@ const Transactions = () => {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subcuenta</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('transactions.subAccount')}</label>
                 <select
                   className="input-field"
                   value={formData.subAccount}
                   onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
                   required
                 >
-                  <option value="">Seleccionar subcuenta</option>
+                  <option value="">{t('transactions.selectSubAccount')}</option>
                   {subAccounts.map((subAccount) => (
                     <option key={subAccount._id} value={subAccount._id}>
                       {subAccount.account?.name || subAccount.account} - {subAccount.name} ({subAccount.type === 'cash' ? t('accounts.subAccountTypes.cash') : subAccount.type === 'investment' ? t('accounts.subAccountTypes.investment') : subAccount.type === 'savings' ? t('accounts.subAccountTypes.savings') : t('accounts.subAccountTypes.credit')})
@@ -218,20 +218,20 @@ const Transactions = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('transactions.type')}</label>
                 <select
                   className="input-field"
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   required
                 >
-                  <option value="income">Ingreso</option>
-                  <option value="expense">Gasto</option>
-                  <option value="transfer">Transferencia</option>
+                  <option value="income">{t('transactions.types.income')}</option>
+                  <option value="expense">{t('transactions.types.expense')}</option>
+                  <option value="transfer">{t('transactions.types.transfer')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('transactions.category')}</label>
                 <input
                   type="text"
                   className="input-field"
@@ -241,7 +241,7 @@ const Transactions = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('transactions.amount')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -252,7 +252,7 @@ const Transactions = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('transactions.date')}</label>
                 <input
                   type="date"
                   className="input-field"
@@ -262,7 +262,7 @@ const Transactions = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('transactions.description')}</label>
                 <textarea
                   className="input-field"
                   rows="3"
@@ -272,14 +272,14 @@ const Transactions = () => {
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  {editingTransaction ? 'Actualizar' : 'Crear'}
+                  {editingTransaction ? t('transactions.update') : t('transactions.create')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); resetForm(); }}
                   className="flex-1 btn-secondary"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>

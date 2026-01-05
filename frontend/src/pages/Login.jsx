@@ -37,6 +37,12 @@ const Login = () => {
             avatar: '👩',
             color: '#ec4899',
           },
+          {
+            id: 'test-dca',
+            name: 'Test DCA',
+            avatar: '🧪',
+            color: '#10b981',
+          },
         ];
         
         const loadedUsers = await Promise.all(
@@ -52,7 +58,8 @@ const Login = () => {
                 color: response.data.color || user.color,
               };
             } catch (error) {
-              // Si no existe en el backend, usar valores por defecto
+              // Si falla, usar valores por defecto y no mostrar error
+              console.warn(`No se pudo cargar información del usuario ${user.id}:`, error.message);
               return user;
             }
           })

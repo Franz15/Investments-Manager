@@ -35,7 +35,7 @@ const Profile = () => {
       updateUser({ ...currentUser, color: response.data.color });
     } catch (error) {
       console.error('Error al actualizar el color:', error);
-      alert('Error al actualizar el color');
+      alert(t('profile.updateColorError'));
       setSelectedColor(currentUser?.color || '#3b82f6');
     } finally {
       setIsSaving(false);
@@ -61,8 +61,8 @@ const Profile = () => {
   };
 
   const languages = [
-    { code: 'es', name: 'Español', flag: 'ES' },
-    { code: 'cat', name: 'Català', flag: 'ES-CT' },
+    { code: 'es', name: t('profile.spanish'), flag: 'ES' },
+    { code: 'cat', name: t('profile.catalan'), flag: 'ES-CT' },
   ];
 
   if (!currentUser) {
@@ -122,7 +122,7 @@ const Profile = () => {
                     return (
                       <>
                         {FlagComponent && <FlagComponent className="w-4 h-3" />}
-                        <span>{currentLang?.name || 'Español'}</span>
+                        <span>{currentLang?.name || t('profile.spanish')}</span>
                         <ChevronDown className={`h-3 w-3 transition-transform ${showLanguageDropdown ? 'rotate-180' : ''}`} />
                       </>
                     );
@@ -206,12 +206,12 @@ const Profile = () => {
                 {showCustomColor ? (
                   <>
                     <ChevronUp className="h-4 w-4" />
-                    <span>Ocultar color personalizado</span>
+                    <span>{t('profile.hideCustomColor')}</span>
                   </>
                 ) : (
                   <>
                     <ChevronDown className="h-4 w-4" />
-                    <span>Mostrar color personalizado</span>
+                    <span>{t('profile.showCustomColor')}</span>
                   </>
                 )}
               </button>
