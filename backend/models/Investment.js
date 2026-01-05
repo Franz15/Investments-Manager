@@ -24,7 +24,7 @@ const investmentSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['stock', 'bond', 'crypto', 'fund', 'etf', 'other'],
+      enum: ['stock', 'bond', 'crypto', 'fund', 'etf', 'automated_portfolio', 'other'],
     },
     symbol: {
       type: String,
