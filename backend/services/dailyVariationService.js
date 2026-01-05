@@ -12,6 +12,13 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Verificar si ya existe una entrada para hoy (puede ser una corrección manual)
+    const existingTodayEntry = await DailyVariation.findOne({
+      investment: investmentId,
+      user: userId,
+      date: { $gte: today, $lt: tomorrow },
+    });
+
     // Buscar el registro más reciente anterior a hoy
     // Primero intentamos en DailyVariation (más eficiente)
     let previousEntry = await DailyVariation.findOne({
@@ -57,13 +64,35 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
       }
     }
     
+    // Verificar si hay una operación 'update' hoy (corrección manual)
+    const todayUpdateOperations = await InvestmentHistory.find({
+      investment: investmentId,
+      user: userId,
+      date: { $gte: today, $lt: tomorrow },
+      operation: 'update',
+    });
+
     // Calcular variación
-    // La variación debe ser el cambio de valor menos el capital añadido/retirado
-    // Esto da la variación pura del precio, sin contar el capital añadido
+    // Si ya existe una entrada para hoy Y hay una operación 'update', es una corrección manual
+    // En ese caso, recalcular la variación basándose en el día anterior (ignorando valores previos del mismo día)
+    // Esto evita que las correcciones manuales se cuenten como pérdidas/ganancias
     let changeAmount = 0;
     let changePercent = 0;
 
-    if (previousEntry && previousEntry.totalValue) {
+    if (existingTodayEntry && todayUpdateOperations.length > 0 && previousEntry && previousEntry.totalValue) {
+      // Corrección manual: recalcular variación basándose en el día anterior
+      // Esto preserva la variación real del día, ignorando la diferencia de la corrección
+      const valueChange = currentTotalValue - previousEntry.totalValue;
+      changeAmount = valueChange - capitalChangeToday;
+      changePercent = previousEntry.totalValue !== 0 
+        ? (changeAmount / previousEntry.totalValue) * 100 
+        : 0;
+    } else if (existingTodayEntry && existingTodayEntry.changeAmount !== null && existingTodayEntry.changeAmount !== undefined) {
+      // Si ya existe una entrada para hoy pero no es corrección manual, preservar la variación original
+      changeAmount = existingTodayEntry.changeAmount;
+      changePercent = existingTodayEntry.changePercent;
+    } else if (previousEntry && previousEntry.totalValue) {
+      // Si no existe entrada para hoy, calcular la variación normalmente
       // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
       const valueChange = currentTotalValue - previousEntry.totalValue;
       changeAmount = valueChange - capitalChangeToday;
