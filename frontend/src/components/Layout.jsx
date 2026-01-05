@@ -3,6 +3,7 @@ import { LayoutDashboard, Wallet, ArrowLeftRight, TrendingUp, AlertCircle, Menu,
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useUserColor } from '../hooks/useUserColor';
+import { useTranslation } from '../contexts/TranslationContext';
 import ThemeToggle from './ThemeToggle';
 
 const Layout = ({ children }) => {
@@ -14,6 +15,7 @@ const Layout = ({ children }) => {
   });
   const { currentUser, logout } = useUser();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   useUserColor(); // Aplicar color del usuario como variables CSS
 
   useEffect(() => {
@@ -26,12 +28,12 @@ const Layout = ({ children }) => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Cuentas', href: '/accounts', icon: Wallet },
-    { name: 'Transacciones', href: '/transactions', icon: ArrowLeftRight },
-    { name: 'Inversiones', href: '/investments', icon: TrendingUp },
-    { name: 'Deudas', href: '/debts', icon: AlertCircle },
-    { name: currentUser?.name || 'Perfil', href: '/profile', icon: User },
+    { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
+    { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
+    { name: t('sidebar.transactions'), href: '/transactions', icon: ArrowLeftRight },
+    { name: t('sidebar.investments'), href: '/investments', icon: TrendingUp },
+    { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
+    { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
   ];
 
   return (
@@ -49,7 +51,7 @@ const Layout = ({ children }) => {
                 <Wallet className="h-4 w-4 text-white" strokeWidth={2} />
               </div>
               <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-                TC Manager
+                {t('sidebar.appName')}
               </h1>
             </div>
             <button 
@@ -90,7 +92,7 @@ const Layout = ({ children }) => {
                 className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-[#404040] transition-colors text-left opacity-70 hover:opacity-100"
               >
                 <LogOut className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">Cerrar Sesión</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{t('sidebar.logout')}</span>
               </button>
             </div>
           )}
@@ -115,7 +117,7 @@ const Layout = ({ children }) => {
                 <Wallet className={`text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'h-4 w-4' : 'h-6 w-6'}`} strokeWidth={2} />
               </button>
               <h1 className={`text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 scale-95' : 'max-w-[200px] opacity-100 scale-100'}`}>
-                TC Manager
+                {t('sidebar.appName')}
               </h1>
             </div>
             <div className={`flex items-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'max-w-0 opacity-0 scale-95 overflow-hidden' : 'max-w-[50px] opacity-100 scale-100'}`}>
@@ -154,14 +156,14 @@ const Layout = ({ children }) => {
               <button
                 onClick={handleLogout}
                 className={`w-full flex items-center rounded hover:bg-gray-100/50 dark:hover:bg-[#404040]/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] opacity-70 hover:opacity-100 ${sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2'} text-gray-500 dark:text-gray-400`}
-                title={sidebarCollapsed ? 'Cerrar Sesión' : ''}
+                title={sidebarCollapsed ? t('sidebar.logout') : ''}
               >
                 <LogOut 
                   className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-6 w-6'}`} 
                   strokeWidth={2} 
                 />
                 <span className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0 text-xs'}`}>
-                  Cerrar Sesión
+                  {t('sidebar.logout')}
                 </span>
               </button>
             </div>
@@ -180,7 +182,7 @@ const Layout = ({ children }) => {
             <Menu size={24} />
           </button>
           <div className="flex items-center justify-between flex-1 px-4">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">TC Manager</h1>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('sidebar.appName')}</h1>
             <ThemeToggle />
           </div>
         </div>
@@ -195,11 +197,11 @@ const Layout = ({ children }) => {
           <div className="px-4 py-3">
             <div className="flex items-center justify-end max-w-7xl mx-auto">
               <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-medium text-gray-600 dark:text-gray-400">TC Manager</span>
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('sidebar.appName')}</span>
                 <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-[#525252]"></span>
                 <span className="font-mono font-medium text-gray-600 dark:text-gray-400">v0.0.0</span>
                 <span className="w-1 h-1 rounded-full bg-amber-500 dark:bg-amber-600"></span>
-                <span className="font-normal">Versión de desarrollo</span>
+                <span className="font-normal">{t('sidebar.developmentVersion')}</span>
               </div>
             </div>
           </div>
