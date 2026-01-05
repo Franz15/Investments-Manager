@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Plus, AlertCircle, Edit, Trash2, CreditCard, Home, Car, GraduationCap, FileText } from 'lucide-react';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from '../contexts/TranslationContext';
 
 const Debts = () => {
+  const { t } = useTranslation();
   const [debts, setDebts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -189,12 +191,12 @@ const Debts = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Deudas</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Gestiona tus préstamos, hipotecas y deudas</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t('debts.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{t('debts.subtitle')}</p>
         </div>
         <button onClick={() => { resetForm(); setShowModal(true); }} className="btn-primary flex items-center">
           <Plus className="h-5 w-5 mr-2" />
-          Nueva Deuda
+          {t('debts.newDebt')}
         </button>
       </div>
 
@@ -203,7 +205,7 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Deuda Total</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.totalDebt')}</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
                 {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalDebt)}
               </p>
@@ -217,7 +219,7 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Cuotas Mensuales</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.monthlyPayments')}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalMonthlyPayments)}
               </p>
@@ -350,7 +352,7 @@ const Debts = () => {
 
       {debts.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          No hay deudas registradas
+          {t('debts.noDebts')}
         </div>
       )}
 
@@ -359,12 +361,12 @@ const Debts = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="modal-content max-w-2xl w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingDebt ? 'Editar Deuda' : 'Nueva Deuda'}
+              {editingDebt ? t('debts.editDebt') : t('debts.newDebt')}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.name')}</label>
                   <input
                     type="text"
                     className="input-field"
@@ -375,19 +377,19 @@ const Debts = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.type')}</label>
                   <select
                     className="input-field"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     required
                   >
-                    <option value="mortgage">Hipoteca</option>
-                    <option value="personal_loan">Préstamo Personal</option>
-                    <option value="car_loan">Préstamo Coche</option>
-                    <option value="credit_card">Tarjeta de Crédito</option>
-                    <option value="student_loan">Préstamo Estudiantil</option>
-                    <option value="other">Otro</option>
+                    <option value="mortgage">{t('debts.types.mortgage')}</option>
+                    <option value="personal_loan">{t('debts.types.personalLoan')}</option>
+                    <option value="car_loan">{t('debts.types.carLoan')}</option>
+                    <option value="credit_card">{t('debts.types.creditCard')}</option>
+                    <option value="student_loan">{t('debts.types.studentLoan')}</option>
+                    <option value="other">{t('debts.types.other')}</option>
                   </select>
                 </div>
               </div>

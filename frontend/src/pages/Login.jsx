@@ -4,8 +4,10 @@ import { useUser } from '../contexts/UserContext';
 import { Wallet } from 'lucide-react';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from '../contexts/TranslationContext';
 
 const Login = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, currentUser } = useUser();
   const [users, setUsers] = useState([]);
@@ -94,16 +96,16 @@ const Login = () => {
             <Wallet className="h-6 w-6 text-white" strokeWidth={2} />
           </div>
           <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-            Investments Manager
+            {t('sidebar.appName')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 tracking-tight">
-            Selecciona tu perfil para continuar
+            {t('login.selectUser')}
           </p>
         </div>
 
         <div className="space-y-3">
           {loading ? (
-            <LoadingSpinner message="Cargando usuarios..." />
+            <LoadingSpinner message={t('common.loading')} />
           ) : (
             users.map((user) => (
             <button
@@ -132,7 +134,7 @@ const Login = () => {
                   {user.name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Hacer clic para iniciar sesión
+                  {t('login.login')}
                 </p>
               </div>
               <div className="text-gray-400 dark:text-gray-600">

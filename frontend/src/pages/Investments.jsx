@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { es } from 'date-fns/locale';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from '../contexts/TranslationContext';
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -378,7 +379,7 @@ const Investments = () => {
   const getOperationLabel = (operation) => {
     const labels = {
       creation: 'Creación',
-      add: 'Añadir Capital',
+      add: t('investments.actions.addCapital'),
       withdraw: 'Retirar Capital',
       update: 'Actualización',
     };
@@ -585,22 +586,22 @@ const Investments = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Inversiones</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Gestiona tu cartera de inversiones</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t('investments.title')}</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">{t('investments.subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <button 
             onClick={() => handleUpdateAllPrices(false)} 
             disabled={updatingPrices}
             className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Actualizar precios desde APIs en tiempo real (también se actualizan automáticamente cada 5 minutos)"
+            title={t('investments.updatePricesTooltip')}
           >
             <DollarSign className={`h-5 w-5 mr-2 ${updatingPrices ? 'animate-spin' : ''}`} />
-            {updatingPrices ? 'Actualizando...' : 'Actualizar Precios'}
+            {updatingPrices ? t('investments.updatingPrices') : t('investments.updatePrices')}
           </button>
           <button onClick={() => { resetForm(); setShowModal(true); }} className="btn-primary flex items-center">
             <Plus className="h-5 w-5 mr-2" />
-            Nueva Inversión
+            {t('investments.newInvestment')}
           </button>
         </div>
       </div>
@@ -659,21 +660,21 @@ const Investments = () => {
                     <div className="mt-2">
                       {investment.assetClass === 'fixed_income' && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                          Renta Fija
+                          {t('investments.assetClassLabels.fixedIncome')}
                         </span>
                       )}
                       {investment.assetClass === 'variable_income' && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                          Renta Variable
+                          {t('investments.assetClassLabels.variableIncome')}
                         </span>
                       )}
                       {investment.assetClass === 'mixed' && (
                         <div className="flex flex-col gap-1 mt-1">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                            Mixto
+                            {t('investments.assetClassLabels.mixed')}
                           </span>
                           <div className="text-xs text-gray-600 dark:text-gray-400">
-                            RF: {investment.fixedIncomePercentage || 0}% | RV: {investment.variableIncomePercentage || 0}%
+                            {t('investments.assetClassLabels.fixedIncomeShort')}: {investment.fixedIncomePercentage || 0}% | {t('investments.assetClassLabels.variableIncomeShort')}: {investment.variableIncomePercentage || 0}%
                           </div>
                         </div>
                       )}
@@ -712,7 +713,7 @@ const Investments = () => {
                         htmlFor={`auto-update-${investment._id}`}
                         className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer"
                       >
-                        Actualización automática
+                        {t('investments.automaticUpdate')}
                       </label>
                     </div>
                   )}
@@ -723,13 +724,13 @@ const Investments = () => {
                 {investment.isAutomatedPortfolio ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Monto invertido:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.form.investedAmount')}:</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(investment.quantity)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Valor actual:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.detail.currentValue')}:</span>
                       <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                         {formatPrice(investment.currentPrice, investment.currency)}
                       </span>
@@ -742,7 +743,7 @@ const Investments = () => {
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
                         >
-                          Ver en plataforma ↗
+                          {t('investments.actions.viewPlatform')} ↗
                         </a>
                       </div>
                     )}
@@ -750,25 +751,25 @@ const Investments = () => {
                 ) : (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Cantidad:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.cardLabels.quantity')}:</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{investment.quantity}</span>
                     </div>
                     {investment.averagePurchasePrice && (
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Precio medio compra:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.cardLabels.averagePurchasePrice')}:</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {formatPrice(investment.averagePurchasePrice, investment.currency)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Precio actual:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.cardLabels.currentPrice')}:</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {formatPrice(investment.currentPrice, investment.currency)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Valor total:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.cardLabels.totalValue')}:</span>
                       <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                         {new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency }).format(totalValue)}
                       </span>
@@ -776,7 +777,7 @@ const Investments = () => {
                   </>
                 )}
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('investments.cardLabels.profitLoss')}:</span>
                   <span className={`text-sm font-bold flex items-center ${
                     profitLoss >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
@@ -795,43 +796,43 @@ const Investments = () => {
                 <button
                   onClick={() => handleAddToInvestment(investment)}
                   className="px-4 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
-                  title="Añadir capital a inversión"
+                  title={t('investments.actions.addCapitalTooltip')}
                 >
                   <PlusCircle className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleSellInvestment(investment)}
                   className="px-4 py-2 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
-                  title="Retirar de inversión"
+                  title={t('investments.actions.sellTooltip')}
                 >
                   <MinusCircle className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleUpdateValue(investment)}
                   className={`flex-1 btn-secondary flex items-center justify-center text-sm ${investment.isAutomatedPortfolio ? 'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50' : ''}`}
-                  title={investment.isAutomatedPortfolio ? "Actualizar valor desde la plataforma" : "Actualizar valor"}
+                  title={investment.isAutomatedPortfolio ? t('investments.actions.updateValueTooltip') : t('investments.actions.updateTooltip')}
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  {investment.isAutomatedPortfolio ? 'Actualizar Valor' : 'Actualizar'}
+                  {investment.isAutomatedPortfolio ? t('investments.actions.updateValue') : t('investments.actions.update')}
                 </button>
                 <button
                   onClick={() => handleViewHistory(investment)}
                   className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                  title="Ver historial"
+                  title={t('investments.actions.viewHistory')}
                 >
                   <History className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleEdit(investment)}
                   className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Editar"
+                  title={t('investments.actions.edit')}
                 >
                   <Edit className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleDeleteClick(investment)}
                   className="px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-                  title="Eliminar"
+                  title={t('investments.actions.delete')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -843,7 +844,7 @@ const Investments = () => {
 
       {investments.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          No hay inversiones registradas
+          {t('investments.noInvestments')}
         </div>
       )}
 
@@ -856,7 +857,7 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-              {editingInvestment ? 'Editar Inversión' : 'Nueva Inversión'}
+              {editingInvestment ? t('investments.editInvestment') : t('investments.newInvestment')}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Sección: Ubicación */}
@@ -1424,7 +1425,7 @@ const Investments = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      % Renta Fija
+                      % {t('investments.assetClassLabels.fixedIncome')}
                     </label>
                     <input
                       type="number"
@@ -1443,7 +1444,7 @@ const Investments = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      % Renta Variable
+                      % {t('investments.assetClassLabels.variableIncome')}
                     </label>
                     <input
                       type="number"
@@ -1641,7 +1642,7 @@ const Investments = () => {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Historial - {selectedInvestment.name}
+                {t('investments.actions.history')} - {selectedInvestment.name}
               </h2>
               <button
                 onClick={() => setShowHistoryModal(false)}
@@ -1652,7 +1653,7 @@ const Investments = () => {
             </div>
             
             {historyLoading ? (
-              <LoadingSpinner message="Cargando historial..." />
+              <LoadingSpinner message={t('common.loading')} />
             ) : investmentHistory.length > 0 ? (
               <>
                 <div className="mb-6" style={{ height: '300px' }}>
@@ -1751,14 +1752,14 @@ const Investments = () => {
                               <button
                                 onClick={() => handleEditHistoryEntry(entry)}
                                 className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                title="Editar"
+                                title={t('investments.actions.edit')}
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteHistoryEntry(entry._id)}
                                 className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                title="Eliminar"
+                                title={t('investments.actions.delete')}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -2362,18 +2363,18 @@ const Investments = () => {
                       <div className="mt-1">
                         {detailInvestment.assetClass === 'fixed_income' && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                            Renta Fija (100%)
+                            {t('investments.assetClassLabels.fixedIncome')} (100%)
                           </span>
                         )}
                         {detailInvestment.assetClass === 'variable_income' && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                            Renta Variable (100%)
+                            {t('investments.assetClassLabels.variableIncome')} (100%)
                           </span>
                         )}
                         {detailInvestment.assetClass === 'mixed' && (
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                              Mixto
+                              {t('investments.assetClassLabels.mixed')}
                             </span>
                             <span className="text-xs text-gray-600 dark:text-gray-400">
                               RF: {detailInvestment.fixedIncomePercentage || 0}% | RV: {detailInvestment.variableIncomePercentage || 0}%

@@ -4,6 +4,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../contexts/TranslationContext';
 
 // Funciones auxiliares
 const formatPrice = (value, currency = 'EUR') => {
@@ -23,21 +24,7 @@ const formatPrice = (value, currency = 'EUR') => {
   }).format(value);
 };
 
-const getTypeLabel = (type, isAutomatedPortfolio = false) => {
-  if (isAutomatedPortfolio) {
-    return 'Cartera Automatizada';
-  }
-  const types = {
-    stock: 'Acción',
-    bond: 'Bono',
-    crypto: 'Cripto',
-    fund: 'Fondo',
-    etf: 'ETF',
-    automated_portfolio: 'Cartera Automatizada',
-    other: 'Otro',
-  };
-  return types[type] || type;
-};
+// Esta función se moverá dentro del componente para usar traducciones
 
 const calculateProfitLoss = (investment) => {
   if (investment.isAutomatedPortfolio) {
@@ -58,6 +45,7 @@ const calculateProfitLossPercentage = (investment) => {
 };
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [balanceChart, setBalanceChart] = useState([]);
   const [investmentsEvolution, setInvestmentsEvolution] = useState([]);
@@ -72,6 +60,22 @@ const Dashboard = () => {
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
   const navigate = useNavigate();
   const resizeTimeoutRef = useRef(null);
+
+  const getTypeLabel = (type, isAutomatedPortfolio = false) => {
+    if (isAutomatedPortfolio) {
+      return t('investments.investmentTypes.automatedPortfolio');
+    }
+    const types = {
+      stock: t('investments.investmentTypes.stock'),
+      bond: t('investments.investmentTypes.bond'),
+      crypto: t('investments.investmentTypes.crypto'),
+      fund: t('investments.investmentTypes.fund'),
+      etf: t('investments.investmentTypes.etf'),
+      automated_portfolio: t('investments.investmentTypes.automatedPortfolio'),
+      other: t('investments.investmentTypes.other'),
+    };
+    return types[type] || type;
+  };
 
   const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
   
@@ -418,9 +422,9 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div className="mb-2">
         <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-          Dashboard
+          {t('dashboard.title')}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 tracking-tight">Resumen de tus finanzas e inversiones</p>
+        <p className="text-gray-600 dark:text-gray-400 tracking-tight">{t('dashboard.subtitle')}</p>
       </div>
 
       {/* Primera fila: Resumen financiero */}
@@ -431,13 +435,13 @@ const Dashboard = () => {
         >
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Balance Total</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.totalBalance')}</p>
               <p className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 break-words">
                 {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(stats.totalBalance)}
               </p>
               {performance && performance.annualizedReturn !== null && performance.additionalCapital !== null && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                  Capital Aportado: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.additionalCapital || 0)}
+                  {t('dashboard.contributedCapital')}: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(performance.additionalCapital || 0)}
                 </p>
               )}
             </div>
@@ -475,23 +479,23 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-600"></div>
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Invertido: {investmentPercent.toFixed(1)}%</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">{t('dashboard.invested')}: {investmentPercent.toFixed(1)}%</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cashColor }}></div>
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Efectivo: {cashPercent.toFixed(1)}%</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">{t('dashboard.cash')}: {cashPercent.toFixed(1)}%</span>
                     </div>
                   </div>
                 </div>
                 <div className="pt-3 space-y-2.5 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Capital Invertido</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.investedCapital')}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalInvestments || 0)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.cash')}</span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalCashSavings || 0)}
                     </span>
@@ -509,7 +513,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Cambio Diario</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.dailyChange')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.dailyReturnPercent || 0).toFixed(2)}%
                   </p>
@@ -526,7 +530,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Mensual</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.monthlyReturn')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.monthlyReturnPercent || 0).toFixed(2)}%
                   </p>
@@ -543,7 +547,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Acumulado</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.accumulatedReturn')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.accumulatedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {(performance.accumulatedReturnPercent || 0) >= 0 ? '+' : ''}{(performance.accumulatedReturnPercent || 0).toFixed(2)}%
                   </p>
@@ -562,12 +566,12 @@ const Dashboard = () => {
         <div className="stat-card">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Deuda</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.debt')}</p>
               <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 break-words">
                 {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalDebts || 0)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalMonthlyDebtPayments || 0)}/mes
+                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }).format(stats.totalMonthlyDebtPayments || 0)}{t('dashboard.monthly')}
               </p>
             </div>
             <div className="flex-shrink-0 p-2.5 bg-red-500 dark:bg-red-600 rounded">
@@ -582,7 +586,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Trimestral</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.quarterlyReturn')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {(performance.quarterlyReturnPercent || 0) >= 0 ? '+' : ''}{(performance.quarterlyReturnPercent || 0).toFixed(2)}%
                   </p>
@@ -599,7 +603,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Anual</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.annualReturn')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${(performance.annualReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {(performance.annualReturnPercent || 0) >= 0 ? '+' : ''}{(performance.annualReturnPercent || 0).toFixed(2)}%
                   </p>
@@ -616,7 +620,7 @@ const Dashboard = () => {
             <div className="stat-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Rendimiento Anualizado (CAGR)</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.annualizedReturn')}</p>
                   <p className={`text-2xl sm:text-3xl font-bold break-words ${performance.annualizedReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {performance.annualizedReturn >= 0 ? '+' : ''}{performance.annualizedReturn.toFixed(2)}%
                   </p>
@@ -634,7 +638,7 @@ const Dashboard = () => {
               <div className="stat-card">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">vs S&P 500</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.vsSP500')}</p>
                     {performance.sp500Comparison.outperformance !== null ? (
                       <>
                         <p className={`text-2xl sm:text-3xl font-bold break-words ${performance.sp500Comparison.outperformance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -727,7 +731,7 @@ const Dashboard = () => {
         )}
 
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Clase de Activo</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.byAssetClass')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -800,7 +804,7 @@ const Dashboard = () => {
         {/* Gráfica de distribución por banco */}
         {distributionByBank && distributionByBank.length > 0 && (
           <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Banco</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.byBank')}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={prepareBankChartData()}
@@ -850,7 +854,7 @@ const Dashboard = () => {
       {/* Gráfica de inversiones detalladas */}
       {investmentsDetailed && investmentsDetailed.length > 0 && (
         <div className="card w-full overflow-hidden">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución por Inversión Individual</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.byInvestment')}</h2>
           <div className="w-full overflow-hidden" style={{ height: '500px', minHeight: '500px', maxWidth: '100%' }} data-treemap-container>
             <ResponsiveContainer width="100%" height="100%" debounce={300}>
               <Treemap
@@ -890,7 +894,7 @@ const Dashboard = () => {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Balance Total
+                {t('dashboard.totalBalance')}
               </h2>
               <button
                 onClick={() => setShowBalanceTooltip(false)}
@@ -904,7 +908,7 @@ const Dashboard = () => {
               {/* Balance Total y Capital Aportado */}
               <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Balance Total</span>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.totalBalance')}</span>
                   <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(stats.totalBalance)}
                   </span>
@@ -912,7 +916,7 @@ const Dashboard = () => {
                 {performance && performance.additionalCapital !== null && (
                   <>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Capital Aportado</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.contributedCapital')}</span>
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(performance.additionalCapital || 0)}
                       </span>
@@ -924,7 +928,7 @@ const Dashboard = () => {
                         : 0;
                       return (
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Ganancia/Pérdida Total</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.totalProfitLoss')}</span>
                           <div className="text-right">
                             <span className={`text-sm font-semibold ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                               {totalReturn >= 0 ? '+' : ''}{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(totalReturn)}
@@ -944,13 +948,13 @@ const Dashboard = () => {
               {stats.totalDebts > 0 && (
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Patrimonio Neto</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.netWorth')}</span>
                     <span className="text-base font-bold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(stats.totalBalance - (stats.totalDebts || 0))}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Deuda Total</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.totalDebt')}</span>
                     <span className="text-xs font-medium text-red-600 dark:text-red-400">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(stats.totalDebts || 0)}
                     </span>
@@ -960,7 +964,7 @@ const Dashboard = () => {
 
               {/* Desglose de Activos */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Desglose de Activos</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.assetBreakdown')}</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Capital Invertido</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -982,7 +986,7 @@ const Dashboard = () => {
                   return (
                     <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
                       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>Distribución</span>
+                        <span>{t('dashboard.distribution')}</span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div className="h-full flex">
@@ -1003,11 +1007,11 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-600"></div>
-                          <span className="text-gray-600 dark:text-gray-400">Invertido: {investmentPercent.toFixed(1)}%</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('dashboard.invested')}: {investmentPercent.toFixed(1)}%</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cashColor }}></div>
-                          <span className="text-gray-600 dark:text-gray-400">Efectivo: {cashPercent.toFixed(1)}%</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('dashboard.cash')}: {cashPercent.toFixed(1)}%</span>
                         </div>
                       </div>
                     </div>
