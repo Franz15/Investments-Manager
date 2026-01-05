@@ -9,6 +9,7 @@ import investmentRoutes from './routes/investmentRoutes.js';
 import investmentHistoryRoutes from './routes/investmentHistoryRoutes.js';
 import debtRoutes from './routes/debtRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/investments', investmentRoutes);
 app.use('/api/investment-history', investmentHistoryRoutes);
 app.use('/api/debts', debtRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

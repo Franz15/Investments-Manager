@@ -302,8 +302,8 @@ const Debts = () => {
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className="bg-primary-600 h-2 rounded-full transition-all"
-                      style={{ width: `${paidPercentage}%` }}
+                      className="h-2 rounded-full transition-all"
+                      style={{ backgroundColor: 'var(--user-color-600)', width: `${paidPercentage}%` }}
                     />
                   </div>
                 </div>
@@ -356,7 +356,7 @@ const Debts = () => {
       {/* Modal para crear/editar deuda */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div className="modal-content max-w-2xl w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {editingDebt ? 'Editar Deuda' : 'Nueva Deuda'}
             </h2>
@@ -561,7 +561,7 @@ const Debts = () => {
       {/* Modal para registrar pago */}
       {showPaymentModal && selectedDebtForPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+          <div className="modal-content max-w-md w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Registrar Pago
             </h2>

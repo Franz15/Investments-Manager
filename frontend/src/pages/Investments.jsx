@@ -831,10 +831,9 @@ const Investments = () => {
       {showModal && (
         <div 
           className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          onClick={() => { setShowModal(false); resetForm(); }}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1189,7 +1188,7 @@ const Investments = () => {
           onClick={() => setShowUpdateModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1316,7 +1315,7 @@ const Investments = () => {
           onClick={() => setShowHistoryModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-4xl w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
@@ -1476,7 +1475,7 @@ const Investments = () => {
           onClick={() => setShowAddModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1639,7 +1638,7 @@ const Investments = () => {
           onClick={() => setShowSellModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1784,7 +1783,7 @@ const Investments = () => {
           onClick={() => setShowDeleteModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1851,7 +1850,7 @@ const Investments = () => {
           onClick={() => setShowEditHistoryModal(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto m-4"
+            className="modal-content max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1978,7 +1977,7 @@ const Investments = () => {
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-lg max-w-5xl w-full p-4 h-[90vh] flex flex-col m-4"
+            className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4 flex-shrink-0">
@@ -2008,7 +2007,7 @@ const Investments = () => {
               {/* Columna izquierda */}
               <div className="space-y-4 overflow-y-auto pr-2 h-full">
                 {/* Información básica */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Básica</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -2074,7 +2073,7 @@ const Investments = () => {
               </div>
 
               {/* Información financiera */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Financiera</h3>
                 <div className="space-y-3 text-sm">
                   {detailInvestment.isAutomatedPortfolio ? (
@@ -2148,7 +2147,7 @@ const Investments = () => {
               </div>
 
               {/* Fechas */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
                 <div className="space-y-2 text-sm">
                   {detailInvestment.purchaseDate && (
@@ -2178,11 +2177,11 @@ const Investments = () => {
                 </div>
               </div>
 
-              {/* Configuración */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuración</h3>
-                <div className="space-y-2 text-sm">
-                  {(detailInvestment.symbol || detailInvestment.isin) && !detailInvestment.isAutomatedPortfolio && (
+              {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
+              {(detailInvestment.symbol || detailInvestment.isin) && !detailInvestment.isAutomatedPortfolio && (
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuración</h3>
+                  <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Actualización automática:</span>
                       <span 
@@ -2219,26 +2218,26 @@ const Investments = () => {
                         {detailInvestment.autoUpdate !== false ? 'Activada' : 'Desactivada'}
                       </span>
                     </div>
-                  )}
-                  {detailInvestment.platformUrl && (
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
-                      <a
-                        href={detailInvestment.platformUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {detailInvestment.platformUrl}
-                      </a>
-                    </div>
-                  )}
+                    {detailInvestment.platformUrl && (
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
+                        <a
+                          href={detailInvestment.platformUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {detailInvestment.platformUrl}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Notas */}
               {detailInvestment.notes && (
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{detailInvestment.notes}</p>
                 </div>
@@ -2249,7 +2248,7 @@ const Investments = () => {
               <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
 
                 {/* Gráfica de evolución del valor */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Evolución del Valor</h3>
                 {detailInvestmentHistory.length > 0 ? (
                   <div style={{ height: '290px' }}>
@@ -2293,7 +2292,7 @@ const Investments = () => {
                             }).format(totalValue);
                             
                             return (
-                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                              <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
                                 <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
                                   {label}
                                 </p>
@@ -2330,7 +2329,7 @@ const Investments = () => {
                 </div>
 
                 {/* Gráfica de variación diaria */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Variación Diaria</h3>
                 {detailDailyVariations.length > 0 ? (
                   <div style={{ height: '290px' }}>
@@ -2380,7 +2379,7 @@ const Investments = () => {
                             }).format(Math.abs(dailyChange));
                             
                             return (
-                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
+                              <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
                                 <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
                                   {label}
                                 </p>

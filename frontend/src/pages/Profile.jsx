@@ -1,15 +1,49 @@
 import { useUser } from '../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import api from '../services/api';
 
 const Profile = () => {
-  const { currentUser, logout } = useUser();
+  const { currentUser, logout, updateUser } = useUser();
   const navigate = useNavigate();
+  const [selectedColor, setSelectedColor] = useState(currentUser?.color || '#3b82f6');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showCustomColor, setShowCustomColor] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const handleColorChange = async (color) => {
+    setSelectedColor(color);
+    setIsSaving(true);
+    try {
+      const response = await api.patch('/users/me/color', { color });
+      updateUser({ ...currentUser, color: response.data.color });
+    } catch (error) {
+      console.error('Error al actualizar el color:', error);
+      alert('Error al actualizar el color');
+      setSelectedColor(currentUser?.color || '#3b82f6');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Colores predefinidos
+  const predefinedColors = [
+    '#3b82f6', // Azul
+    '#ec4899', // Rosa
+    '#10b981', // Verde
+    '#f59e0b', // Amarillo/Naranja
+    '#ef4444', // Rojo
+    '#8b5cf6', // Púrpura
+    '#06b6d4', // Cyan
+    '#84cc16', // Lima
+    '#f97316', // Naranja
+    '#6366f1', // Índigo
+  ];
 
   if (!currentUser) {
     return null;
@@ -41,7 +75,7 @@ const Profile = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
             <div className="flex items-center gap-3 mb-2">
               <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ID de Usuario</span>
@@ -51,17 +85,90 @@ const Profile = () => {
             </p>
           </div>
 
-          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+            <div className="flex items-center gap-3 mb-4">
               <div
                 className="w-5 h-5 rounded-full"
                 style={{ backgroundColor: currentUser.color }}
               />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Color del Perfil</span>
             </div>
-            <p className="text-gray-900 dark:text-gray-100 font-mono text-sm">
-              {currentUser.color}
-            </p>
+            
+            {/* Selector de colores predefinidos */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">Colores predefinidos:</p>
+              <div className="flex flex-wrap gap-2">
+                {predefinedColors.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => handleColorChange(color)}
+                    disabled={isSaving}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                      selectedColor === color
+                        ? 'border-gray-900 dark:border-gray-100 scale-110'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
+                    } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Selector de color personalizado - Desplegable */}
+            <div>
+              <button
+                onClick={() => setShowCustomColor(!showCustomColor)}
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-2"
+              >
+                {showCustomColor ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    <span>Ocultar color personalizado</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    <span>Mostrar color personalizado</span>
+                  </>
+                )}
+              </button>
+              
+              {showCustomColor && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Color personalizado:</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={selectedColor}
+                      onChange={(e) => setSelectedColor(e.target.value)}
+                      disabled={isSaving}
+                      className="w-16 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <input
+                      type="text"
+                      value={selectedColor}
+                      onChange={(e) => setSelectedColor(e.target.value)}
+                      disabled={isSaving}
+                      className="flex-1 input-field font-mono text-sm"
+                      placeholder="#3b82f6"
+                    />
+                    <button
+                      onClick={() => handleColorChange(selectedColor)}
+                      disabled={isSaving || selectedColor === currentUser.color}
+                      className="px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'var(--user-color-600)' }}
+                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--user-color-700)')}
+                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--user-color-600)')}
+                    >
+                      {isSaving ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
