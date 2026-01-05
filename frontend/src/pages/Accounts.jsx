@@ -414,7 +414,7 @@ const Accounts = () => {
   };
 
   const handleDeleteAccount = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta cuenta? También se eliminarán todas sus subcuentas.')) {
+    if (window.confirm(t('accounts.deleteAccountConfirm'))) {
       try {
         await api.delete(`/accounts/${id}`);
         fetchData();
@@ -424,7 +424,7 @@ const Accounts = () => {
   };
 
   const handleDeleteSubAccount = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta subcuenta?')) {
+    if (window.confirm(t('accounts.deleteSubAccountConfirm'))) {
       try {
         await api.delete(`/subaccounts/${id}`);
         fetchData();
@@ -476,38 +476,40 @@ const Accounts = () => {
 
   const getInvestmentTypeLabel = (type) => {
     const types = {
-      stock: 'Acción',
-      bond: 'Bono',
-      crypto: 'Cripto',
-      fund: 'Fondo',
-      etf: 'ETF',
-      other: 'Otro',
+      stock: t('investments.investmentTypes.stock'),
+      bond: t('investments.investmentTypes.bond'),
+      crypto: t('investments.investmentTypes.crypto'),
+      fund: t('investments.investmentTypes.fund'),
+      etf: t('investments.investmentTypes.etf'),
+      automated_portfolio: t('investments.investmentTypes.automatedPortfolio'),
+      other: t('investments.investmentTypes.other'),
     };
     return types[type] || type;
   };
 
   const getSubAccountTypeLabel = (type) => {
     const types = {
-      cash: 'Efectivo',
-      investment: 'Inversión',
-      savings: 'Ahorro',
-      credit: 'Crédito',
+      cash: t('accounts.subAccountTypes.cash'),
+      investment: t('accounts.subAccountTypes.investment'),
+      savings: t('accounts.subAccountTypes.savings'),
+      credit: t('accounts.subAccountTypes.credit'),
+      other: t('accounts.subAccountTypes.other'),
     };
     return types[type] || type;
   };
 
   const getTypeLabel = (type, isAutomatedPortfolio = false) => {
-    if (isAutomatedPortfolio) {
-      return 'Cartera Automatizada';
+    if (isAutomatedPortfolio || type === 'automated_portfolio') {
+      return t('investments.investmentTypes.automatedPortfolio');
     }
     const types = {
-      stock: 'Acción',
-      bond: 'Bono',
-      crypto: 'Cripto',
-      fund: 'Fondo',
-      etf: 'ETF',
-      automated_portfolio: 'Cartera Automatizada',
-      other: 'Otro',
+      stock: t('investments.investmentTypes.stock'),
+      bond: t('investments.investmentTypes.bond'),
+      crypto: t('investments.investmentTypes.crypto'),
+      fund: t('investments.investmentTypes.fund'),
+      etf: t('investments.investmentTypes.etf'),
+      automated_portfolio: t('investments.investmentTypes.automatedPortfolio'),
+      other: t('investments.investmentTypes.other'),
     };
     return types[type] || type;
   };
@@ -577,7 +579,7 @@ const Accounts = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400">{account.bankName}</p>
                   </div>
                   <div className="text-right mr-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('accounts.total')}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('accounts.totalBalance')}</p>
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-ES', { style: 'currency', currency: account.currency }).format(totalBalance)}
                     </p>
@@ -770,7 +772,7 @@ const Accounts = () => {
                                                 <p className="font-medium text-gray-900 dark:text-gray-100">{investment.name}</p>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400">
                                                   {investment.symbol && `${investment.symbol} • `}
-                                                  {investment.isAutomatedPortfolio ? 'Cartera Automatizada' : `${investment.quantity} unidades`}
+                                                  {investment.isAutomatedPortfolio ? t('accounts.modals.automatedPortfolio') : t('accounts.modals.units', { quantity: investment.quantity })}
                                                 </p>
                                               </div>
                                             </div>
@@ -811,24 +813,24 @@ const Accounts = () => {
                                               }}
                                             >
                                               <div className="space-y-1 text-sm">
-                                                <p><span className="font-medium">Tipo:</span> {
-                                                  investment.assetClass === 'fixed_income' ? 'Renta Fija (100%)' :
-                                                  investment.assetClass === 'variable_income' ? 'Renta Variable (100%)' :
+                                                <p><span className="font-medium">{t('investments.detail.typeLabel')}</span> {
+                                                  investment.assetClass === 'fixed_income' ? t('accounts.modals.fixedIncome100') :
+                                                  investment.assetClass === 'variable_income' ? t('accounts.modals.variableIncome100') :
                                                   `Renta Fija: ${investment.fixedIncomePercentage || 0}% | Renta Variable: ${investment.variableIncomePercentage || 0}%`
                                                 }</p>
                                                 {investment.isAutomatedPortfolio ? (
-                                                  <p><span className="font-medium">Cartera Automatizada</span></p>
+                                                    <p><span className="font-medium">{t('accounts.modals.automatedPortfolio')}</span></p>
                                                 ) : (
                                                   <>
-                                                    <p><span className="font-medium">Cantidad:</span> {investment.quantity} unidades</p>
+                                                    <p><span className="font-medium">{t('common.amount')}:</span> {t('accounts.modals.units', { quantity: investment.quantity })}</p>
                                                     {investment.averagePurchasePrice && (
-                                                      <p><span className="font-medium">Precio medio:</span> {formatPrice(investment.averagePurchasePrice, investment.currency)}</p>
+                                                      <p><span className="font-medium">{t('investments.detail.averagePurchasePriceLabel')}</span> {formatPrice(investment.averagePurchasePrice, investment.currency)}</p>
                                                     )}
                                                   </>
                                                 )}
-                                                <p><span className="font-medium">Precio actual:</span> {formatPrice(investment.currentPrice, investment.currency)}</p>
+                                                <p><span className="font-medium">{t('investments.detail.currentPriceLabel')}</span> {formatPrice(investment.currentPrice, investment.currency)}</p>
                                                 {investment.notes && (
-                                                  <p><span className="font-medium">Notas:</span> {investment.notes}</p>
+                                                  <p><span className="font-medium">{t('investments.detail.notes')}:</span> {investment.notes}</p>
                                                 )}
                                               </div>
                                             </div>
@@ -944,10 +946,10 @@ const Accounts = () => {
                                       `Renta Fija: ${investment.fixedIncomePercentage || 0}% | Renta Variable: ${investment.variableIncomePercentage || 0}%`
                                     }</p>
                                     {investment.isAutomatedPortfolio ? (
-                                      <p><span className="font-medium">Cartera Automatizada</span></p>
+                                                    <p><span className="font-medium">{t('accounts.modals.automatedPortfolio')}</span></p>
                                     ) : (
                                       <>
-                                        <p><span className="font-medium">Cantidad:</span> {investment.quantity} unidades</p>
+                                        <p><span className="font-medium">{t('investments.detail.quantityLabel')}</span> {t('investments.detail.units', { quantity: investment.quantity })}</p>
                                         {investment.averagePurchasePrice && (
                                           <p><span className="font-medium">Precio medio:</span> {formatPrice(investment.averagePurchasePrice, investment.currency)}</p>
                                         )}
@@ -983,7 +985,7 @@ const Accounts = () => {
           <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {editingAccount ? 'Editar Cuenta' : 'Nueva Cuenta Bancaria'}
+              {editingAccount ? t('accounts.modals.editAccount') : t('accounts.modals.newAccount')}
             </h2>
               <button
                 onClick={() => { setShowAccountModal(false); resetAccountForm(); }}
@@ -994,29 +996,29 @@ const Accounts = () => {
             </div>
             <form onSubmit={handleAccountSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.accountName')}</label>
                 <input
                   type="text"
                   className="input-field"
                   value={accountFormData.name}
                   onChange={(e) => setAccountFormData({ ...accountFormData, name: e.target.value })}
-                  placeholder="Ej: Santander, MyInvestor"
+                  placeholder={t('accounts.modals.accountNamePlaceholder')}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Banco</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.bankName')}</label>
                 <input
                   type="text"
                   className="input-field"
                   value={accountFormData.bankName}
                   onChange={(e) => setAccountFormData({ ...accountFormData, bankName: e.target.value })}
-                  placeholder="Nombre del banco"
+                  placeholder={t('accounts.modals.bankNamePlaceholder')}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Cuenta</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.accountNumber')}</label>
                 <input
                   type="text"
                   className="input-field"
@@ -1025,7 +1027,7 @@ const Accounts = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moneda</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.currency')}</label>
                 <select
                   className="input-field"
                   value={accountFormData.currency}
@@ -1037,7 +1039,7 @@ const Accounts = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.description')}</label>
                 <textarea
                   className="input-field"
                   rows="3"
@@ -1046,7 +1048,7 @@ const Accounts = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color del Banco</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.bankColor')}</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
@@ -1064,13 +1066,13 @@ const Accounts = () => {
                   />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Este color se usará en las gráficas para identificar el banco
+                  {t('accounts.modals.bankColorDescription')}
                 </p>
               </div>
               {!editingAccount && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Balance Inicial (Opcional)
+                    {t('accounts.modals.initialBalance')}
                   </label>
                   <input
                     type="number"
@@ -1081,20 +1083,20 @@ const Accounts = () => {
                     placeholder="0.00"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Se creará automáticamente una subcuenta de tipo "Efectivo" con este balance
+                    {t('accounts.modals.initialBalanceDescription')}
                   </p>
                 </div>
               )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  {editingAccount ? 'Actualizar' : 'Crear'}
+                  {editingAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowAccountModal(false); resetAccountForm(); }}
                   className="flex-1 btn-secondary"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -1112,7 +1114,7 @@ const Accounts = () => {
           <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {editingSubAccount ? 'Editar Subcuenta' : 'Nueva Subcuenta'}
+              {editingSubAccount ? t('accounts.modals.editSubAccount') : t('accounts.modals.newSubAccount')}
             </h2>
               <button
                 onClick={() => { setShowSubAccountModal(false); resetSubAccountForm(); }}
@@ -1124,14 +1126,14 @@ const Accounts = () => {
             <form onSubmit={handleSubAccountSubmit} className="space-y-4">
               {!editingSubAccount && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cuenta Principal</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.mainAccount')}</label>
                   <select
                     className="input-field"
                     value={selectedAccountId || ''}
                     onChange={(e) => setSelectedAccountId(e.target.value)}
                     required
                   >
-                    <option value="">Seleccionar cuenta</option>
+                    <option value="">{t('accounts.modals.selectAccount')}</option>
                     {accounts.map((acc) => (
                       <option key={acc._id} value={acc._id}>
                         {acc.name} - {acc.bankName}
@@ -1141,32 +1143,32 @@ const Accounts = () => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.accountName')}</label>
                 <input
                   type="text"
                   className="input-field"
                   value={subAccountFormData.name}
                   onChange={(e) => setSubAccountFormData({ ...subAccountFormData, name: e.target.value })}
-                  placeholder="Ej: Cuenta Corriente, Inversión"
+                  placeholder={t('accounts.modals.subAccountNamePlaceholder')}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.subAccountType')}</label>
                 <select
                   className="input-field"
                   value={subAccountFormData.type}
                   onChange={(e) => setSubAccountFormData({ ...subAccountFormData, type: e.target.value })}
                   required
                 >
-                  <option value="cash">Efectivo</option>
-                  <option value="investment">Inversión</option>
-                  <option value="savings">Ahorro</option>
-                  <option value="credit">Crédito</option>
+                  <option value="cash">{t('accounts.subAccountTypes.cash')}</option>
+                  <option value="investment">{t('accounts.subAccountTypes.investment')}</option>
+                  <option value="savings">{t('accounts.subAccountTypes.savings')}</option>
+                  <option value="credit">{t('accounts.subAccountTypes.credit')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Balance</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.balance')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -1177,7 +1179,7 @@ const Accounts = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moneda</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.currency')}</label>
                 <select
                   className="input-field"
                   value={subAccountFormData.currency}
@@ -1189,7 +1191,7 @@ const Accounts = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('accounts.modals.description')}</label>
                 <textarea
                   className="input-field"
                   rows="3"
@@ -1200,7 +1202,7 @@ const Accounts = () => {
               {(subAccountFormData.type === 'cash' || subAccountFormData.type === 'savings') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha de Creación del Efectivo
+                    {t('accounts.modals.cashCreationDate')}
                   </label>
                   <input
                     type="date"
@@ -1209,20 +1211,20 @@ const Accounts = () => {
                     onChange={(e) => setSubAccountFormData({ ...subAccountFormData, initialDate: e.target.value })}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Fecha en la que se creó esta subcuenta o se añadió este efectivo. Se usará para calcular el balance histórico.
+                    {t('accounts.modals.cashCreationDateDescription')}
                   </p>
                 </div>
               )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  {editingSubAccount ? 'Actualizar' : 'Crear'}
+                  {editingSubAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowSubAccountModal(false); resetSubAccountForm(); }}
                   className="flex-1 btn-secondary"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -1255,7 +1257,7 @@ const Accounts = () => {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{detailInvestment.symbol}</p>
                 )}
                 {detailInvestment.isin && !detailInvestment.symbol && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ISIN: {detailInvestment.isin}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('accounts.modals.isinLabel')} {detailInvestment.isin}</p>
                 )}
               </div>
               <button
@@ -1276,19 +1278,19 @@ const Accounts = () => {
               <div className="space-y-4 overflow-y-auto pr-2 h-full">
                 {/* Información básica */}
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Básica</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.basicInfo')}</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.typeLabel')}</span>
                       <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{getTypeLabel(detailInvestment.type, detailInvestment.isAutomatedPortfolio)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currencyLabel')}</span>
                       <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{detailInvestment.currency}</span>
                     </div>
                     {(detailInvestment.account || detailInvestment.subAccount) && (
                       <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.accountLabel')}</span>
                         <div className="mt-1">
                           {detailInvestment.account && (
                             <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -1305,22 +1307,22 @@ const Accounts = () => {
                     )}
                     {detailInvestment.assetClass && (
                       <div className="col-span-2">
-                        <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.assetClassLabel')}</span>
                         <div className="mt-1">
                           {detailInvestment.assetClass === 'fixed_income' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              Renta Fija (100%)
+                              {t('accounts.modals.fixedIncome100')}
                             </span>
                           )}
                           {detailInvestment.assetClass === 'variable_income' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                              Renta Variable (100%)
+                              {t('accounts.modals.variableIncome100')}
                             </span>
                           )}
                           {detailInvestment.assetClass === 'mixed' && (
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                Mixto
+                                {t('investments.assetClassLabels.mixed')}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
                                 RF: {detailInvestment.fixedIncomePercentage || 0}% | RV: {detailInvestment.variableIncomePercentage || 0}%
@@ -1333,7 +1335,7 @@ const Accounts = () => {
                     {detailInvestment.isAutomatedPortfolio && (
                       <div className="col-span-2">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                          Cartera Automatizada
+                          {t('accounts.modals.automatedPortfolio')}
                         </span>
                       </div>
                     )}
@@ -1342,18 +1344,18 @@ const Accounts = () => {
 
                 {/* Información financiera */}
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Financiera</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.financialInfo')}</h3>
                   <div className="space-y-3 text-sm">
                     {detailInvestment.isAutomatedPortfolio ? (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Monto invertido:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.amountInvested')}</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(detailInvestment.quantity)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currentValue')}</span>
                           <span className="font-bold text-gray-900 dark:text-gray-100">
                             {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
                           </span>
@@ -1362,12 +1364,12 @@ const Accounts = () => {
                     ) : (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{detailInvestment.quantity} unidades</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.quantityLabel')}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{t('accounts.modals.units', { quantity: detailInvestment.quantity })}</span>
                         </div>
                         {detailInvestment.averagePurchasePrice && (
                           <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Precio medio compra:</span>
+                            <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.averagePurchasePriceLabel')}</span>
                             <span className="font-medium text-gray-900 dark:text-gray-100">
                               {formatPrice(detailInvestment.averagePurchasePrice, detailInvestment.currency)}
                             </span>
@@ -1375,20 +1377,20 @@ const Accounts = () => {
                         )}
                         {detailInvestment.purchasePrice && !detailInvestment.averagePurchasePrice && (
                           <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Precio de compra:</span>
+                            <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.purchasePriceLabel')}</span>
                             <span className="font-medium text-gray-900 dark:text-gray-100">
                               {formatPrice(detailInvestment.purchasePrice, detailInvestment.currency)}
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currentPriceLabel')}</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
                           </span>
                         </div>
                         <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.totalValueLabel')}</span>
                           <span className="font-bold text-gray-900 dark:text-gray-100">
                             {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(
                               detailInvestment.quantity * detailInvestment.currentPrice
@@ -1398,7 +1400,7 @@ const Accounts = () => {
                       </>
                     )}
                     <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.profitLossLabel')}</span>
                       <span className={`font-bold flex items-center ${
                         calculateProfitLoss(detailInvestment) >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
@@ -1416,11 +1418,11 @@ const Accounts = () => {
 
                 {/* Fechas */}
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.dates')}</h3>
                   <div className="space-y-2 text-sm">
                     {detailInvestment.purchaseDate && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.purchaseDateLabel')}</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {new Date(detailInvestment.purchaseDate).toLocaleDateString('es-ES')}
                         </span>
@@ -1428,7 +1430,7 @@ const Accounts = () => {
                     )}
                     {detailInvestment.createdAt && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Fecha de creación:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.createdDateLabel')}</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {new Date(detailInvestment.createdAt).toLocaleDateString('es-ES')}
                         </span>
@@ -1436,7 +1438,7 @@ const Accounts = () => {
                     )}
                     {detailInvestment.updatedAt && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Última actualización:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.lastUpdateLabel')}</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {new Date(detailInvestment.updatedAt).toLocaleDateString('es-ES')}
                         </span>
@@ -1448,19 +1450,19 @@ const Accounts = () => {
                 {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
                 {(detailInvestment.symbol || detailInvestment.isin) && !detailInvestment.isAutomatedPortfolio && (
                   <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuración</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.configuration')}</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Actualización automática:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.autoUpdateLabel')}</span>
                         <span className={`font-medium ${
                           detailInvestment.autoUpdate !== false ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                         }`}>
-                          {detailInvestment.autoUpdate !== false ? 'Activada' : 'Desactivada'}
+                          {detailInvestment.autoUpdate !== false ? t('investments.detail.enabled') : t('investments.detail.disabled')}
                         </span>
                       </div>
                       {detailInvestment.platformUrl && (
                         <div>
-                          <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.platform')}</span>
                           <a
                             href={detailInvestment.platformUrl}
                             target="_blank"
@@ -1478,7 +1480,7 @@ const Accounts = () => {
                 {/* Notas */}
                 {detailInvestment.notes && (
                   <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('investments.detail.notes')}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{detailInvestment.notes}</p>
                   </div>
                 )}
@@ -1537,7 +1539,7 @@ const Accounts = () => {
                                   </p>
                                   <div className="space-y-1">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">Valor Total:</span>
+                                      <span className="text-gray-600 dark:text-gray-400 text-sm">{t('accounts.modals.totalValue')}</span>
                                       <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                                         {formattedValue}
                                       </span>
@@ -1561,7 +1563,7 @@ const Accounts = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">No hay datos de historial para mostrar</p>
+                      <p className="text-sm">{t('accounts.modals.noHistoryData')}</p>
                       <p className="text-xs mt-2">El historial se genera automáticamente con las operaciones</p>
                     </div>
                   )}
@@ -1624,7 +1626,7 @@ const Accounts = () => {
                                   </p>
                                   <div className="space-y-1">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">Cambio Diario:</span>
+                                      <span className="text-gray-600 dark:text-gray-400 text-sm">{t('accounts.modals.dailyChange')}</span>
                                       <span className={`font-medium text-sm ${
                                         dailyChange > 0 
                                           ? 'text-green-600 dark:text-green-400' 
@@ -1638,7 +1640,7 @@ const Accounts = () => {
                                     </div>
                                     {dailyChangePercent !== null && dailyChangePercent !== undefined ? (
                                       <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
+                                        <span className="text-gray-600 dark:text-gray-400 text-sm">{t('accounts.modals.variation')}</span>
                                         <span className={`font-medium text-sm ${
                                           dailyChangePercent > 0 
                                             ? 'text-green-600 dark:text-green-400' 
@@ -1651,7 +1653,7 @@ const Accounts = () => {
                                       </div>
                                     ) : (
                                       <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">Variación:</span>
+                                        <span className="text-gray-600 dark:text-gray-400 text-sm">{t('accounts.modals.variation')}</span>
                                         <span className="text-gray-500 dark:text-gray-400 text-sm">
                                           Sin datos previos
                                         </span>
@@ -1679,7 +1681,7 @@ const Accounts = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">No hay datos de variación diaria para mostrar</p>
+                      <p className="text-sm">{t('accounts.modals.noVariationData')}</p>
                       <p className="text-xs mt-2">Las variaciones se generan automáticamente al actualizar precios</p>
                     </div>
                   )}

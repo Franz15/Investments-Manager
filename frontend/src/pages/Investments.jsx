@@ -29,6 +29,7 @@ const formatPrice = (value, currency = 'EUR') => {
 };
 
 const Investments = () => {
+  const { t } = useTranslation();
   const [investments, setInvestments] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -41,6 +42,15 @@ const Investments = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [investmentToDelete, setInvestmentToDelete] = useState(null);
   const [selectedInvestment, setSelectedInvestment] = useState(null);
+  const [showDCAModal, setShowDCAModal] = useState(false);
+  const [editingDCAInvestment, setEditingDCAInvestment] = useState(null);
+  const [dcaFormData, setDcaFormData] = useState({
+    dcaEnabled: false,
+    dcaAmount: 0,
+    dcaFrequency: 'monthly',
+    dcaStartDate: new Date().toISOString().split('T')[0],
+    dcaEndDate: '',
+  });
   const [investmentHistory, setInvestmentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showEditHistoryModal, setShowEditHistoryModal] = useState(false);
@@ -98,6 +108,11 @@ const Investments = () => {
     variableIncomePercentage: 100,
     notes: '',
     platformUrl: '',
+    dcaEnabled: false,
+    dcaAmount: 0,
+    dcaFrequency: 'monthly',
+    dcaStartDate: new Date().toISOString().split('T')[0],
+    dcaEndDate: '',
   });
 
   // Función para registrar valores diarios de todas las inversiones
@@ -126,7 +141,7 @@ const Investments = () => {
   useEffect(() => {
     const isAnyModalOpen = showModal || showUpdateModal || showHistoryModal || 
                           showAddModal || showSellModal || showDeleteModal || 
-                          showEditHistoryModal || showDetailModal;
+                          showEditHistoryModal || showDetailModal || showDCAModal;
     
     if (isAnyModalOpen) {
       // Guardar la posición actual del scroll
@@ -196,7 +211,7 @@ const Investments = () => {
     try {
       // Validar que account esté presente (siempre obligatorio)
       if (!formData.account) {
-        alert('Debes seleccionar una cuenta');
+        alert(t('investments.modals.errors.selectAccount'));
         return;
       }
       
@@ -222,6 +237,51 @@ const Investments = () => {
         delete dataToSend.subAccount;
       }
       
+      // Calcular próxima fecha de DCA si está habilitado
+      if (dataToSend.dcaEnabled && dataToSend.dcaStartDate && dataToSend.dcaFrequency) {
+        const startDate = new Date(dataToSend.dcaStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Si la fecha de inicio es hoy o en el futuro, la próxima fecha es la fecha de inicio
+        if (startDate >= today) {
+          dataToSend.dcaNextDate = dataToSend.dcaStartDate;
+        } else {
+          // Calcular la próxima fecha basada en la frecuencia
+          let nextDate = new Date(startDate);
+          const daysToAdd = {
+            daily: 1,
+            weekly: 7,
+            biweekly: 14,
+            monthly: 30,
+            quarterly: 90,
+          };
+          
+          while (nextDate < today) {
+            nextDate.setDate(nextDate.getDate() + daysToAdd[dataToSend.dcaFrequency]);
+          }
+          
+          // Si hay fecha de fin y la próxima fecha la excede, no establecer próxima fecha
+          if (dataToSend.dcaEndDate) {
+            const endDate = new Date(dataToSend.dcaEndDate);
+            if (nextDate > endDate) {
+              dataToSend.dcaNextDate = null;
+            } else {
+              dataToSend.dcaNextDate = nextDate.toISOString().split('T')[0];
+            }
+          } else {
+            dataToSend.dcaNextDate = nextDate.toISOString().split('T')[0];
+          }
+        }
+      } else if (!dataToSend.dcaEnabled) {
+        // Si DCA está deshabilitado, limpiar campos relacionados
+        delete dataToSend.dcaAmount;
+        delete dataToSend.dcaFrequency;
+        delete dataToSend.dcaStartDate;
+        delete dataToSend.dcaEndDate;
+        delete dataToSend.dcaNextDate;
+      }
+      
       if (editingInvestment) {
         await api.put(`/investments/${editingInvestment._id}`, dataToSend);
       } else {
@@ -231,7 +291,7 @@ const Investments = () => {
       setShowModal(false);
       resetForm();
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Error al guardar la inversión';
+      const errorMessage = error.response?.data?.message || error.message || t('investments.modals.errors.saveInvestment');
       alert(errorMessage);
     }
   };
@@ -256,6 +316,11 @@ const Investments = () => {
       variableIncomePercentage: investment.variableIncomePercentage || 100,
       notes: investment.notes || '',
       platformUrl: investment.platformUrl || '',
+      dcaEnabled: investment.dcaEnabled || false,
+      dcaAmount: investment.dcaAmount || 0,
+      dcaFrequency: investment.dcaFrequency || 'monthly',
+      dcaStartDate: investment.dcaStartDate ? new Date(investment.dcaStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      dcaEndDate: investment.dcaEndDate ? new Date(investment.dcaEndDate).toISOString().split('T')[0] : '',
     });
     setShowModal(true);
   };
@@ -278,7 +343,85 @@ const Investments = () => {
       setShowDeleteModal(false);
       setInvestmentToDelete(null);
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Error al eliminar la inversión';
+      const errorMessage = error.response?.data?.message || error.message || t('investments.modals.errors.deleteInvestment');
+      alert(errorMessage);
+    }
+  };
+
+  const handleSaveDCA = async () => {
+    if (!editingDCAInvestment) return;
+    
+    try {
+      const dataToSend = { ...dcaFormData };
+      
+      // Calcular próxima fecha de DCA si está habilitado
+      if (dataToSend.dcaEnabled && dataToSend.dcaStartDate && dataToSend.dcaFrequency) {
+        const startDate = new Date(dataToSend.dcaStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (startDate >= today) {
+          dataToSend.dcaNextDate = dataToSend.dcaStartDate;
+        } else {
+          let nextDate = new Date(startDate);
+          const daysToAdd = {
+            daily: 1,
+            weekly: 7,
+            biweekly: 14,
+            monthly: 30,
+            quarterly: 90,
+          };
+          
+          while (nextDate < today) {
+            nextDate.setDate(nextDate.getDate() + daysToAdd[dataToSend.dcaFrequency]);
+          }
+          
+          if (dataToSend.dcaEndDate) {
+            const endDate = new Date(dataToSend.dcaEndDate);
+            if (nextDate > endDate) {
+              dataToSend.dcaNextDate = null;
+            } else {
+              dataToSend.dcaNextDate = nextDate.toISOString().split('T')[0];
+            }
+          } else {
+            dataToSend.dcaNextDate = nextDate.toISOString().split('T')[0];
+          }
+        }
+      } else if (!dataToSend.dcaEnabled) {
+        // Si DCA está deshabilitado, guardar fecha de desactivación si antes estaba activado
+        if (editingDCAInvestment.dcaEnabled) {
+          dataToSend.dcaDeactivatedDate = new Date().toISOString().split('T')[0];
+        }
+        // Limpiar campos relacionados pero mantener historial
+        dataToSend.dcaAmount = 0;
+        dataToSend.dcaFrequency = null;
+        dataToSend.dcaStartDate = null;
+        dataToSend.dcaEndDate = null;
+        dataToSend.dcaNextDate = null;
+      } else if (dataToSend.dcaEnabled && editingDCAInvestment.dcaEnabled === false) {
+        // Si se reactiva el DCA, limpiar fecha de desactivación
+        dataToSend.dcaDeactivatedDate = null;
+      }
+      
+      await api.put(`/investments/${editingDCAInvestment._id}`, dataToSend);
+      
+      // Actualizar el estado local de inversiones
+      setInvestments(prev => prev.map(inv => 
+        inv._id === editingDCAInvestment._id 
+          ? { ...inv, ...dataToSend }
+          : inv
+      ));
+      
+      // Si el modal de detalle está abierto para esta inversión, actualizarlo también
+      if (detailInvestment && detailInvestment._id === editingDCAInvestment._id) {
+        setDetailInvestment(prev => ({ ...prev, ...dataToSend }));
+      }
+      
+      fetchData();
+      setShowDCAModal(false);
+      setEditingDCAInvestment(null);
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || t('investments.modals.errors.saveDCA');
       alert(errorMessage);
     }
   };
@@ -327,7 +470,7 @@ const Investments = () => {
       const response = await api.get(`/investment-history/investment/${investment._id}`);
       setInvestmentHistory(response.data || []);
     } catch (error) {
-      alert('Error al cargar el historial: ' + (error.response?.data?.message || error.message));
+      alert(t('investments.modals.errors.loadHistory', { error: error.response?.data?.message || error.message }));
       setInvestmentHistory([]);
     } finally {
       setHistoryLoading(false);
@@ -358,12 +501,12 @@ const Investments = () => {
       setShowEditHistoryModal(false);
       setEditingHistoryEntry(null);
     } catch (error) {
-      alert('Error al editar la entrada del historial');
+      alert(t('investments.modals.errors.editHistory'));
     }
   };
 
   const handleDeleteHistoryEntry = async (entryId) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta entrada del historial?')) {
+    if (!confirm(t('investments.modals.editHistory.deleteConfirm'))) {
       return;
     }
     try {
@@ -372,7 +515,7 @@ const Investments = () => {
       const response = await api.get(`/investment-history/investment/${selectedInvestment._id}`);
       setInvestmentHistory(response.data);
     } catch (error) {
-      alert('Error al eliminar la entrada del historial');
+      alert(t('investments.modals.errors.deleteHistory'));
     }
   };
 
@@ -465,7 +608,7 @@ const Investments = () => {
       });
       
       if (response.data.message && response.data.message.includes('completamente')) {
-        alert(`Retiro realizado. Monto: ${new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(response.data.saleAmount)}`);
+        alert(t('investments.modals.errors.withdrawSuccess', { amount: new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(response.data.saleAmount) }));
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Error al retirar de la inversión';
@@ -492,6 +635,11 @@ const Investments = () => {
       variableIncomePercentage: 100,
       notes: '',
       platformUrl: '',
+      dcaEnabled: false,
+      dcaAmount: 0,
+      dcaFrequency: 'monthly',
+      dcaStartDate: new Date().toISOString().split('T')[0],
+      dcaEndDate: '',
     });
     setEditingInvestment(null);
   };
@@ -552,7 +700,7 @@ const Investments = () => {
               const inv = investments.find(i => (i._id?.toString() || i.id) === r.investmentId);
               return inv?.symbol || inv?.name || 'Desconocido';
             });
-          alert(`Precios actualizados: ${updated} exitosos, ${failed} fallidos.\n\nFallidos: ${failedSymbols.join(', ')}`);
+          alert(t('investments.modals.errors.updatePricesSuccess', { updated, failed }) + '\n\n' + t('investments.modals.errors.updatePricesFailed', { symbols: failedSymbols.join(', ') }));
         } else if (failed > 0 && isAutoUpdate) {
           // Para actualizaciones automáticas, solo log en consola
           const failedSymbols = results
@@ -565,13 +713,13 @@ const Investments = () => {
         }
         // Si todo salió bien, no mostrar popup
       } else if (!isAutoUpdate) {
-        alert('No se pudieron actualizar los precios. Verifica que las inversiones tengan símbolos válidos.');
+        alert(t('investments.modals.errors.updatePricesError'));
       }
     } catch (error) {
       // Solo mostrar alerta si es actualización manual
       if (!isAutoUpdate) {
         const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar precios';
-        alert(`Error: ${errorMessage}`);
+        alert(t('investments.modals.errors.updatePricesErrorDetail', { error: errorMessage }));
       }
     } finally {
       setUpdatingPrices(false);
@@ -639,13 +787,18 @@ const Investments = () => {
                 }
               }}
             >
-              <div className="flex items-start justify-between mb-4 flex-shrink-0">
+              <div className="flex items-start justify-between mb-3 flex-shrink-0">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{investment.name}</h3>
                     {investment.isAutomatedPortfolio && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
                         Automatizada
+                      </span>
+                    )}
+                    {investment.dcaEnabled && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                        {t('investments.dca.enabled')}
                       </span>
                     )}
                   </div>
@@ -655,9 +808,9 @@ const Investments = () => {
                   {investment.isin && !investment.symbol && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">ISIN: {investment.isin}</p>
                   )}
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{getTypeLabel(investment.type, investment.isAutomatedPortfolio)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{getTypeLabel(investment.type, investment.isAutomatedPortfolio)}</p>
                   {investment.assetClass && (
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                       {investment.assetClass === 'fixed_income' && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                           {t('investments.assetClassLabels.fixedIncome')}
@@ -680,44 +833,109 @@ const Investments = () => {
                       )}
                     </div>
                   )}
-                  {/* Checkbox para actualización automática - solo si tiene símbolo o ISIN */}
-                  {(investment.symbol || investment.isin) && !investment.isAutomatedPortfolio && (
-                    <div 
-                      className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`auto-update-${investment._id}`}
-                        checked={investment.autoUpdate !== false}
-                        onChange={async (e) => {
-                          const newValue = e.target.checked;
-                          try {
-                            await api.patch(`/investments/${investment._id}/auto-update`, {
-                              autoUpdate: newValue
-                            });
-                            // Actualizar el estado local
-                            setInvestments(prev => prev.map(inv => 
-                              inv._id === investment._id 
-                                ? { ...inv, autoUpdate: newValue }
-                                : inv
-                            ));
-                          } catch (error) {
-                            alert('Error al actualizar la configuración de actualización automática');
-                            // Revertir el cambio en caso de error
-                            e.target.checked = !newValue;
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                      />
-                      <label 
-                        htmlFor={`auto-update-${investment._id}`}
-                        className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer"
-                      >
-                        {t('investments.automaticUpdate')}
-                      </label>
-                    </div>
-                  )}
                 </div>
+              </div>
+
+              {/* Checkbox para actualización automática y DCA */}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-2 mb-2">
+                {/* Checkbox para actualización automática - solo si tiene símbolo o ISIN */}
+                {(investment.symbol || investment.isin) && !investment.isAutomatedPortfolio && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id={`auto-update-${investment._id}`}
+                      checked={investment.autoUpdate !== false}
+                      onChange={async (e) => {
+                        const newValue = e.target.checked;
+                        try {
+                          await api.patch(`/investments/${investment._id}/auto-update`, {
+                            autoUpdate: newValue
+                          });
+                          // Actualizar el estado local
+                          setInvestments(prev => prev.map(inv => 
+                            inv._id === investment._id 
+                              ? { ...inv, autoUpdate: newValue }
+                              : inv
+                          ));
+                        } catch (error) {
+                          alert(t('investments.modals.errors.updateAutoUpdate'));
+                          // Revertir el cambio en caso de error
+                          e.target.checked = !newValue;
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <label 
+                      htmlFor={`auto-update-${investment._id}`}
+                      className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer"
+                    >
+                      {t('investments.automaticUpdate')}
+                    </label>
+                  </div>
+                )}
+                {/* Información de DCA */}
+                {investment.dcaEnabled && (
+                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
+                    <div className="flex items-center gap-1.5 justify-between">
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <span className="text-green-600 dark:text-green-400 font-medium">DCA:</span>
+                        <span>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: investment.currency || 'EUR', notation: 'compact', maximumFractionDigits: 0 }).format(investment.dcaAmount || 0)}</span>
+                        <span className="text-gray-400 dark:text-gray-500">·</span>
+                        <span>{t(`investments.dca.frequencies.${investment.dcaFrequency}`)}</span>
+                        {investment.dcaNextDate && (
+                          <>
+                            <span className="text-gray-400 dark:text-gray-500">·</span>
+                            <span className="text-gray-500 dark:text-gray-500">
+                              {t('investments.dca.nextPurchase')}: {new Date(investment.dcaNextDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingDCAInvestment(investment);
+                          setDcaFormData({
+                            dcaEnabled: investment.dcaEnabled || false,
+                            dcaAmount: investment.dcaAmount || 0,
+                            dcaFrequency: investment.dcaFrequency || 'monthly',
+                            dcaStartDate: investment.dcaStartDate ? new Date(investment.dcaStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                            dcaEndDate: investment.dcaEndDate ? new Date(investment.dcaEndDate).toISOString().split('T')[0] : '',
+                          });
+                          setShowDCAModal(true);
+                        }}
+                        className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        title={t('investments.dca.edit')}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Botón para activar DCA si no está activado */}
+                {!investment.dcaEnabled && (
+                  <div className="text-xs">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingDCAInvestment(investment);
+                        setDcaFormData({
+                          dcaEnabled: false,
+                          dcaAmount: 0,
+                          dcaFrequency: 'monthly',
+                          dcaStartDate: new Date().toISOString().split('T')[0],
+                          dcaEndDate: '',
+                        });
+                        setShowDCAModal(true);
+                      }}
+                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1 transition-colors"
+                      title={t('investments.dca.activate')}
+                    >
+                      <Plus className="h-3 w-3" />
+                      {t('investments.dca.activate')}
+                    </button>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2 flex-1 min-h-0">
@@ -864,11 +1082,11 @@ const Investments = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
-                  Ubicación
+                  {t('investments.form.location')}
                 </h3>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Cuenta <span className="text-red-500">*</span>
+                    {t('investments.form.accountRequired')} <span className="text-red-500">*</span>
                   </label>
                 <select
                   className="input-field"
@@ -884,7 +1102,7 @@ const Investments = () => {
                   }}
                   required
                 >
-                  <option value="">Seleccionar cuenta</option>
+                  <option value="">{t('investments.modals.addCapital.selectAccount')}</option>
                   {accounts.map((account) => (
                     <option key={account._id} value={account._id}>
                       {account.bankName} - {account.name}
@@ -895,12 +1113,12 @@ const Investments = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Subcuenta de Inversión (opcional)
+                  {t('investments.form.subAccountInvestment')}
                 </label>
                 {!formData.account ? (
                   <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Selecciona primero una cuenta para ver sus subcuentas de inversión
+                      {t('investments.form.selectAccountFirst')}
                     </p>
                   </div>
                 ) : (() => {
@@ -912,8 +1130,7 @@ const Investments = () => {
                     return (
                       <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                          No hay subcuentas de tipo "Inversión" disponibles para esta cuenta. 
-                          Puedes crear una desde la página de Cuentas o dejar este campo vacío.
+                          {t('investments.form.noInvestmentSubAccounts')}
                         </p>
                       </div>
                     );
@@ -932,7 +1149,7 @@ const Investments = () => {
                         });
                       }}
                     >
-                      <option value="">Ninguna (inversión directa en la cuenta)</option>
+                      <option value="">{t('investments.form.noneDirectInvestment')}</option>
                       {accountSubAccounts.map((subAccount) => (
                         <option key={subAccount._id} value={subAccount._id}>
                           {subAccount.name}
@@ -948,11 +1165,11 @@ const Investments = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  Información Básica
+                  {t('investments.form.basicInfo')}
                 </h3>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nombre <span className="text-red-500">*</span>
+                    {t('investments.form.investmentNameRequired')} <span className="text-red-500">*</span>
                   </label>
                 <input
                   type="text"
@@ -964,7 +1181,7 @@ const Investments = () => {
               </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tipo <span className="text-red-500">*</span>
+                    {t('investments.form.investmentTypeRequired')} <span className="text-red-500">*</span>
                   </label>
                   <select
                     className="input-field"
@@ -981,13 +1198,13 @@ const Investments = () => {
                     }}
                     required
                   >
-                    <option value="stock">Acción</option>
-                    <option value="bond">Bono</option>
-                    <option value="crypto">Cripto</option>
-                    <option value="fund">Fondo</option>
-                    <option value="etf">ETF</option>
-                    <option value="automated_portfolio">Cartera Automatizada</option>
-                    <option value="other">Otro</option>
+                    <option value="stock">{t('investments.investmentTypes.stock')}</option>
+                    <option value="bond">{t('investments.investmentTypes.bond')}</option>
+                    <option value="crypto">{t('investments.investmentTypes.crypto')}</option>
+                    <option value="fund">{t('investments.investmentTypes.fund')}</option>
+                    <option value="etf">{t('investments.investmentTypes.etf')}</option>
+                    <option value="automated_portfolio">{t('investments.investmentTypes.automatedPortfolio')}</option>
+                    <option value="other">{t('investments.investmentTypes.other')}</option>
                   </select>
                 </div>
                 <div>
@@ -999,7 +1216,7 @@ const Investments = () => {
                   className="input-field"
                   value={formData.symbol}
                   onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                  placeholder="Ej: AAPL, BTC, NXT.MC"
+                  placeholder={t('investments.form.symbolPlaceholder')}
                 />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Ticker o símbolo de la inversión (Ej: AAPL, BTC, NXT.MC)
@@ -1015,7 +1232,7 @@ const Investments = () => {
                     className="input-field"
                     value={formData.isin}
                     onChange={(e) => setFormData({ ...formData, isin: e.target.value.toUpperCase().replace(/\s/g, '') })}
-                    placeholder="Ej: ES0123456789"
+                    placeholder={t('investments.form.isinPlaceholder')}
                     maxLength={12}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1042,24 +1259,24 @@ const Investments = () => {
                       }}
                     />
                     <label htmlFor="isAutomatedPortfolio" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Sin precio de compra unitario
+                      {t('investments.form.noUnitPurchasePrice')}
                     </label>
                   </div>
                 )}
                 {formData.isAutomatedPortfolio && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      URL de la Plataforma <span className="text-gray-400">(opcional)</span>
+                      {t('investments.form.platformUrl')} <span className="text-gray-400">{t('common.optional')}</span>
                     </label>
                   <input
                     type="url"
                     className="input-field"
                     value={formData.platformUrl}
                     onChange={(e) => setFormData({ ...formData, platformUrl: e.target.value })}
-                    placeholder="Ej: https://myinvestor.es o https://indexacapital.com"
+                    placeholder={t('investments.form.platformUrlPlaceholder')}
                   />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Enlace a la plataforma para consultar el valor actual (Ej: https://myinvestor.es)
+                      {t('investments.form.platformUrlDescription')}
                     </p>
                   </div>
                 )}
@@ -1069,13 +1286,13 @@ const Investments = () => {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Datos Financieros
+                  {t('investments.form.financialData')}
                 </h3>
                 {formData.isAutomatedPortfolio ? (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Monto Invertido <span className="text-red-500">*</span>
+                      {t('investments.form.investedAmount')} <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-4 gap-2">
                       <input
@@ -1098,12 +1315,12 @@ const Investments = () => {
                       </select>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Cantidad total de dinero invertido en la cartera automatizada
+                      {t('investments.form.investedAmountDescriptionAutomated')}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Monto Actual <span className="text-red-500">*</span>
+                      {t('investments.form.currentAmountRequired')} <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-4 gap-2">
                       <input
@@ -1127,7 +1344,7 @@ const Investments = () => {
                       </select>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Valor actual de la cartera automatizada
+                      {t('investments.form.currentAmountDescriptionAutomated')}
                     </p>
                   </div>
                 </>
@@ -1135,7 +1352,7 @@ const Investments = () => {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Número de Participaciones <span className="text-red-500">*</span>
+                      {t('investments.form.numberOfShares')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -1144,10 +1361,10 @@ const Investments = () => {
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
                       required
-                      placeholder="Ej: 10, 0.5, 1000"
+                      placeholder={t('investments.form.numberOfSharesPlaceholder')}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Número de participaciones que posees (acciones, bonos, criptomonedas, participaciones de fondos, etc.)
+                      {t('investments.form.numberOfSharesDescription')}
                     </p>
                   </div>
                   {formData.isAutomatedPortfolio ? (
@@ -1214,7 +1431,7 @@ const Investments = () => {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Precio de Compra <span className="text-red-500">*</span>
+                          {t('investments.form.purchasePrice')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -1226,12 +1443,12 @@ const Investments = () => {
                           placeholder="0.0000"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Precio por unidad
+                          {t('investments.form.purchasePriceDescription')}
                         </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Precio Actual <span className="text-red-500">*</span>
+                          {t('investments.form.currentPriceRequired')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -1243,12 +1460,12 @@ const Investments = () => {
                           placeholder="0.0000"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Precio por unidad
+                          {t('investments.form.currentPriceDescription')}
                         </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Moneda <span className="text-red-500">*</span>
+                          {t('investments.form.currencyRequired')} <span className="text-red-500">*</span>
                         </label>
                         <select
                           className="input-field"
@@ -1480,8 +1697,89 @@ const Investments = () => {
                     rows="3"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Añade cualquier nota o comentario sobre esta inversión..."
+                    placeholder={t('investments.form.notesPlaceholder')}
                   />
+                </div>
+
+                {/* DCA (Dollar Cost Averaging) */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      id="dcaEnabled"
+                      checked={formData.dcaEnabled}
+                      onChange={(e) => setFormData({ ...formData, dcaEnabled: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label htmlFor="dcaEnabled" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                      {t('investments.dca.enable')}
+                    </label>
+                  </div>
+                  {formData.dcaEnabled && (
+                    <div className="space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.dca.amountPerPeriod')} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input-field"
+                            value={formData.dcaAmount}
+                            onChange={(e) => setFormData({ ...formData, dcaAmount: parseFloat(e.target.value) || 0 })}
+                            required={formData.dcaEnabled}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.dca.frequency')} <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            className="input-field"
+                            value={formData.dcaFrequency}
+                            onChange={(e) => setFormData({ ...formData, dcaFrequency: e.target.value })}
+                            required={formData.dcaEnabled}
+                          >
+                            <option value="daily">{t('investments.dca.frequencies.daily')}</option>
+                            <option value="weekly">{t('investments.dca.frequencies.weekly')}</option>
+                            <option value="biweekly">{t('investments.dca.frequencies.biweekly')}</option>
+                            <option value="monthly">{t('investments.dca.frequencies.monthly')}</option>
+                            <option value="quarterly">{t('investments.dca.frequencies.quarterly')}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.dca.startDate')} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            className="input-field"
+                            value={formData.dcaStartDate}
+                            onChange={(e) => setFormData({ ...formData, dcaStartDate: e.target.value })}
+                            required={formData.dcaEnabled}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.dca.endDate')} <span className="text-gray-400">{t('investments.dca.optional')}</span>
+                          </label>
+                          <input
+                            type="date"
+                            className="input-field"
+                            value={formData.dcaEndDate}
+                            onChange={(e) => setFormData({ ...formData, dcaEndDate: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t('investments.dca.description')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1514,12 +1812,12 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Actualizar Valor - {selectedInvestment.name}
+              {t('investments.modals.updateValue.title', { name: selectedInvestment.name })}
             </h2>
             {selectedInvestment.isAutomatedPortfolio && selectedInvestment.platformUrl && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                  <strong>💡 Tip:</strong> Consulta el valor actual en la plataforma:
+                  <strong>{t('investments.modals.updateValue.tip')}</strong> {t('investments.modals.updateValue.tipText')}
                 </p>
                 <a
                   href={selectedInvestment.platformUrl}
@@ -1546,7 +1844,7 @@ const Investments = () => {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Valor Actual Total de la Cartera
+                      {t('investments.modals.updateValue.currentTotalValue')}
                     </label>
                     <input
                       type="number"
@@ -1801,31 +2099,31 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Añadir Capital - {selectedInvestment.name}
+              {t('investments.modals.addCapital.title', { name: selectedInvestment.name })}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {selectedInvestment.isAutomatedPortfolio 
-                ? 'Añade más capital a tu cartera automatizada.'
-                : 'Al añadir más unidades, se calculará automáticamente el nuevo precio medio de compra.'}
+                ? t('investments.modals.addCapital.descriptionAutomated')
+                : t('investments.modals.addCapital.description')}
             </p>
             {selectedInvestment.isAutomatedPortfolio ? (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Capital actual:</span>{' '}
+                  <span className="font-semibold">{t('investments.modals.addCapital.currentCapital')}</span>{' '}
                   {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Valor actual: {formatPrice(selectedInvestment.currentPrice, selectedInvestment.currency)}
+                  {t('investments.modals.addCapital.currentValue')}: {formatPrice(selectedInvestment.currentPrice, selectedInvestment.currency)}
                 </p>
               </div>
             ) : selectedInvestment.averagePurchasePrice && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Precio medio actual:</span>{' '}
+                  <span className="font-semibold">{t('investments.modals.addCapital.currentAveragePrice')}:</span>{' '}
                   {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Cantidad actual: {selectedInvestment.quantity} unidades
+                  {t('investments.modals.addCapital.currentQuantity', { quantity: selectedInvestment.quantity })}
                 </p>
               </div>
             )}
@@ -1842,7 +2140,7 @@ const Investments = () => {
               </div>
               {selectedInvestment.isAutomatedPortfolio ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto a añadir</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.modals.addCapital.amountToAdd')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1853,13 +2151,13 @@ const Investments = () => {
                     min="0.01"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Monto adicional que quieres invertir en la cartera automatizada
+                    {t('investments.modals.addCapital.descriptionAutomated')}
                   </p>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad a añadir</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.modals.addCapital.quantityToAdd')}</label>
                     <input
                       type="number"
                       step="0.0001"
@@ -1871,7 +2169,7 @@ const Investments = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de compra</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.form.purchasePrice')}</label>
                     <input
                       type="number"
                       step="0.0001"
@@ -1882,7 +2180,7 @@ const Investments = () => {
                       min="0.0001"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Precio al que compras las nuevas unidades
+                      {t('investments.form.purchasePriceDescription')}
                     </p>
                   </div>
                 </>
@@ -1964,20 +2262,20 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Retirar de Inversión - {selectedInvestment.name}
+              {t('investments.modals.sellInvestment.title', { name: selectedInvestment.name })}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {selectedInvestment.isAutomatedPortfolio 
-                ? 'Indica el monto a retirar de la cartera automatizada.'
-                : 'Al retirar, se reducirá la cantidad y el dinero se devolverá a la subcuenta (si aplica).'}
+                ? t('investments.modals.sellInvestment.descriptionAutomated')
+                : t('investments.modals.sellInvestment.description')}
             </p>
             {selectedInvestment.averagePurchasePrice && !selectedInvestment.isAutomatedPortfolio && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Cantidad disponible:</span> {selectedInvestment.quantity} unidades
+                  <span className="font-semibold">{t('investments.modals.sellInvestment.availableQuantity', { quantity: selectedInvestment.quantity })}</span>
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  <span className="font-semibold">Precio medio compra:</span>{' '}
+                  <span className="font-semibold">{t('investments.modals.sellInvestment.averagePurchasePrice')}:</span>{' '}
                   {formatPrice(selectedInvestment.averagePurchasePrice, selectedInvestment.currency)}
                 </p>
               </div>
@@ -1985,7 +2283,7 @@ const Investments = () => {
             {selectedInvestment.isAutomatedPortfolio && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Monto disponible:</span>{' '}
+                  <span className="font-semibold">{t('investments.modals.sellInvestment.availableAmount')}:</span>{' '}
                   {new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedInvestment.currency }).format(selectedInvestment.quantity)}
                 </p>
               </div>
@@ -2003,7 +2301,7 @@ const Investments = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {selectedInvestment.isAutomatedPortfolio ? 'Monto a retirar' : 'Cantidad a retirar'}
+                  {selectedInvestment.isAutomatedPortfolio ? t('investments.modals.sellInvestment.amountToWithdraw') : t('investments.modals.sellInvestment.quantityToWithdraw')}
                 </label>
                 <input
                   type="number"
@@ -2071,7 +2369,7 @@ const Investments = () => {
                   </p>
                   {!selectedInvestment.isAutomatedPortfolio && sellFormData.quantity < selectedInvestment.quantity && (
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Cantidad restante: {selectedInvestment.quantity - sellFormData.quantity} unidades
+                      {t('investments.modals.sellInvestment.availableQuantity', { quantity: selectedInvestment.quantity - sellFormData.quantity })}
                     </p>
                   )}
                   {sellFormData.quantity >= selectedInvestment.quantity && (
@@ -2109,10 +2407,10 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Eliminar Inversión
+              {t('investments.deleteConfirm.title')}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              ¿Qué deseas hacer con la inversión <strong className="text-gray-900 dark:text-gray-100">{investmentToDelete.name}</strong>?
+              {t('investments.deleteConfirm.whatToDo', { name: investmentToDelete.name })}
             </p>
             
             {/* Calcular monto original invertido */}
@@ -2128,7 +2426,7 @@ const Investments = () => {
               return (
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    Monto original invertido:
+                    {t('investments.deleteConfirm.originalAmount')}
                   </p>
                   <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {originalAmount.toFixed(2)} {investmentToDelete.currency}
@@ -2142,13 +2440,13 @@ const Investments = () => {
                 onClick={() => handleDelete(false)}
                 className="w-full px-4 py-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors font-medium"
               >
-                Eliminar sin devolver dinero
+                {t('investments.deleteConfirm.deleteWithoutReturn')}
               </button>
               <button
                 onClick={() => handleDelete(true)}
                 className="w-full px-4 py-3 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors font-medium"
               >
-                Eliminar y devolver dinero a la subcuenta
+                {t('investments.deleteConfirm.deleteAndReturn')}
               </button>
               <button
                 onClick={() => {
@@ -2157,7 +2455,7 @@ const Investments = () => {
                 }}
                 className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -2176,7 +2474,7 @@ const Investments = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Editar Entrada del Historial
+              {t('investments.modals.editHistory.title')}
             </h2>
             <form onSubmit={handleSubmitEditHistory} className="space-y-4">
               <div>
@@ -2190,17 +2488,17 @@ const Investments = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Operación</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.modals.editHistory.operationType')}</label>
                 <select
                   className="input-field"
                   value={editHistoryFormData.operation}
                   onChange={(e) => setEditHistoryFormData({ ...editHistoryFormData, operation: e.target.value })}
                   required
                 >
-                  <option value="creation">Creación</option>
-                  <option value="add">Añadir Capital</option>
-                  <option value="withdraw">Retirar Capital</option>
-                  <option value="update">Actualización</option>
+                  <option value="creation">{t('investments.modals.editHistory.operations.creation')}</option>
+                  <option value="add">{t('investments.modals.editHistory.operations.add')}</option>
+                  <option value="withdraw">{t('investments.modals.editHistory.operations.withdraw')}</option>
+                  <option value="update">{t('investments.modals.editHistory.operations.update')}</option>
                 </select>
               </div>
               {!selectedInvestment.isAutomatedPortfolio && (
@@ -2234,7 +2532,7 @@ const Investments = () => {
               {(editHistoryFormData.operation === 'add' || editHistoryFormData.operation === 'withdraw') && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto de la Operación</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.modals.editHistory.operationAmount')}</label>
                     <input
                       type="number"
                       step="0.01"
@@ -2246,7 +2544,7 @@ const Investments = () => {
                   </div>
                   {!selectedInvestment.isAutomatedPortfolio && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio de la Operación</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('investments.modals.editHistory.operationPrice')}</label>
                       <input
                         type="number"
                         step="0.0001"
@@ -2330,19 +2628,19 @@ const Investments = () => {
               <div className="space-y-4 overflow-y-auto pr-2 h-full">
                 {/* Información básica */}
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Básica</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.basicInfo')}</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.typeLabel')}</span>
                     <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{getTypeLabel(detailInvestment.type, detailInvestment.isAutomatedPortfolio)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currencyLabel')}</span>
                     <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{detailInvestment.currency}</span>
                   </div>
                   {(detailInvestment.account || detailInvestment.subAccount) && (
                     <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.accountLabel')}</span>
                       <div className="mt-1">
                         {detailInvestment.account && (
                           <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -2359,7 +2657,7 @@ const Investments = () => {
                   )}
                   {detailInvestment.assetClass && (
                     <div className="col-span-2">
-                      <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.assetClassLabel')}</span>
                       <div className="mt-1">
                         {detailInvestment.assetClass === 'fixed_income' && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
@@ -2387,7 +2685,7 @@ const Investments = () => {
                   {detailInvestment.isAutomatedPortfolio && (
                     <div className="col-span-2">
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                        Cartera Automatizada
+                        {t('investments.investmentTypes.automatedPortfolio')}
                       </span>
                     </div>
                   )}
@@ -2396,18 +2694,18 @@ const Investments = () => {
 
               {/* Información financiera */}
               <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Información Financiera</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.financialInfo')}</h3>
                 <div className="space-y-3 text-sm">
                   {detailInvestment.isAutomatedPortfolio ? (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Monto invertido:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.amountInvested')}</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(detailInvestment.quantity)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currentValue')}</span>
                         <span className="font-bold text-gray-900 dark:text-gray-100">
                           {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
                         </span>
@@ -2416,12 +2714,12 @@ const Investments = () => {
                   ) : (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{detailInvestment.quantity} unidades</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.quantityLabel')}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{t('investments.detail.units', { quantity: detailInvestment.quantity })}</span>
                       </div>
                       {detailInvestment.averagePurchasePrice && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Precio medio compra:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.averagePurchasePriceLabel')}</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {formatPrice(detailInvestment.averagePurchasePrice, detailInvestment.currency)}
                           </span>
@@ -2429,20 +2727,20 @@ const Investments = () => {
                       )}
                       {detailInvestment.purchasePrice && !detailInvestment.averagePurchasePrice && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Precio de compra:</span>
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.form.purchasePrice')}:</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {formatPrice(detailInvestment.purchasePrice, detailInvestment.currency)}
                           </span>
                         </div>
                       )}
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.currentPriceLabel')}</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
                         </span>
                       </div>
                       <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.totalValueLabel')}</span>
                         <span className="font-bold text-gray-900 dark:text-gray-100">
                           {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency }).format(
                             detailInvestment.quantity * detailInvestment.currentPrice
@@ -2470,11 +2768,11 @@ const Investments = () => {
 
               {/* Fechas */}
               <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.dates')}</h3>
                 <div className="space-y-2 text-sm">
                   {detailInvestment.purchaseDate && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.purchaseDateLabel')}</span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {new Date(detailInvestment.purchaseDate).toLocaleDateString('es-ES')}
                       </span>
@@ -2482,7 +2780,7 @@ const Investments = () => {
                   )}
                   {detailInvestment.createdAt && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Fecha de creación:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.createdDateLabel')}</span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {new Date(detailInvestment.createdAt).toLocaleDateString('es-ES')}
                       </span>
@@ -2490,22 +2788,71 @@ const Investments = () => {
                   )}
                   {detailInvestment.updatedAt && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Última actualización:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.lastUpdateLabel')}</span>
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {new Date(detailInvestment.updatedAt).toLocaleDateString('es-ES')}
                       </span>
                     </div>
                   )}
+                  {/* Fechas de DCA - Solo si está activado */}
+                  {detailInvestment.dcaEnabled && (
+                    <>
+                      {detailInvestment.dcaStartDate && (
+                        <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.dca.startDate')} (DCA):</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(detailInvestment.dcaStartDate).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                      )}
+                      {detailInvestment.dcaEndDate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.dca.endDate')} (DCA):</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(detailInvestment.dcaEndDate).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                      )}
+                      {detailInvestment.dcaNextDate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.dca.nextPurchase')} (DCA):</span>
+                          <span className="font-medium text-green-600 dark:text-green-400">
+                            {new Date(detailInvestment.dcaNextDate).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {/* Información histórica de DCA si está desactivado pero hubo actividad */}
+                  {!detailInvestment.dcaEnabled && detailInvestmentHistory.length > 0 && (() => {
+                    const dcaPurchases = detailInvestmentHistory
+                      .filter(h => h.operation === 'add' && h.notes && h.notes.includes('DCA'))
+                      .sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    if (dcaPurchases.length > 0) {
+                      const lastDCAPurchase = dcaPurchases[0];
+                      
+                      return (
+                        <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.lastDCAContribution')}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(lastDCAPurchase.date).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
               {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
               {(detailInvestment.symbol || detailInvestment.isin) && !detailInvestment.isAutomatedPortfolio && (
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuración</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('investments.detail.configuration')}</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Actualización automática:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.autoUpdateLabel')}</span>
                       <span 
                         onClick={async () => {
                           const newValue = !(detailInvestment.autoUpdate !== false);
@@ -2523,7 +2870,7 @@ const Investments = () => {
                               autoUpdate: newValue
                             });
                           } catch (error) {
-                            alert('Error al actualizar la configuración de actualización automática');
+                            alert(t('investments.modals.errors.updateAutoUpdate'));
                             // Revertir el cambio si falla
                             setDetailInvestment(prev => ({ ...prev, autoUpdate: originalValue }));
                             setInvestments(prev => prev.map(inv => 
@@ -2537,12 +2884,12 @@ const Investments = () => {
                           detailInvestment.autoUpdate !== false ? 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                         }`}
                       >
-                        {detailInvestment.autoUpdate !== false ? 'Activada' : 'Desactivada'}
+                        {detailInvestment.autoUpdate !== false ? t('investments.detail.enabled') : t('investments.detail.disabled')}
                       </span>
                     </div>
                     {detailInvestment.platformUrl && (
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.platform')}</span>
                         <a
                           href={detailInvestment.platformUrl}
                           target="_blank"
@@ -2557,10 +2904,96 @@ const Investments = () => {
                 </div>
               )}
 
+              {/* DCA (Dollar Cost Averaging) */}
+              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('investments.dca.title')}</h3>
+                  <button
+                    onClick={() => {
+                      setEditingDCAInvestment(detailInvestment);
+                      setDcaFormData({
+                        dcaEnabled: detailInvestment.dcaEnabled || false,
+                        dcaAmount: detailInvestment.dcaAmount || 0,
+                        dcaFrequency: detailInvestment.dcaFrequency || 'monthly',
+                        dcaStartDate: detailInvestment.dcaStartDate ? new Date(detailInvestment.dcaStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                        dcaEndDate: detailInvestment.dcaEndDate ? new Date(detailInvestment.dcaEndDate).toISOString().split('T')[0] : '',
+                      });
+                      setShowDCAModal(true);
+                    }}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
+                  >
+                    <Edit className="h-3 w-3" />
+                    {detailInvestment.dcaEnabled ? t('investments.dca.edit') : t('investments.dca.activate')}
+                  </button>
+                </div>
+                {detailInvestment.dcaEnabled ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.status')}</span>
+                      <span className="font-medium text-green-600 dark:text-green-400">{t('investments.detail.enabled')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.dca.amountPerPeriod')}:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency || 'EUR' }).format(detailInvestment.dcaAmount || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">{t('investments.dca.frequency')}:</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {t(`investments.dca.frequencies.${detailInvestment.dcaFrequency}`)}
+                      </span>
+                    </div>
+                    {/* Total capital aportado con DCA */}
+                    {detailInvestmentHistory.length > 0 && (() => {
+                      const dcaPurchases = detailInvestmentHistory
+                        .filter(h => h.operation === 'add' && h.notes && h.notes.includes('DCA'))
+                        .reduce((sum, h) => sum + (h.operationAmount || 0), 0);
+                      
+                      if (dcaPurchases > 0) {
+                        return (
+                          <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                            <span className="text-gray-600 dark:text-gray-400">Total aportado:</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency || 'EUR' }).format(dcaPurchases)}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <div className="text-gray-500 dark:text-gray-400">
+                      {t('investments.detail.disabled')}
+                    </div>
+                    {/* Mostrar total aportado si hubo actividad previa */}
+                    {detailInvestmentHistory.length > 0 && (() => {
+                      const dcaPurchases = detailInvestmentHistory
+                        .filter(h => h.operation === 'add' && h.notes && h.notes.includes('DCA'))
+                        .reduce((sum, h) => sum + (h.operationAmount || 0), 0);
+                      
+                      if (dcaPurchases > 0) {
+                        return (
+                          <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                            <span className="text-gray-600 dark:text-gray-400">{t('investments.detail.totalContributed')}</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: detailInvestment.currency || 'EUR' }).format(dcaPurchases)}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+
               {/* Notas */}
               {detailInvestment.notes && (
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('investments.detail.notes')}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{detailInvestment.notes}</p>
                 </div>
               )}
@@ -2799,6 +3232,133 @@ const Investments = () => {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de DCA */}
+      {showDCAModal && editingDCAInvestment && (
+        <div 
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          onClick={() => setShowDCAModal(false)}
+        >
+          <div 
+            className="modal-content max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {dcaFormData.dcaEnabled ? t('investments.dca.edit') : t('investments.dca.activate')}
+                </h2>
+                <button
+                  onClick={() => setShowDCAModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="dcaEnabledModal"
+                    checked={dcaFormData.dcaEnabled}
+                    onChange={(e) => setDcaFormData({ ...dcaFormData, dcaEnabled: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label htmlFor="dcaEnabledModal" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                    {t('investments.dca.enable')}
+                  </label>
+                </div>
+
+                {dcaFormData.dcaEnabled && (
+                  <div className="space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.dca.amountPerPeriod')} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="input-field"
+                          value={dcaFormData.dcaAmount}
+                          onChange={(e) => setDcaFormData({ ...dcaFormData, dcaAmount: parseFloat(e.target.value) || 0 })}
+                          required={dcaFormData.dcaEnabled}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.dca.frequency')} <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          className="input-field"
+                          value={dcaFormData.dcaFrequency}
+                          onChange={(e) => setDcaFormData({ ...dcaFormData, dcaFrequency: e.target.value })}
+                          required={dcaFormData.dcaEnabled}
+                        >
+                          <option value="daily">{t('investments.dca.frequencies.daily')}</option>
+                          <option value="weekly">{t('investments.dca.frequencies.weekly')}</option>
+                          <option value="biweekly">{t('investments.dca.frequencies.biweekly')}</option>
+                          <option value="monthly">{t('investments.dca.frequencies.monthly')}</option>
+                          <option value="quarterly">{t('investments.dca.frequencies.quarterly')}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.dca.startDate')} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="input-field"
+                          value={dcaFormData.dcaStartDate}
+                          onChange={(e) => setDcaFormData({ ...dcaFormData, dcaStartDate: e.target.value })}
+                          required={dcaFormData.dcaEnabled}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.dca.endDate')} <span className="text-gray-400">{t('investments.dca.optional')}</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="input-field"
+                          value={dcaFormData.dcaEndDate}
+                          onChange={(e) => setDcaFormData({ ...dcaFormData, dcaEndDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {t('investments.dca.description')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    setShowDCAModal(false);
+                    setEditingDCAInvestment(null);
+                  }}
+                  className="flex-1 btn-secondary"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleSaveDCA}
+                  className="flex-1 btn-primary"
+                  disabled={dcaFormData.dcaEnabled && (!dcaFormData.dcaAmount || !dcaFormData.dcaStartDate || !dcaFormData.dcaFrequency)}
+                >
+                  {t('common.save')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
