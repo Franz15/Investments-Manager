@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const subAccountSchema = new mongoose.Schema(
   {
@@ -9,7 +9,7 @@ const subAccountSchema = new mongoose.Schema(
     },
     account: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Account',
+      ref: "Account",
       required: true,
     },
     name: {
@@ -20,7 +20,7 @@ const subAccountSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['cash', 'investment', 'savings', 'credit'],
+      enum: ["cash", "investment", "savings", "credit"],
     },
     balance: {
       type: Number,
@@ -30,8 +30,8 @@ const subAccountSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: 'EUR',
-      enum: ['EUR', 'USD', 'GBP'],
+      default: "EUR",
+      enum: ["EUR", "USD", "GBP"],
     },
     description: {
       type: String,
@@ -49,18 +49,17 @@ const subAccountSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Virtual para calcular el valor total de inversiones si es tipo investment
-subAccountSchema.virtual('totalInvestments', {
-  ref: 'Investment',
-  localField: '_id',
-  foreignField: 'subAccount',
+subAccountSchema.virtual("totalInvestments", {
+  ref: "Investment",
+  localField: "_id",
+  foreignField: "subAccount",
   justOne: false,
 });
 
-subAccountSchema.set('toJSON', { virtuals: true });
+subAccountSchema.set("toJSON", { virtuals: true });
 
-export default mongoose.model('SubAccount', subAccountSchema);
-
+export default mongoose.model("SubAccount", subAccountSchema);

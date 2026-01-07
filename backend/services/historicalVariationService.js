@@ -1,6 +1,6 @@
-import DailyVariation from '../models/DailyVariation.js';
-import InvestmentHistory from '../models/InvestmentHistory.js';
-import YahooFinance from 'yahoo-finance2';
+import DailyVariation from "../models/DailyVariation.js";
+import InvestmentHistory from "../models/InvestmentHistory.js";
+import YahooFinance from "yahoo-finance2";
 
 const yahooFinance = new YahooFinance();
 
@@ -12,8 +12,8 @@ export async function getHistoricalPrices(symbol, startDate, endDate) {
     // Intentar diferentes variantes del símbolo
     const symbolVariants = [
       symbol,
-      symbol.includes('.') ? symbol : `${symbol}.MC`,
-      symbol.includes('.') ? symbol : `${symbol}.AS`,
+      symbol.includes(".") ? symbol : `${symbol}.MC`,
+      symbol.includes(".") ? symbol : `${symbol}.AS`,
     ];
 
     for (const symbolToTry of symbolVariants) {
@@ -22,11 +22,11 @@ export async function getHistoricalPrices(symbol, startDate, endDate) {
         const chartData = await yahooFinance.chart(symbolToTry, {
           period1: Math.floor(startDate.getTime() / 1000),
           period2: Math.floor(endDate.getTime() / 1000),
-          interval: '1d',
+          interval: "1d",
         });
 
         if (chartData && chartData.quotes && chartData.quotes.length > 0) {
-          return chartData.quotes.map(day => ({
+          return chartData.quotes.map((day) => ({
             date: day.date instanceof Date ? day.date : new Date(day.date),
             close: day.close,
             open: day.open,
@@ -51,21 +51,28 @@ export async function getHistoricalPrices(symbol, startDate, endDate) {
  * Calcula y guarda variaciones históricas desde la fecha de compra hasta hoy
  * Tiene en cuenta las compras adicionales (add) para calcular el valor total correcto
  */
-export async function calculateHistoricalVariations(investmentId, userId, investment) {
+export async function calculateHistoricalVariations(
+  investmentId,
+  userId,
+  investment,
+) {
   try {
     // No calcular para carteras automatizadas
     if (investment.isAutomatedPortfolio) {
-      return { calculated: 0, message: 'Cartera automatizada, no se calculan variaciones históricas' };
+      return {
+        calculated: 0,
+        message: "Cartera automatizada, no se calculan variaciones históricas",
+      };
     }
 
     // Verificar que tiene símbolo
     if (!investment.symbol) {
-      return { calculated: 0, message: 'No tiene símbolo definido' };
+      return { calculated: 0, message: "No tiene símbolo definido" };
     }
 
     const purchaseDate = new Date(investment.purchaseDate);
     purchaseDate.setHours(0, 0, 0, 0);
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -76,15 +83,22 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
     }).sort({ date: 1 });
 
     // Obtener datos históricos de precios
-    const historicalPrices = await getHistoricalPrices(investment.symbol, purchaseDate, today);
-    
+    const historicalPrices = await getHistoricalPrices(
+      investment.symbol,
+      purchaseDate,
+      today,
+    );
+
     if (historicalPrices.length === 0) {
-      return { calculated: 0, message: 'No se pudieron obtener datos históricos' };
+      return {
+        calculated: 0,
+        message: "No se pudieron obtener datos históricos",
+      };
     }
 
     // Crear un mapa de precios por fecha
     const priceMap = new Map();
-    historicalPrices.forEach(day => {
+    historicalPrices.forEach((day) => {
       const date = new Date(day.date);
       date.setHours(0, 0, 0, 0);
       priceMap.set(date.getTime(), day.close);
@@ -98,12 +112,12 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
 
     // Iterar día por día desde la fecha de compra hasta hoy
     const currentDate = new Date(purchaseDate);
-    
+
     while (currentDate <= today) {
       const dateKey = currentDate.getTime();
-      
+
       // Verificar si hay operaciones (add/sell) en este día
-      const dayOperations = historyEntries.filter(h => {
+      const dayOperations = historyEntries.filter((h) => {
         const hDate = new Date(h.date);
         hDate.setHours(0, 0, 0, 0);
         return hDate.getTime() === dateKey;
@@ -112,14 +126,16 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
       // Calcular el capital añadido/retirado en este día
       let capitalChange = 0;
       for (const op of dayOperations) {
-        if (op.operation === 'creation' || op.operation === 'add') {
+        if (op.operation === "creation" || op.operation === "add") {
           currentQuantity += op.quantity || 0;
           // El capital añadido es el operationAmount o quantity * operationPrice
-          capitalChange += op.operationAmount || (op.quantity * (op.operationPrice || 0));
-        } else if (op.operation === 'sell' || op.operation === 'withdraw') {
+          capitalChange +=
+            op.operationAmount || op.quantity * (op.operationPrice || 0);
+        } else if (op.operation === "sell" || op.operation === "withdraw") {
           currentQuantity -= op.quantity || 0;
           // El capital retirado es negativo
-          capitalChange -= (op.operationAmount || (op.quantity * (op.operationPrice || 0)));
+          capitalChange -=
+            op.operationAmount || op.quantity * (op.operationPrice || 0);
         }
       }
 
@@ -128,12 +144,12 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
       if (!dayPrice) {
         // Buscar el precio más cercano anterior (para días festivos/fines de semana)
         const sortedDates = Array.from(priceMap.keys()).sort((a, b) => b - a);
-        const closestDate = sortedDates.find(d => d <= dateKey);
+        const closestDate = sortedDates.find((d) => d <= dateKey);
         if (closestDate) {
           dayPrice = priceMap.get(closestDate);
         }
       }
-      
+
       // Si aún no hay precio, usar el último precio conocido de días anteriores
       if (!dayPrice && previousTotalValue !== null && currentQuantity > 0) {
         // Calcular el precio unitario del día anterior
@@ -142,7 +158,7 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
 
       // Verificar si hay un registro en InvestmentHistory para este día con valores reales
       // Si existe, usar esos valores en lugar de calcular desde Yahoo Finance
-      const dayHistoryEntry = historyEntries.find(h => {
+      const dayHistoryEntry = historyEntries.find((h) => {
         const hDate = new Date(h.date);
         hDate.setHours(0, 0, 0, 0);
         return hDate.getTime() === dateKey && h.totalValue;
@@ -153,9 +169,15 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
         // Usar el valor real del historial si existe
         totalValue = dayHistoryEntry.totalValue;
         // Actualizar la cantidad si hay una operación
-        if (dayHistoryEntry.operation === 'creation' || dayHistoryEntry.operation === 'add') {
+        if (
+          dayHistoryEntry.operation === "creation" ||
+          dayHistoryEntry.operation === "add"
+        ) {
           currentQuantity = dayHistoryEntry.quantity || currentQuantity;
-        } else if (dayHistoryEntry.operation === 'sell' || dayHistoryEntry.operation === 'withdraw') {
+        } else if (
+          dayHistoryEntry.operation === "sell" ||
+          dayHistoryEntry.operation === "withdraw"
+        ) {
           currentQuantity = dayHistoryEntry.quantity || currentQuantity;
         }
       } else if (dayPrice && currentQuantity >= 0) {
@@ -171,15 +193,18 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
       // La variación es el cambio de valor menos el capital añadido/retirado
       let changeAmount = 0;
       let changePercent = 0;
-      
+
       if (previousTotalValue !== null && previousTotalValue > 0) {
         // Variación = (Valor total hoy - Capital añadido) - Valor total ayer
         // Esto da la variación pura del precio, sin contar el capital añadido
         const valueChange = totalValue - previousTotalValue;
         changeAmount = valueChange - capitalChange;
-        
+
         // Para el porcentaje, comparar con el valor anterior (sin capital añadido)
-        changePercent = previousTotalValue > 0 ? (changeAmount / previousTotalValue) * 100 : 0;
+        changePercent =
+          previousTotalValue > 0
+            ? (changeAmount / previousTotalValue) * 100
+            : 0;
       } else if (previousTotalValue === null && currentQuantity > 0) {
         // Primer día: no hay variación
         changeAmount = 0;
@@ -191,7 +216,10 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
         {
           investment: investmentId,
           user: userId,
-          date: { $gte: currentDate, $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000) },
+          date: {
+            $gte: currentDate,
+            $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000),
+          },
         },
         {
           investment: investmentId,
@@ -204,7 +232,7 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
         {
           upsert: true,
           new: true,
-        }
+        },
       );
 
       previousTotalValue = totalValue;
@@ -215,7 +243,10 @@ export async function calculateHistoricalVariations(investmentId, userId, invest
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    return { calculated, message: `Variaciones calculadas: ${calculated} días` };
+    return {
+      calculated,
+      message: `Variaciones calculadas: ${calculated} días`,
+    };
   } catch (error) {
     return { calculated: 0, message: `Error: ${error.message}` };
   }
@@ -236,7 +267,9 @@ export async function migrateExistingDailyVariations(userId = null) {
     }
 
     // Obtener todos los registros de historial que tienen variación diaria
-    const historyEntries = await InvestmentHistory.find(query).sort({ date: 1 });
+    const historyEntries = await InvestmentHistory.find(query).sort({
+      date: 1,
+    });
 
     let migrated = 0;
     let skipped = 0;

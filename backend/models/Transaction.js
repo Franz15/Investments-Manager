@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -9,13 +9,13 @@ const transactionSchema = new mongoose.Schema(
     },
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SubAccount',
+      ref: "SubAccount",
       required: true,
     },
     type: {
       type: String,
       required: true,
-      enum: ['income', 'expense', 'transfer'],
+      enum: ["income", "expense", "transfer"],
     },
     category: {
       type: String,
@@ -29,7 +29,7 @@ const transactionSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: 'EUR',
+      default: "EUR",
     },
     description: {
       type: String,
@@ -49,8 +49,7 @@ const transactionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-export default mongoose.model('Transaction', transactionSchema);
-
+export default mongoose.model("Transaction", transactionSchema);

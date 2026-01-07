@@ -1,11 +1,15 @@
-import DailyVariation from '../models/DailyVariation.js';
-import InvestmentHistory from '../models/InvestmentHistory.js';
+import DailyVariation from "../models/DailyVariation.js";
+import InvestmentHistory from "../models/InvestmentHistory.js";
 
 /**
  * Calcula y guarda la variación diaria de una inversión
  * Usa una colección ligera (DailyVariation) en lugar de InvestmentHistory
  */
-export async function saveDailyVariation(investmentId, userId, currentTotalValue) {
+export async function saveDailyVariation(
+  investmentId,
+  userId,
+  currentTotalValue,
+) {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -51,25 +55,25 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
       investment: investmentId,
       user: userId,
       date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ['add', 'sell', 'withdraw'] },
+      operation: { $in: ["add", "sell", "withdraw"] },
     });
-    
+
     // Calcular el capital añadido/retirado hoy
     let capitalChangeToday = 0;
     for (const op of todayOperations) {
-      if (op.operation === 'add') {
+      if (op.operation === "add") {
         capitalChangeToday += op.operationAmount || 0;
-      } else if (op.operation === 'sell' || op.operation === 'withdraw') {
+      } else if (op.operation === "sell" || op.operation === "withdraw") {
         capitalChangeToday -= Math.abs(op.operationAmount || 0);
       }
     }
-    
+
     // Verificar si hay una operación 'update' hoy (corrección manual)
     const todayUpdateOperations = await InvestmentHistory.find({
       investment: investmentId,
       user: userId,
       date: { $gte: today, $lt: tomorrow },
-      operation: 'update',
+      operation: "update",
     });
 
     // Calcular variación
@@ -79,15 +83,25 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
     let changeAmount = 0;
     let changePercent = 0;
 
-    if (existingTodayEntry && todayUpdateOperations.length > 0 && previousEntry && previousEntry.totalValue) {
+    if (
+      existingTodayEntry &&
+      todayUpdateOperations.length > 0 &&
+      previousEntry &&
+      previousEntry.totalValue
+    ) {
       // Corrección manual: recalcular variación basándose en el día anterior
       // Esto preserva la variación real del día, ignorando la diferencia de la corrección
       const valueChange = currentTotalValue - previousEntry.totalValue;
       changeAmount = valueChange - capitalChangeToday;
-      changePercent = previousEntry.totalValue !== 0 
-        ? (changeAmount / previousEntry.totalValue) * 100 
-        : 0;
-    } else if (existingTodayEntry && existingTodayEntry.changeAmount !== null && existingTodayEntry.changeAmount !== undefined) {
+      changePercent =
+        previousEntry.totalValue !== 0
+          ? (changeAmount / previousEntry.totalValue) * 100
+          : 0;
+    } else if (
+      existingTodayEntry &&
+      existingTodayEntry.changeAmount !== null &&
+      existingTodayEntry.changeAmount !== undefined
+    ) {
       // Si ya existe una entrada para hoy pero no es corrección manual, preservar la variación original
       changeAmount = existingTodayEntry.changeAmount;
       changePercent = existingTodayEntry.changePercent;
@@ -96,9 +110,10 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
       // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
       const valueChange = currentTotalValue - previousEntry.totalValue;
       changeAmount = valueChange - capitalChangeToday;
-      changePercent = previousEntry.totalValue !== 0 
-        ? (changeAmount / previousEntry.totalValue) * 100 
-        : 0;
+      changePercent =
+        previousEntry.totalValue !== 0
+          ? (changeAmount / previousEntry.totalValue) * 100
+          : 0;
     }
 
     // Guardar o actualizar en DailyVariation
@@ -108,7 +123,7 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
       user: userId,
       date: { $gte: today, $lt: tomorrow },
     };
-    
+
     await DailyVariation.findOneAndUpdate(
       query,
       {
@@ -122,7 +137,7 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
       {
         upsert: true,
         new: true,
-      }
+      },
     );
 
     return {
@@ -140,7 +155,12 @@ export async function saveDailyVariation(investmentId, userId, currentTotalValue
 /**
  * Obtiene las variaciones diarias de una inversión
  */
-export async function getDailyVariations(investmentId, userId, startDate, endDate) {
+export async function getDailyVariations(
+  investmentId,
+  userId,
+  startDate,
+  endDate,
+) {
   try {
     const query = {
       investment: investmentId,
@@ -153,8 +173,7 @@ export async function getDailyVariations(investmentId, userId, startDate, endDat
       if (endDate) query.date.$lte = new Date(endDate);
     }
 
-    return await DailyVariation.find(query)
-      .sort({ date: 1 });
+    return await DailyVariation.find(query).sort({ date: 1 });
   } catch (error) {
     return [];
   }

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,11 +15,11 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: '👤',
+      default: "👤",
     },
     color: {
       type: String,
-      default: '#3b82f6',
+      default: "#3b82f6",
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },
     password: {
@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model("User", userSchema);
