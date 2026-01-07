@@ -14,21 +14,24 @@ export const UserProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    // Cargar usuario desde localStorage
+    // Cargar usuario y token desde localStorage
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('authToken');
+    if (savedUser && savedToken) {
       setCurrentUser(JSON.parse(savedUser));
     }
   }, []);
 
-  const login = (user) => {
+  const login = (user, token) => {
     setCurrentUser(user);
     localStorage.setItem('currentUser', JSON.stringify(user));
+    localStorage.setItem('authToken', token);
   };
 
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
   };
 
   const updateUser = (updatedUser) => {

@@ -1,6 +1,6 @@
 import { useUser } from '../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, LogOut, ChevronDown, ChevronUp, Lock, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import api from '../services/api';
 import { useTranslation } from '../contexts/TranslationContext';
@@ -21,6 +21,16 @@ const Profile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showCustomColor, setShowCustomColor] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -58,6 +68,42 @@ const Profile = () => {
 
   const handleLanguageChange = (newLanguage) => {
     setLanguage(newLanguage);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('profile.passwordMismatch'));
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      setPasswordError('La nueva contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await api.patch('/users/me/password', {
+        currentPassword,
+        newPassword,
+      });
+      setPasswordSuccess(t('profile.passwordChanged'));
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPasswordSuccess('');
+      }, 2000);
+    } catch (error) {
+      setPasswordError(error.response?.data?.message || t('profile.changePasswordError'));
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const languages = [
@@ -249,6 +295,139 @@ const Profile = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+          {/* Cambio de Contraseña */}
+          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+            <button
+              onClick={() => {
+                setShowChangePassword(!showChangePassword);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordError('');
+                setPasswordSuccess('');
+              }}
+              className="flex items-center gap-3 mb-4 w-full text-left"
+            >
+              <Lock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('profile.changePassword')}</span>
+              {showChangePassword ? (
+                <ChevronUp className="h-4 w-4 ml-auto text-gray-400" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />
+              )}
+            </button>
+
+            {showChangePassword && (
+              <form onSubmit={handleChangePassword} className="space-y-4 mt-4">
+                <div>
+                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t('profile.currentPassword')}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="currentPassword"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full input-field pl-10 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t('profile.newPassword')}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full input-field pl-10 pr-10"
+                      required
+                      minLength={4}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t('profile.confirmPassword')}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full input-field pl-10 pr-10"
+                      required
+                      minLength={4}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
+                    {passwordSuccess}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                  className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--user-color-600)' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--user-color-700)')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--user-color-600)')}
+                >
+                  {isChangingPassword ? (
+                    <>
+                      <LoadingSpinner message="" />
+                      <span>{t('common.loading')}</span>
+                    </>
+                  ) : (
+                    t('common.save')
+                  )}
+                </button>
+              </form>
+            )}
           </div>
         </div>
 

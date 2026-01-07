@@ -10,6 +10,7 @@ import investmentHistoryRoutes from './routes/investmentHistoryRoutes.js';
 import debtRoutes from './routes/debtRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/subaccounts', subAccountRoutes);
 app.use('/api/transactions', transactionRoutes);

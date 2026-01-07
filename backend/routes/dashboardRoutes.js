@@ -5,15 +5,15 @@ import Transaction from '../models/Transaction.js';
 import Investment from '../models/Investment.js';
 import Debt from '../models/Debt.js';
 import InvestmentHistory from '../models/InvestmentHistory.js';
-import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 import { getQuote } from '../services/quoteService.js';
 import { getLatestDailyVariation } from '../services/dailyVariationService.js';
 import YahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
 
-// Aplicar middleware a todas las rutas
-router.use(getUserFromRequest);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authenticateToken);
 
 // GET estadísticas del dashboard
 router.get('/stats', async (req, res) => {
