@@ -1,12 +1,12 @@
 import express from 'express';
 import SubAccount from '../models/SubAccount.js';
 import Account from '../models/Account.js';
-import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Aplicar middleware a todas las rutas
-router.use(getUserFromRequest);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authenticateToken);
 
 // GET todas las subcuentas
 router.get('/', async (req, res) => {

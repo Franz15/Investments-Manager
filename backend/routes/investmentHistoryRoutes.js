@@ -1,7 +1,7 @@
 import express from 'express';
 import InvestmentHistory from '../models/InvestmentHistory.js';
 import Investment from '../models/Investment.js';
-import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 import { saveDailyVariation, getDailyVariations } from '../services/dailyVariationService.js';
 import { migrateExistingDailyVariations, calculateHistoricalVariations } from '../services/historicalVariationService.js';
 
@@ -47,8 +47,8 @@ async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
   }
 }
 
-// Aplicar middleware a todas las rutas
-router.use(getUserFromRequest);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authenticateToken);
 
 // GET historial de una inversión
 router.get('/investment/:investmentId', async (req, res) => {

@@ -2,15 +2,15 @@ import express from 'express';
 import Investment from '../models/Investment.js';
 import SubAccount from '../models/SubAccount.js';
 import Account from '../models/Account.js';
-import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 import { updateMultipleQuotes, getQuote } from '../services/quoteService.js';
 import { saveDailyVariation } from '../services/dailyVariationService.js';
 import { calculateHistoricalVariations } from '../services/historicalVariationService.js';
 
 const router = express.Router();
 
-// Aplicar middleware a todas las rutas
-router.use(getUserFromRequest);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authenticateToken);
 
 // Función helper para calcular diferencias respecto al día anterior
 async function calculateDailyChanges(investmentId, userId, currentTotalValue) {

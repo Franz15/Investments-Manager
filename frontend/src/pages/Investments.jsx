@@ -1910,16 +1910,16 @@ const Investments = () => {
                   onChange={(e) => setUpdateFormData({ ...updateFormData, notes: e.target.value })}
                 />
               </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  Guardar Actualización
-                </button>
+              <div className="flex gap-3 pt-4 justify-end">
                 <button
                   type="button"
                   onClick={() => setShowUpdateModal(false)}
-                  className="flex-1 btn-secondary"
+                  className="btn-secondary px-4"
                 >
                   Cancelar
+                </button>
+                <button type="submit" className="btn-primary px-4">
+                  Actualizar
                 </button>
               </div>
             </form>
