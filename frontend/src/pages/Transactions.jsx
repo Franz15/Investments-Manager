@@ -8,8 +8,17 @@ import {
   Search,
   Filter,
   X,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
 } from "lucide-react";
-import { format } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from "date-fns";
 import { es } from "date-fns/locale";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -20,10 +29,14 @@ const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
+  const [statisticsData, setStatisticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [selectedContext, setSelectedContext] = useState("all"); // "all", "personal", or businessId
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -34,6 +47,7 @@ const Transactions = () => {
     category: "",
     startDate: "",
     endDate: "",
+    business: "",
   });
 
   const [formData, setFormData] = useState({
@@ -49,22 +63,30 @@ const Transactions = () => {
     toAccount: "",
     toSubAccount: "",
     useAccount: false, // true si se usa cuenta, false si se usa subcuenta
+    business: null,
   });
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    fetchTransactions();
+    fetchStatistics();
+  }, [filters, selectedContext]);
+
   const fetchData = async () => {
     try {
-      const [transactionsRes, subAccountsRes, accountsRes] = await Promise.all([
-        api.get("/transactions"),
+      const [subAccountsRes, accountsRes, categoriesRes, businessesRes] = await Promise.all([
         api.get("/subaccounts"),
         api.get("/accounts"),
+        api.get("/categories").catch(() => ({ data: [] })), // Si no existe, usar array vacío
+        api.get("/businesses").catch(() => ({ data: [] })), // Si no existe, usar array vacío
       ]);
-      setTransactions(transactionsRes.data);
       setSubAccounts(subAccountsRes.data);
       setAccounts(accountsRes.data);
+      setCategories(categoriesRes.data || []);
+      setBusinesses(businessesRes.data || []);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -72,102 +94,51 @@ const Transactions = () => {
     }
   };
 
-  // Filtrar transacciones
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((transaction) => {
-      // Búsqueda por texto
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch =
-          transaction.description?.toLowerCase().includes(searchLower) ||
-          transaction.category?.toLowerCase().includes(searchLower) ||
-          transaction.subAccount?.name?.toLowerCase().includes(searchLower) ||
-          transaction.subAccount?.account?.name
-            ?.toLowerCase()
-            .includes(searchLower) ||
-          transaction.account?.name?.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
+  const fetchTransactions = async () => {
+    try {
+      const params = {};
+      if (filters.type) params.type = filters.type;
+      if (filters.category) params.category = filters.category;
+      if (filters.startDate) params.startDate = filters.startDate;
+      if (filters.endDate) params.endDate = filters.endDate;
+      if (filters.accountId) params.accountId = filters.accountId;
+      if (filters.subAccountId) params.subAccountId = filters.subAccountId;
+
+      // Aplicar filtro de contexto
+      if (selectedContext === "personal") {
+        params.business = "null";
+      } else if (selectedContext !== "all") {
+        params.business = selectedContext;
       }
 
-      // Filtro por cuenta
-      if (filters.accountId) {
-        const accountId =
-          transaction.account?._id ||
-          transaction.account ||
-          transaction.subAccount?.account?._id ||
-          transaction.subAccount?.account;
-        if (accountId?.toString() !== filters.accountId) return false;
+      const response = await api.get("/transactions", { params });
+      setTransactions(response.data);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  };
+
+  const fetchStatistics = async () => {
+    try {
+      const params = {};
+      if (filters.startDate) params.startDate = filters.startDate;
+      if (filters.endDate) params.endDate = filters.endDate;
+
+      // Aplicar filtro de contexto
+      if (selectedContext === "personal") {
+        params.business = "null";
+      } else if (selectedContext !== "all") {
+        params.business = selectedContext;
       }
 
-      // Filtro por subcuenta
-      if (filters.subAccountId) {
-        const subAccountId =
-          transaction.subAccount?._id || transaction.subAccount;
-        if (subAccountId?.toString() !== filters.subAccountId) return false;
-      }
-
-      // Filtro por tipo
-      if (filters.type) {
-        if (transaction.type !== filters.type) return false;
-      }
-
-      // Filtro por categoría
-      if (filters.category) {
-        if (
-          transaction.category?.toLowerCase() !== filters.category.toLowerCase()
-        )
-          return false;
-      }
-
-      // Filtro por fecha
-      if (filters.startDate) {
-        const transactionDate = new Date(transaction.date);
-        const startDate = new Date(filters.startDate);
-        if (transactionDate < startDate) return false;
-      }
-
-      if (filters.endDate) {
-        const transactionDate = new Date(transaction.date);
-        const endDate = new Date(filters.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        if (transactionDate > endDate) return false;
-      }
-
-      return true;
-    });
-  }, [transactions, filters]);
-
-  // Calcular estadísticas
-  const statistics = useMemo(() => {
-    const stats = {
-      totalIncome: 0,
-      totalExpense: 0,
-      totalTransfer: 0,
-      count: filteredTransactions.length,
-    };
-
-    filteredTransactions.forEach((transaction) => {
-      if (transaction.type === "income") {
-        stats.totalIncome += transaction.amount;
-      } else if (transaction.type === "expense") {
-        stats.totalExpense += transaction.amount;
-      } else if (transaction.type === "transfer") {
-        stats.totalTransfer += transaction.amount;
-      }
-    });
-
-    stats.net = stats.totalIncome - stats.totalExpense;
-    return stats;
-  }, [filteredTransactions]);
-
-  // Obtener categorías únicas
-  const categories = useMemo(() => {
-    const cats = new Set();
-    transactions.forEach((t) => {
-      if (t.category) cats.add(t.category);
-    });
-    return Array.from(cats).sort();
-  }, [transactions]);
+      const response = await api.get("/transactions/statistics/summary", {
+        params,
+      });
+      setStatisticsData(response.data);
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -246,7 +217,8 @@ const Transactions = () => {
         }
       }
 
-      fetchData();
+      fetchTransactions();
+      fetchStatistics();
       setShowModal(false);
       resetForm();
     } catch (error) {
@@ -272,6 +244,7 @@ const Transactions = () => {
       toAccount: "",
       toSubAccount: "",
       useAccount: !!hasAccount,
+      business: transaction.business?._id || transaction.business || null,
     });
     setShowModal(true);
   };
@@ -280,7 +253,8 @@ const Transactions = () => {
     if (window.confirm(t("transactions.deleteConfirm"))) {
       try {
         await api.delete(`/transactions/${id}`);
-        fetchData();
+        fetchTransactions();
+        fetchStatistics();
       } catch (error) {
         console.error("Error deleting transaction:", error);
         alert("Error al eliminar la transacción");
@@ -301,8 +275,39 @@ const Transactions = () => {
       toAccount: "",
       toSubAccount: "",
       useAccount: false,
+      business:
+        selectedContext === "personal"
+          ? null
+          : selectedContext !== "all"
+            ? selectedContext
+            : null,
     });
     setEditingTransaction(null);
+  };
+
+  const applyQuickFilter = (period) => {
+    const today = new Date();
+    let startDate, endDate;
+
+    switch (period) {
+      case "month":
+        startDate = startOfMonth(today);
+        endDate = endOfMonth(today);
+        break;
+      case "year":
+        startDate = startOfYear(today);
+        endDate = endOfYear(today);
+        break;
+      default:
+        startDate = null;
+        endDate = null;
+    }
+
+    setFilters({
+      ...filters,
+      startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
+      endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
+    });
   };
 
   const clearFilters = () => {
@@ -314,10 +319,78 @@ const Transactions = () => {
       category: "",
       startDate: "",
       endDate: "",
+      business: "",
     });
   };
 
   const hasActiveFilters = Object.values(filters).some((value) => value !== "");
+
+  // Filtrar transacciones localmente (para búsqueda)
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
+      // Búsqueda por texto
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch =
+          transaction.description?.toLowerCase().includes(searchLower) ||
+          transaction.category?.toLowerCase().includes(searchLower) ||
+          transaction.subAccount?.name?.toLowerCase().includes(searchLower) ||
+          transaction.subAccount?.account?.name?.toLowerCase().includes(searchLower) ||
+          transaction.account?.name?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Filtro por subcuenta
+      if (filters.subAccountId) {
+        const subAccountId = transaction.subAccount?._id || transaction.subAccount;
+        if (subAccountId?.toString() !== filters.subAccountId) return false;
+      }
+
+      return true;
+    });
+  }, [transactions, filters.search, filters.subAccountId]);
+
+  // Calcular estadísticas locales (si no hay estadísticas del servidor)
+  const statistics = useMemo(() => {
+    if (statisticsData) {
+      return {
+        totalIncome: statisticsData.totalIncome || 0,
+        totalExpense: statisticsData.totalExpenses || 0,
+        net: statisticsData.balance || 0,
+        count: statisticsData.transactionCount || 0,
+      };
+    }
+
+    // Calcular desde transacciones filtradas
+    const stats = {
+      totalIncome: 0,
+      totalExpense: 0,
+      totalTransfer: 0,
+      count: filteredTransactions.length,
+    };
+
+    filteredTransactions.forEach((transaction) => {
+      if (transaction.type === "income") {
+        stats.totalIncome += transaction.amount;
+      } else if (transaction.type === "expense") {
+        stats.totalExpense += transaction.amount;
+      } else if (transaction.type === "transfer") {
+        stats.totalTransfer += transaction.amount;
+      }
+    });
+
+    stats.net = stats.totalIncome - stats.totalExpense;
+    return stats;
+  }, [filteredTransactions, statisticsData]);
+
+  // Obtener categorías únicas
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set();
+    transactions.forEach((t) => {
+      if (t.category) cats.add(t.category);
+    });
+    return Array.from(cats).sort();
+  }, [transactions]);
 
   // Obtener subcuentas filtradas por cuenta seleccionada
   const filteredSubAccounts = useMemo(() => {
@@ -329,10 +402,20 @@ const Transactions = () => {
     }
     return subAccounts;
   }, [subAccounts, filters.accountId]);
+      accountId: "",
+    });
+  };
 
   if (loading) {
     return <LoadingSpinner />;
   }
+
+  const availableCategories = categories.filter(
+    (cat) =>
+      !formData.type ||
+      cat.type === formData.type ||
+      formData.type === "transfer",
+  );
 
   return (
     <div className="space-y-6">
@@ -345,17 +428,82 @@ const Transactions = () => {
             {t("transactions.subtitle")}
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          {t("transactions.newTransaction")}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="btn-secondary flex items-center"
+          >
+            <Filter className="h-5 w-5 mr-2" />
+            {t("transactions.filters")}
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            {t("transactions.newTransaction")}
+          </button>
+        </div>
       </div>
+
+      {/* Selector de contexto */}
+      {businesses.length > 0 && (
+        <div className="card">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t("transactions.context")}:
+            </span>
+            <button
+              onClick={() => setSelectedContext("all")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedContext === "all"
+                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              {t("transactions.allContexts")}
+            </button>
+            <button
+              onClick={() => setSelectedContext("personal")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedContext === "personal"
+                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              {t("transactions.personal")}
+            </button>
+            {businesses.map((business) => (
+              <button
+                key={business._id}
+                onClick={() => setSelectedContext(business._id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                  selectedContext === business._id
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+                style={
+                  selectedContext === business._id
+                    ? {
+                        backgroundColor: `${business.color}20`,
+                        color: business.color,
+                      }
+                    : {}
+                }
+              >
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: business.color }}
+                ></div>
+                {business.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -545,9 +693,12 @@ const Transactions = () => {
                 <option value="">
                   {t("transactions.allCategories") || "Todas"}
                 </option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {(categories.length > 0 && typeof categories[0] === 'object' 
+                  ? categories 
+                  : uniqueCategories.map(cat => ({ name: cat, _id: cat }))
+                ).map((category) => (
+                  <option key={category._id || category} value={category.name || category}>
+                    {category.name || category}
                   </option>
                 ))}
               </select>
@@ -580,9 +731,97 @@ const Transactions = () => {
                 }
               />
             </div>
+            <div className="flex items-end gap-2">
+              <button onClick={clearFilters} className="btn-secondary flex-1">
+                {t("transactions.clearFilters")}
+              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => applyQuickFilter("month")}
+                  className="btn-secondary text-xs px-2"
+                  title={t("transactions.thisMonth")}
+                >
+                  {t("transactions.month")}
+                </button>
+                <button
+                  onClick={() => applyQuickFilter("year")}
+                  className="btn-secondary text-xs px-2"
+                  title={t("transactions.thisYear")}
+                >
+                  {t("transactions.year")}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Desglose por categoría */}
+      {statisticsData &&
+        statisticsData.categoryBreakdown &&
+        statisticsData.categoryBreakdown.length > 0 && (
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              {t("transactions.categoryBreakdown")}
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                      {t("transactions.category")}
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                      {t("transactions.income")}
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                      {t("transactions.expenses")}
+                    </th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                      {t("transactions.net")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statisticsData.categoryBreakdown.map((item, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <td className="py-3 px-4 font-medium">{item.category}</td>
+                      <td className="py-3 px-4 text-right text-green-600">
+                        {item.income > 0
+                          ? new Intl.NumberFormat("es-ES", {
+                              style: "currency",
+                              currency: "EUR",
+                            }).format(item.income)
+                          : "-"}
+                      </td>
+                      <td className="py-3 px-4 text-right text-red-600">
+                        {item.expense > 0
+                          ? new Intl.NumberFormat("es-ES", {
+                              style: "currency",
+                              currency: "EUR",
+                            }).format(item.expense)
+                          : "-"}
+                      </td>
+                      <td
+                        className={`py-3 px-4 text-right font-semibold ${
+                          item.net >= 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {new Intl.NumberFormat("es-ES", {
+                          style: "currency",
+                          currency: "EUR",
+                        }).format(item.net)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
       {/* Tabla de transacciones */}
       <div className="card">
@@ -614,119 +853,140 @@ const Transactions = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredTransactions.map((transaction) => (
-                <tr
-                  key={transaction._id}
-                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <td className="py-3 px-4">
-                    {format(new Date(transaction.date), "dd MMM yyyy", {
-                      locale: es,
-                    })}
-                  </td>
-                  <td className="py-3 px-4">
-                    {transaction.account?.name ? (
-                      <div>
-                        <div className="font-medium">
-                          {transaction.account.name}
+              {filteredTransactions.map((transaction) => {
+                const categoryData = categories.find(
+                  (cat) => (cat.name || cat) === transaction.category,
+                );
+                return (
+                  <tr
+                    key={transaction._id}
+                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <td className="py-3 px-4">
+                      {format(new Date(transaction.date), "dd MMM yyyy", {
+                        locale: es,
+                      })}
+                    </td>
+                    <td className="py-3 px-4">
+                      {transaction.account?.name ? (
+                        <div>
+                          <div className="font-medium">
+                            {transaction.account.name}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {transaction.subAccount?.name ||
+                              t("transactions.mainAccount") ||
+                              "Cuenta Principal"}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {transaction.subAccount?.name ||
-                            t("transactions.mainAccount") ||
-                            "Cuenta Principal"}
+                      ) : transaction.subAccount?.account?.name ? (
+                        <div>
+                          <div className="font-medium">
+                            {transaction.subAccount.account.name}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {transaction.subAccount.name} (
+                            {transaction.subAccount.type === "cash"
+                              ? t("accounts.subAccountTypes.cash")
+                              : transaction.subAccount.type === "investment"
+                                ? t("accounts.subAccountTypes.investment")
+                                : transaction.subAccount.type === "savings"
+                                  ? t("accounts.subAccountTypes.savings")
+                                  : t("accounts.subAccountTypes.credit")}
+                            )
+                          </div>
                         </div>
-                      </div>
-                    ) : transaction.subAccount?.account?.name ? (
-                      <div>
-                        <div className="font-medium">
-                          {transaction.subAccount.account.name}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {transaction.subAccount.name} (
-                          {transaction.subAccount.type === "cash"
-                            ? t("accounts.subAccountTypes.cash")
-                            : transaction.subAccount.type === "investment"
-                              ? t("accounts.subAccountTypes.investment")
-                              : transaction.subAccount.type === "savings"
-                                ? t("accounts.subAccountTypes.savings")
-                                : t("accounts.subAccountTypes.credit")}
-                          )
-                        </div>
-                      </div>
-                    ) : (
-                      transaction.subAccount?.name ||
-                      transaction.account?.name ||
-                      "-"
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        transaction.type === "income"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      ) : (
+                        transaction.subAccount?.name ||
+                        transaction.account?.name ||
+                        "-"
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          transaction.type === "income"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : transaction.type === "expense"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                        }`}
+                      >
+                        {transaction.type === "income" ? (
+                          <ArrowUp className="h-3 w-3 mr-1" />
+                        ) : transaction.type === "expense" ? (
+                          <ArrowDown className="h-3 w-3 mr-1" />
+                        ) : null}
+                        {transaction.type === "income"
+                          ? t("transactions.types.income")
                           : transaction.type === "expense"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            ? t("transactions.types.expense")
+                            : t("transactions.types.transfer")}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {categoryData && categoryData.color ? (
+                        <span
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          style={{
+                            backgroundColor: `${categoryData.color}20`,
+                            color: categoryData.color,
+                          }}
+                        >
+                          {transaction.category}
+                        </span>
+                      ) : (
+                        transaction.category
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      {transaction.description || "-"}
+                    </td>
+                    <td
+                      className={`py-3 px-4 text-right font-semibold ${
+                        transaction.type === "income"
+                          ? "text-green-600 dark:text-green-400"
+                          : transaction.type === "expense"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-blue-600 dark:text-blue-400"
                       }`}
                     >
-                      {transaction.type === "income" ? (
-                        <ArrowUp className="h-3 w-3 mr-1" />
-                      ) : transaction.type === "expense" ? (
-                        <ArrowDown className="h-3 w-3 mr-1" />
-                      ) : null}
                       {transaction.type === "income"
-                        ? t("transactions.types.income")
+                        ? "+"
                         : transaction.type === "expense"
-                          ? t("transactions.types.expense")
-                          : t("transactions.types.transfer")}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">{transaction.category}</td>
-                  <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                    {transaction.description || "-"}
-                  </td>
-                  <td
-                    className={`py-3 px-4 text-right font-semibold ${
-                      transaction.type === "income"
-                        ? "text-green-600 dark:text-green-400"
-                        : transaction.type === "expense"
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-blue-600 dark:text-blue-400"
-                    }`}
-                  >
-                    {transaction.type === "income"
-                      ? "+"
-                      : transaction.type === "expense"
-                        ? "-"
-                        : "↔"}
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: transaction.currency,
-                    }).format(transaction.amount)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleEdit(transaction)}
-                        className="p-1 text-gray-600 dark:text-gray-400 transition-colors"
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.color =
-                            "var(--user-color-600)")
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.color = "")}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(transaction._id)}
-                        className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          ? "-"
+                          : "↔"}
+                      {new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: transaction.currency,
+                      }).format(transaction.amount)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(transaction)}
+                          className="p-1 text-gray-600 dark:text-gray-400 transition-colors"
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.color =
+                              "var(--user-color-600)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.color = "")
+                          }
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(transaction._id)}
+                          className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {filteredTransactions.length === 0 && (
@@ -925,6 +1185,8 @@ const Transactions = () => {
                       ...formData,
                       type: e.target.value,
                       toSubAccount: "",
+                      toAccount: "",
+                      category: "",
                     })
                   }
                   required
@@ -943,17 +1205,64 @@ const Transactions = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("transactions.business")} {t("common.optional")}
+                </label>
+                <select
+                  className="input-field"
+                  value={formData.business || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      business: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">{t("transactions.personal")}</option>
+                  {businesses.map((business) => (
+                    <option key={business._id} value={business._id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t("transactions.category")}
                 </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  required
-                />
+                {formData.type === "transfer" ? (
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    required
+                  />
+                ) : (
+                  <select
+                    className="input-field"
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">{t("transactions.selectCategory")}</option>
+                    {availableCategories
+                      .filter(
+                        (cat) =>
+                          !cat.business ||
+                          cat.business === formData.business ||
+                          (!formData.business && !cat.business),
+                      )
+                      .map((category) => (
+                        <option key={category._id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

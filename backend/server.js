@@ -13,6 +13,10 @@ import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import portfolioFundRoutes from "./routes/portfolioFundRoutes.js";
 import portfolioBuilderRoutes from "./routes/portfolioBuilderRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import budgetRoutes from "./routes/budgetRoutes.js";
+import forecastRoutes from "./routes/forecastRoutes.js";
+import businessRoutes from "./routes/businessRoutes.js";
 
 dotenv.config();
 
@@ -68,6 +72,10 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/portfolio-funds", portfolioFundRoutes);
 app.use("/api/portfolio-builder", portfolioBuilderRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/budgets", budgetRoutes);
+app.use("/api/forecasts", forecastRoutes);
+app.use("/api/businesses", businessRoutes);
 
 // Root route
 app.get("/", (req, res) => {
