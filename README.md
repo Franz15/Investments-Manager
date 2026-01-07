@@ -13,11 +13,13 @@ Dashboard moderno para gestionar cuentas bancarias, transacciones e inversiones 
 ## 🛠️ Tecnologías
 
 ### Backend
+
 - Node.js + Express
 - MongoDB + Mongoose
 - RESTful API
 
 ### Frontend
+
 - React 18
 - Vite
 - Tailwind CSS
@@ -50,6 +52,7 @@ npm install
 **Configurar variables de entorno:**
 
 Opción 1 - Usar el script automático (recomendado):
+
 ```bash
 npm run setup-env
 ```
@@ -90,11 +93,13 @@ O usa MongoDB Atlas (cloud) y actualiza la URI en el archivo `.env`.
 **Opción 1 - Scripts automáticos (Recomendado):**
 
 Iniciar todo (backend + frontend en ventanas separadas):
+
 ```powershell
 .\start-all.ps1
 ```
 
 O iniciar por separado:
+
 ```powershell
 # Terminal 1 - Backend
 .\start-backend.ps1
@@ -106,6 +111,7 @@ O iniciar por separado:
 **Opción 2 - Manual:**
 
 **Terminal 1 - Backend:**
+
 ```powershell
 cd backend
 npm run dev
@@ -114,6 +120,7 @@ npm run dev
 El servidor estará disponible en `http://localhost:5000`
 
 **Terminal 2 - Frontend:**
+
 ```powershell
 cd frontend
 npm run dev
@@ -124,12 +131,14 @@ La aplicación estará disponible en `http://localhost:3000`
 ### Producción
 
 **Backend:**
+
 ```bash
 cd backend
 npm start
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 npm run build
@@ -176,6 +185,7 @@ Investments-Manager/
 ## 📡 API Endpoints
 
 ### Cuentas
+
 - `GET /api/accounts` - Obtener todas las cuentas
 - `GET /api/accounts/:id` - Obtener cuenta por ID
 - `POST /api/accounts` - Crear nueva cuenta
@@ -183,6 +193,7 @@ Investments-Manager/
 - `DELETE /api/accounts/:id` - Eliminar cuenta
 
 ### Transacciones
+
 - `GET /api/transactions` - Obtener todas las transacciones
 - `GET /api/transactions/:id` - Obtener transacción por ID
 - `POST /api/transactions` - Crear nueva transacción
@@ -190,6 +201,7 @@ Investments-Manager/
 - `DELETE /api/transactions/:id` - Eliminar transacción
 
 ### Inversiones
+
 - `GET /api/investments` - Obtener todas las inversiones
 - `GET /api/investments/:id` - Obtener inversión por ID
 - `POST /api/investments` - Crear nueva inversión
@@ -197,6 +209,7 @@ Investments-Manager/
 - `DELETE /api/investments/:id` - Eliminar inversión
 
 ### Dashboard
+
 - `GET /api/dashboard/stats` - Estadísticas generales
 - `GET /api/dashboard/balance-chart` - Datos para gráfica de balance
 - `GET /api/dashboard/investments-by-type` - Distribución de inversiones
@@ -204,7 +217,7 @@ Investments-Manager/
 ## 🎨 Características del Dashboard
 
 - **Vista General**: Resumen de balance total, inversiones y ganancias/pérdidas
-- **Gráficas Interactivas**: 
+- **Gráficas Interactivas**:
   - Balance mensual (líneas)
   - Distribución de inversiones (torta)
 - **Gestión Completa**: CRUD para cuentas, transacciones e inversiones
@@ -213,6 +226,7 @@ Investments-Manager/
 ## 🔐 Seguridad
 
 ⚠️ **Importante**: En producción, asegúrate de:
+
 - Cambiar `JWT_SECRET` por un valor seguro
 - Implementar autenticación de usuarios
 - Validar y sanitizar todas las entradas
