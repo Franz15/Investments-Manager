@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const dailyVariationSchema = new mongoose.Schema(
   {
@@ -9,7 +9,7 @@ const dailyVariationSchema = new mongoose.Schema(
     },
     investment: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Investment',
+      ref: "Investment",
       required: true,
       index: true,
     },
@@ -36,7 +36,7 @@ const dailyVariationSchema = new mongoose.Schema(
   },
   {
     timestamps: false, // No necesitamos timestamps para ahorrar espacio
-  }
+  },
 );
 
 // Índice compuesto único para evitar duplicados
@@ -45,4 +45,4 @@ dailyVariationSchema.index({ investment: 1, date: 1 }, { unique: true });
 // Índice para búsquedas por fecha
 dailyVariationSchema.index({ user: 1, date: -1 });
 
-export default mongoose.model('DailyVariation', dailyVariationSchema);
+export default mongoose.model("DailyVariation", dailyVariationSchema);

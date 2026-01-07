@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Plus, AlertCircle, Edit, Trash2, CreditCard, Home, Car, GraduationCap, FileText } from 'lucide-react';
-import api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { useTranslation } from '../contexts/TranslationContext';
+import { useEffect, useState } from "react";
+import {
+  Plus,
+  AlertCircle,
+  Edit,
+  Trash2,
+  CreditCard,
+  Home,
+  Car,
+  GraduationCap,
+  FileText,
+} from "lucide-react";
+import api from "../services/api";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { useTranslation } from "../contexts/TranslationContext";
 
 const Debts = () => {
   const { t } = useTranslation();
@@ -14,24 +24,24 @@ const Debts = () => {
   const [editingDebt, setEditingDebt] = useState(null);
   const [selectedDebtForPayment, setSelectedDebtForPayment] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'personal_loan',
+    name: "",
+    type: "personal_loan",
     totalAmount: 0,
     remainingAmount: 0,
     interestRate: 0,
     monthlyPayment: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
-    currency: 'EUR',
-    lender: '',
-    accountNumber: '',
-    description: '',
-    status: 'active',
-    subAccount: '',
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: "",
+    currency: "EUR",
+    lender: "",
+    accountNumber: "",
+    description: "",
+    status: "active",
+    subAccount: "",
   });
   const [paymentData, setPaymentData] = useState({
     amount: 0,
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
   });
 
   useEffect(() => {
@@ -41,8 +51,8 @@ const Debts = () => {
   const fetchData = async () => {
     try {
       const [debtsRes, subAccountsRes] = await Promise.all([
-        api.get('/debts'),
-        api.get('/subaccounts'),
+        api.get("/debts"),
+        api.get("/subaccounts"),
       ]);
       setDebts(debtsRes.data);
       setSubAccounts(subAccountsRes.data);
@@ -58,25 +68,29 @@ const Debts = () => {
       if (editingDebt) {
         await api.put(`/debts/${editingDebt._id}`, formData);
       } else {
-        await api.post('/debts', formData);
+        await api.post("/debts", formData);
       }
       fetchData();
       setShowModal(false);
       resetForm();
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   const handlePayment = async (e) => {
     e.preventDefault();
     try {
-      await api.post(`/debts/${selectedDebtForPayment._id}/payment`, paymentData);
+      await api.post(
+        `/debts/${selectedDebtForPayment._id}/payment`,
+        paymentData,
+      );
       fetchData();
       setShowPaymentModal(false);
       setSelectedDebtForPayment(null);
-      setPaymentData({ amount: 0, date: new Date().toISOString().split('T')[0] });
-    } catch (error) {
-    }
+      setPaymentData({
+        amount: 0,
+        date: new Date().toISOString().split("T")[0],
+      });
+    } catch (error) {}
   };
 
   const handleEdit = (debt) => {
@@ -88,57 +102,58 @@ const Debts = () => {
       remainingAmount: debt.remainingAmount,
       interestRate: debt.interestRate || 0,
       monthlyPayment: debt.monthlyPayment || 0,
-      startDate: new Date(debt.startDate).toISOString().split('T')[0],
-      endDate: debt.endDate ? new Date(debt.endDate).toISOString().split('T')[0] : '',
+      startDate: new Date(debt.startDate).toISOString().split("T")[0],
+      endDate: debt.endDate
+        ? new Date(debt.endDate).toISOString().split("T")[0]
+        : "",
       currency: debt.currency,
-      lender: debt.lender || '',
-      accountNumber: debt.accountNumber || '',
-      description: debt.description || '',
+      lender: debt.lender || "",
+      accountNumber: debt.accountNumber || "",
+      description: debt.description || "",
       status: debt.status,
-      subAccount: debt.subAccount?._id || debt.subAccount || '',
+      subAccount: debt.subAccount?._id || debt.subAccount || "",
     });
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm(t('debts.deleteConfirm'))) {
+    if (window.confirm(t("debts.deleteConfirm"))) {
       try {
         await api.delete(`/debts/${id}`);
         fetchData();
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   };
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      type: 'personal_loan',
+      name: "",
+      type: "personal_loan",
       totalAmount: 0,
       remainingAmount: 0,
       interestRate: 0,
       monthlyPayment: 0,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: '',
-      currency: 'EUR',
-      lender: '',
-      accountNumber: '',
-      description: '',
-      status: 'active',
-      subAccount: '',
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: "",
+      currency: "EUR",
+      lender: "",
+      accountNumber: "",
+      description: "",
+      status: "active",
+      subAccount: "",
     });
     setEditingDebt(null);
   };
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'mortgage':
+      case "mortgage":
         return <Home className="h-5 w-5" />;
-      case 'car_loan':
+      case "car_loan":
         return <Car className="h-5 w-5" />;
-      case 'student_loan':
+      case "student_loan":
         return <GraduationCap className="h-5 w-5" />;
-      case 'credit_card':
+      case "credit_card":
         return <CreditCard className="h-5 w-5" />;
       default:
         return <FileText className="h-5 w-5" />;
@@ -147,35 +162,35 @@ const Debts = () => {
 
   const getTypeLabel = (type) => {
     const types = {
-      mortgage: 'Hipoteca',
-      personal_loan: 'Préstamo Personal',
-      car_loan: 'Préstamo Coche',
-      credit_card: 'Tarjeta de Crédito',
-      student_loan: 'Préstamo Estudiantil',
-      other: 'Otro',
+      mortgage: "Hipoteca",
+      personal_loan: "Préstamo Personal",
+      car_loan: "Préstamo Coche",
+      credit_card: "Tarjeta de Crédito",
+      student_loan: "Préstamo Estudiantil",
+      other: "Otro",
     };
     return types[type] || type;
   };
 
   const getStatusLabel = (status) => {
     const statuses = {
-      active: 'Activa',
-      paid: 'Pagada',
-      default: 'En Mora',
+      active: "Activa",
+      paid: "Pagada",
+      default: "En Mora",
     };
     return statuses[status] || status;
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active':
-        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
-      case 'paid':
-        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
-      case 'default':
-        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+      case "active":
+        return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
+      case "paid":
+        return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200";
+      case "default":
+        return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200";
       default:
-        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200";
     }
   };
 
@@ -183,20 +198,36 @@ const Debts = () => {
     return <LoadingSpinner />;
   }
 
-  const activeDebts = debts.filter(d => d.status === 'active');
-  const totalDebt = activeDebts.reduce((sum, debt) => sum + debt.remainingAmount, 0);
-  const totalMonthlyPayments = activeDebts.reduce((sum, debt) => sum + debt.monthlyPayment, 0);
+  const activeDebts = debts.filter((d) => d.status === "active");
+  const totalDebt = activeDebts.reduce(
+    (sum, debt) => sum + debt.remainingAmount,
+    0,
+  );
+  const totalMonthlyPayments = activeDebts.reduce(
+    (sum, debt) => sum + debt.monthlyPayment,
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t('debts.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">{t('debts.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {t("debts.title")}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            {t("debts.subtitle")}
+          </p>
         </div>
-        <button onClick={() => { resetForm(); setShowModal(true); }} className="btn-primary flex items-center">
+        <button
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+          className="btn-primary flex items-center"
+        >
           <Plus className="h-5 w-5 mr-2" />
-          {t('debts.newDebt')}
+          {t("debts.newDebt")}
         </button>
       </div>
 
@@ -205,9 +236,14 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.totalDebt')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t("debts.totalDebt")}
+              </p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalDebt)}
+                {new Intl.NumberFormat("es-ES", {
+                  style: "currency",
+                  currency: "EUR",
+                }).format(totalDebt)}
               </p>
             </div>
             <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
@@ -219,9 +255,14 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.monthlyPayments')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t("debts.monthlyPayments")}
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalMonthlyPayments)}
+                {new Intl.NumberFormat("es-ES", {
+                  style: "currency",
+                  currency: "EUR",
+                }).format(totalMonthlyPayments)}
               </p>
             </div>
             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -233,7 +274,9 @@ const Debts = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.activeDebts')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t("debts.activeDebts")}
+              </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {activeDebts.length}
               </p>
@@ -248,9 +291,11 @@ const Debts = () => {
       {/* Lista de deudas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {debts.map((debt) => {
-          const paidPercentage = debt.totalAmount > 0 
-            ? ((debt.totalAmount - debt.remainingAmount) / debt.totalAmount) * 100 
-            : 0;
+          const paidPercentage =
+            debt.totalAmount > 0
+              ? ((debt.totalAmount - debt.remainingAmount) / debt.totalAmount) *
+                100
+              : 0;
 
           return (
             <div key={debt._id} className="card">
@@ -260,39 +305,62 @@ const Debts = () => {
                     {getTypeIcon(debt.type)}
                   </div>
                   <div className="ml-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{debt.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{getTypeLabel(debt.type)}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                      {debt.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {getTypeLabel(debt.type)}
+                    </p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(debt.status)}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(debt.status)}`}
+                >
                   {getStatusLabel(debt.status)}
                 </span>
               </div>
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.totalAmountLabel')}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("debts.totalAmountLabel")}
+                  </span>
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.totalAmount)}
+                    {new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: debt.currency,
+                    }).format(debt.totalAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.remainingLabel')}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("debts.remainingLabel")}
+                  </span>
                   <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.remainingAmount)}
+                    {new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: debt.currency,
+                    }).format(debt.remainingAmount)}
                   </span>
                 </div>
                 {debt.monthlyPayment > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.monthlyPaymentLabel')}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {t("debts.monthlyPaymentLabel")}
+                    </span>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat('es-ES', { style: 'currency', currency: debt.currency }).format(debt.monthlyPayment)}
+                      {new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: debt.currency,
+                      }).format(debt.monthlyPayment)}
                     </span>
                   </div>
                 )}
                 {debt.interestRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{t('debts.interestRateLabel')}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {t("debts.interestRateLabel")}
+                    </span>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {debt.interestRate}%
                     </span>
@@ -306,7 +374,10 @@ const Debts = () => {
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
                       className="h-2 rounded-full transition-all"
-                      style={{ backgroundColor: 'var(--user-color-600)', width: `${paidPercentage}%` }}
+                      style={{
+                        backgroundColor: "var(--user-color-600)",
+                        width: `${paidPercentage}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -314,16 +385,19 @@ const Debts = () => {
 
               {debt.lender && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  {t('debts.modals.lender')}: {debt.lender}
+                  {t("debts.modals.lender")}: {debt.lender}
                 </p>
               )}
 
               <div className="flex gap-2 mt-4">
-                {debt.status === 'active' && (
+                {debt.status === "active" && (
                   <button
                     onClick={() => {
                       setSelectedDebtForPayment(debt);
-                      setPaymentData({ amount: debt.monthlyPayment || 0, date: new Date().toISOString().split('T')[0] });
+                      setPaymentData({
+                        amount: debt.monthlyPayment || 0,
+                        date: new Date().toISOString().split("T")[0],
+                      });
                       setShowPaymentModal(true);
                     }}
                     className="flex-1 btn-primary text-sm"
@@ -352,7 +426,7 @@ const Debts = () => {
 
       {debts.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          {t('debts.noDebts')}
+          {t("debts.noDebts")}
         </div>
       )}
 
@@ -361,42 +435,60 @@ const Debts = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="modal-content max-w-2xl w-full">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingDebt ? t('debts.editDebt') : t('debts.newDebt')}
+              {editingDebt ? t("debts.editDebt") : t("debts.newDebt")}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.name')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("common.name")}
+                  </label>
                   <input
                     type="text"
                     className="input-field"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Ej: Hipoteca, Préstamo Coche"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.type')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("common.type")}
+                  </label>
                   <select
                     className="input-field"
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, type: e.target.value })
+                    }
                     required
                   >
-                    <option value="mortgage">{t('debts.types.mortgage')}</option>
-                    <option value="personal_loan">{t('debts.types.personalLoan')}</option>
-                    <option value="car_loan">{t('debts.types.carLoan')}</option>
-                    <option value="credit_card">{t('debts.types.creditCard')}</option>
-                    <option value="student_loan">{t('debts.types.studentLoan')}</option>
-                    <option value="other">{t('debts.types.other')}</option>
+                    <option value="mortgage">
+                      {t("debts.types.mortgage")}
+                    </option>
+                    <option value="personal_loan">
+                      {t("debts.types.personalLoan")}
+                    </option>
+                    <option value="car_loan">{t("debts.types.carLoan")}</option>
+                    <option value="credit_card">
+                      {t("debts.types.creditCard")}
+                    </option>
+                    <option value="student_loan">
+                      {t("debts.types.studentLoan")}
+                    </option>
+                    <option value="other">{t("debts.types.other")}</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.totalAmount')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.totalAmount")}
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -404,23 +496,32 @@ const Debts = () => {
                     value={formData.totalAmount}
                     onChange={(e) => {
                       const total = parseFloat(e.target.value) || 0;
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         totalAmount: total,
-                        remainingAmount: editingDebt ? formData.remainingAmount : total
+                        remainingAmount: editingDebt
+                          ? formData.remainingAmount
+                          : total,
                       });
                     }}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.remainingAmount')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.remainingAmount")}
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     className="input-field"
                     value={formData.remainingAmount}
-                    onChange={(e) => setFormData({ ...formData, remainingAmount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        remainingAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     required
                   />
                 </div>
@@ -428,31 +529,49 @@ const Debts = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.interestRate')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.interestRate")}
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     className="input-field"
                     value={formData.interestRate}
-                    onChange={(e) => setFormData({ ...formData, interestRate: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        interestRate: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.monthlyPayment')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.monthlyPayment")}
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     className="input-field"
                     value={formData.monthlyPayment}
-                    onChange={(e) => setFormData({ ...formData, monthlyPayment: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        monthlyPayment: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moneda</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Moneda
+                  </label>
                   <select
                     className="input-field"
                     value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value })
+                    }
                   >
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
@@ -463,97 +582,138 @@ const Debts = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.startDate')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.startDate")}
+                  </label>
                   <input
                     type="date"
                     className="input-field"
                     value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startDate: e.target.value })
+                    }
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.dueDate')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.dueDate")}
+                  </label>
                   <input
                     type="date"
                     className="input-field"
                     value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, endDate: e.target.value })
+                    }
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.lender')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.lender")}
+                  </label>
                   <input
                     type="text"
                     className="input-field"
                     value={formData.lender}
-                    onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-                    placeholder={t('debts.modals.lenderPlaceholder')}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lender: e.target.value })
+                    }
+                    placeholder={t("debts.modals.lenderPlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.accountNumber')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("debts.modals.accountNumber")}
+                  </label>
                   <input
                     type="text"
                     className="input-field"
                     value={formData.accountNumber}
-                    onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountNumber: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.subAccountOptional')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("debts.modals.subAccountOptional")}
+                </label>
                 <select
                   className="input-field"
                   value={formData.subAccount}
-                  onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subAccount: e.target.value })
+                  }
                 >
-                  <option value="">{t('debts.modals.unlinked')}</option>
+                  <option value="">{t("debts.modals.unlinked")}</option>
                   {subAccounts.map((subAccount) => (
                     <option key={subAccount._id} value={subAccount._id}>
-                      {subAccount.account?.name || subAccount.account} - {subAccount.name}
+                      {subAccount.account?.name || subAccount.account} -{" "}
+                      {subAccount.name}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.status')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("debts.modals.status")}
+                </label>
                 <select
                   className="input-field"
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
                 >
-                  <option value="active">{t('debts.modals.statusActive')}</option>
-                  <option value="paid">{t('debts.modals.statusPaid')}</option>
-                  <option value="default">{t('debts.modals.statusDefault')}</option>
+                  <option value="active">
+                    {t("debts.modals.statusActive")}
+                  </option>
+                  <option value="paid">{t("debts.modals.statusPaid")}</option>
+                  <option value="default">
+                    {t("debts.modals.statusDefault")}
+                  </option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('debts.modals.description')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("debts.modals.description")}
+                </label>
                 <textarea
                   className="input-field"
                   rows="3"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                 />
               </div>
 
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 btn-primary">
-                  {editingDebt ? t('debts.modals.update') : t('debts.modals.create')}
+                  {editingDebt
+                    ? t("debts.modals.update")
+                    : t("debts.modals.create")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); resetForm(); }}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="flex-1 btn-secondary"
                 >
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>
@@ -569,29 +729,47 @@ const Debts = () => {
               Registrar Pago
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Deuda: <strong>{selectedDebtForPayment.name}</strong><br />
-              Pendiente: <strong>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: selectedDebtForPayment.currency }).format(selectedDebtForPayment.remainingAmount)}</strong>
+              Deuda: <strong>{selectedDebtForPayment.name}</strong>
+              <br />
+              Pendiente:{" "}
+              <strong>
+                {new Intl.NumberFormat("es-ES", {
+                  style: "currency",
+                  currency: selectedDebtForPayment.currency,
+                }).format(selectedDebtForPayment.remainingAmount)}
+              </strong>
             </p>
             <form onSubmit={handlePayment} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto del Pago</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Monto del Pago
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   className="input-field"
                   value={paymentData.amount}
-                  onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      amount: parseFloat(e.target.value) || 0,
+                    })
+                  }
                   max={selectedDebtForPayment.remainingAmount}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha del Pago</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Fecha del Pago
+                </label>
                 <input
                   type="date"
                   className="input-field"
                   value={paymentData.date}
-                  onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
+                  onChange={(e) =>
+                    setPaymentData({ ...paymentData, date: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -604,7 +782,10 @@ const Debts = () => {
                   onClick={() => {
                     setShowPaymentModal(false);
                     setSelectedDebtForPayment(null);
-                    setPaymentData({ amount: 0, date: new Date().toISOString().split('T')[0] });
+                    setPaymentData({
+                      amount: 0,
+                      date: new Date().toISOString().split("T")[0],
+                    });
                   }}
                   className="flex-1 btn-secondary"
                 >
@@ -620,6 +801,3 @@ const Debts = () => {
 };
 
 export default Debts;
-
-
-

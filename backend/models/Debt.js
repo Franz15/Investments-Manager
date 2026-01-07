@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const debtSchema = new mongoose.Schema(
   {
@@ -15,7 +15,14 @@ const debtSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['mortgage', 'personal_loan', 'car_loan', 'credit_card', 'student_loan', 'other'],
+      enum: [
+        "mortgage",
+        "personal_loan",
+        "car_loan",
+        "credit_card",
+        "student_loan",
+        "other",
+      ],
     },
     totalAmount: {
       type: Number,
@@ -44,8 +51,8 @@ const debtSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: 'EUR',
-      enum: ['EUR', 'USD', 'GBP'],
+      default: "EUR",
+      enum: ["EUR", "USD", "GBP"],
     },
     lender: {
       type: String,
@@ -61,21 +68,21 @@ const debtSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'paid', 'default'],
-      default: 'active',
+      enum: ["active", "paid", "default"],
+      default: "active",
     },
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SubAccount',
+      ref: "SubAccount",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Virtual para calcular meses restantes
-debtSchema.virtual('monthsRemaining').get(function () {
+debtSchema.virtual("monthsRemaining").get(function () {
   if (!this.endDate) return null;
   const now = new Date();
   const diffTime = this.endDate - now;
@@ -84,12 +91,11 @@ debtSchema.virtual('monthsRemaining').get(function () {
 });
 
 // Virtual para calcular porcentaje pagado
-debtSchema.virtual('paidPercentage').get(function () {
+debtSchema.virtual("paidPercentage").get(function () {
   if (this.totalAmount === 0) return 0;
   return ((this.totalAmount - this.remainingAmount) / this.totalAmount) * 100;
 });
 
-debtSchema.set('toJSON', { virtuals: true });
+debtSchema.set("toJSON", { virtuals: true });
 
-export default mongoose.model('Debt', debtSchema);
-
+export default mongoose.model("Debt", debtSchema);

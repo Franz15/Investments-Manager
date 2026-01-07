@@ -1,9 +1,9 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: "/api",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -11,15 +11,15 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Obtener token del localStorage
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Interceptor para manejar errores de autenticación
@@ -28,18 +28,17 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       // No redirigir si la petición es al endpoint de login (el error es esperado)
-      const isLoginRequest = error.config?.url?.includes('/auth/login');
-      
+      const isLoginRequest = error.config?.url?.includes("/auth/login");
+
       if (!isLoginRequest) {
         // Token inválido o expirado, limpiar y redirigir a login
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        window.location.href = '/login';
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("currentUser");
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
-

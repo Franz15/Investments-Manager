@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const accountSchema = new mongoose.Schema(
   {
@@ -24,8 +24,8 @@ const accountSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: 'EUR',
-      enum: ['EUR', 'USD', 'GBP'],
+      default: "EUR",
+      enum: ["EUR", "USD", "GBP"],
     },
     description: {
       type: String,
@@ -34,7 +34,7 @@ const accountSchema = new mongoose.Schema(
     color: {
       type: String,
       trim: true,
-      default: '#3b82f6', // Azul por defecto
+      default: "#3b82f6", // Azul por defecto
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },
     isActive: {
@@ -44,16 +44,16 @@ const accountSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Virtual para obtener todas las subcuentas
-accountSchema.virtual('subAccounts', {
-  ref: 'SubAccount',
-  localField: '_id',
-  foreignField: 'account',
+accountSchema.virtual("subAccounts", {
+  ref: "SubAccount",
+  localField: "_id",
+  foreignField: "account",
 });
 
-accountSchema.set('toJSON', { virtuals: true });
+accountSchema.set("toJSON", { virtuals: true });
 
-export default mongoose.model('Account', accountSchema);
+export default mongoose.model("Account", accountSchema);

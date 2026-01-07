@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const investmentSchema = new mongoose.Schema(
   {
@@ -9,12 +9,12 @@ const investmentSchema = new mongoose.Schema(
     },
     account: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Account',
+      ref: "Account",
       // No requerir en el esquema para permitir inversiones antiguas, pero validar en pre-save
     },
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SubAccount',
+      ref: "SubAccount",
     },
     name: {
       type: String,
@@ -24,7 +24,15 @@ const investmentSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['stock', 'bond', 'crypto', 'fund', 'etf', 'automated_portfolio', 'other'],
+      enum: [
+        "stock",
+        "bond",
+        "crypto",
+        "fund",
+        "etf",
+        "automated_portfolio",
+        "other",
+      ],
     },
     symbol: {
       type: String,
@@ -53,13 +61,13 @@ const investmentSchema = new mongoose.Schema(
     },
     purchasePrice: {
       type: Number,
-      required: function() {
+      required: function () {
         return !this.isAutomatedPortfolio;
       },
     },
     averagePurchasePrice: {
       type: Number,
-      default: function() {
+      default: function () {
         // Por defecto, el precio medio es igual al precio de compra inicial
         return this.purchasePrice;
       },
@@ -76,12 +84,12 @@ const investmentSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: 'EUR',
+      default: "EUR",
     },
     assetClass: {
       type: String,
-      enum: ['fixed_income', 'variable_income', 'mixed'],
-      default: 'variable_income',
+      enum: ["fixed_income", "variable_income", "mixed"],
+      default: "variable_income",
     },
     fixedIncomePercentage: {
       type: Number,
@@ -116,7 +124,7 @@ const investmentSchema = new mongoose.Schema(
     },
     dcaFrequency: {
       type: String,
-      enum: ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly'],
+      enum: ["daily", "weekly", "biweekly", "monthly", "quarterly"],
       // Frecuencia de las compras automáticas
     },
     dcaStartDate: {
@@ -138,11 +146,11 @@ const investmentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Virtual para calcular el valor total
-investmentSchema.virtual('totalValue').get(function () {
+investmentSchema.virtual("totalValue").get(function () {
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas, currentPrice es el valor total actual
     return this.currentPrice;
@@ -152,7 +160,7 @@ investmentSchema.virtual('totalValue').get(function () {
 });
 
 // Virtual para calcular la ganancia/pérdida
-investmentSchema.virtual('profitLoss').get(function () {
+investmentSchema.virtual("profitLoss").get(function () {
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas: valor actual - monto invertido
     return this.currentPrice - this.quantity;
@@ -163,7 +171,7 @@ investmentSchema.virtual('profitLoss').get(function () {
 });
 
 // Virtual para calcular el porcentaje de ganancia/pérdida
-investmentSchema.virtual('profitLossPercentage').get(function () {
+investmentSchema.virtual("profitLossPercentage").get(function () {
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas: (valor actual - monto invertido) / monto invertido * 100
     if (this.quantity === 0) return 0;
@@ -176,13 +184,13 @@ investmentSchema.virtual('profitLossPercentage').get(function () {
 });
 
 // Validación pre-save para asegurar que los porcentajes sean correctos y limpiar purchasePrice si es cartera automatizada
-investmentSchema.pre('save', function (next) {
+investmentSchema.pre("save", function (next) {
   // Validar que account esté presente (solo para nuevas inversiones o si se está actualizando)
   // Permitir inversiones existentes sin account para migración
   if (this.isNew && !this.account) {
-    return next(new Error('La inversión debe estar asociada a una cuenta'));
+    return next(new Error("La inversión debe estar asociada a una cuenta"));
   }
-  
+
   // Si es cartera automatizada, limpiar purchasePrice
   if (this.isAutomatedPortfolio) {
     this.purchasePrice = undefined;
@@ -197,21 +205,24 @@ investmentSchema.pre('save', function (next) {
       this.averagePurchasePrice = this.purchasePrice;
     }
   }
-  
+
   // Validar porcentajes de renta
-  if (this.assetClass === 'fixed_income') {
+  if (this.assetClass === "fixed_income") {
     this.fixedIncomePercentage = 100;
     this.variableIncomePercentage = 0;
-  } else if (this.assetClass === 'variable_income') {
+  } else if (this.assetClass === "variable_income") {
     this.fixedIncomePercentage = 0;
     this.variableIncomePercentage = 100;
-  } else if (this.assetClass === 'mixed') {
+  } else if (this.assetClass === "mixed") {
     // Asegurar que los porcentajes sumen 100
-    const total = (this.fixedIncomePercentage || 0) + (this.variableIncomePercentage || 0);
+    const total =
+      (this.fixedIncomePercentage || 0) + (this.variableIncomePercentage || 0);
     if (total !== 100) {
       // Normalizar para que sumen 100
       if (total > 0) {
-        this.fixedIncomePercentage = Math.round((this.fixedIncomePercentage / total) * 100);
+        this.fixedIncomePercentage = Math.round(
+          (this.fixedIncomePercentage / total) * 100,
+        );
         this.variableIncomePercentage = 100 - this.fixedIncomePercentage;
       } else {
         // Si ambos son 0, establecer valores por defecto
@@ -223,7 +234,6 @@ investmentSchema.pre('save', function (next) {
   next();
 });
 
-investmentSchema.set('toJSON', { virtuals: true });
+investmentSchema.set("toJSON", { virtuals: true });
 
-export default mongoose.model('Investment', investmentSchema);
-
+export default mongoose.model("Investment", investmentSchema);

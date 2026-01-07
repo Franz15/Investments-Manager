@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const investmentHistorySchema = new mongoose.Schema(
   {
@@ -9,7 +9,7 @@ const investmentHistorySchema = new mongoose.Schema(
     },
     investment: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Investment',
+      ref: "Investment",
       required: true,
       index: true,
     },
@@ -37,8 +37,8 @@ const investmentHistorySchema = new mongoose.Schema(
     },
     operation: {
       type: String,
-      enum: ['creation', 'add', 'withdraw', 'update'],
-      default: 'update',
+      enum: ["creation", "add", "withdraw", "update"],
+      default: "update",
     },
     // Campos adicionales para operaciones específicas
     operationAmount: {
@@ -61,11 +61,10 @@ const investmentHistorySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Índice compuesto para búsquedas eficientes por inversión y fecha
 investmentHistorySchema.index({ investment: 1, date: -1 });
 
-export default mongoose.model('InvestmentHistory', investmentHistorySchema);
-
+export default mongoose.model("InvestmentHistory", investmentHistorySchema);
