@@ -43,34 +43,63 @@ const FinancialAnalysis = ({ businessId = null }) => {
   const [compareData, setCompareData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     initializeDates();
-  }, [period]);
+  }, []); // Solo ejecutar una vez al montar
 
   useEffect(() => {
-    if (startDate && endDate) {
+    if (startDate && endDate && isInitialized) {
       fetchData();
     }
-  }, [startDate, endDate, period, compareWith, businessId]);
+  }, [startDate, endDate, period, compareWith, businessId, isInitialized]);
 
-  const initializeDates = () => {
-    const now = new Date();
-    let start, end;
+  const initializeDates = async () => {
+    try {
+      // Obtener la fecha más antigua de las transacciones usando el endpoint optimizado
+      const params = {};
+      if (businessId) {
+        params.business = businessId;
+      } else {
+        params.business = "null";
+      }
 
-    if (period === "monthly") {
-      end = endOfMonth(now);
-      start = startOfMonth(now);
-    } else if (period === "quarterly") {
-      end = endOfQuarter(now);
-      start = startOfQuarter(now);
-    } else if (period === "yearly") {
-      end = endOfYear(now);
-      start = startOfYear(now);
+      const oldestDateRes = await api.get("/transactions/oldest-date", {
+        params,
+      });
+      const oldestDateData = oldestDateRes.data;
+
+      let oldestDate = new Date();
+      if (oldestDateData.oldestDate) {
+        oldestDate = new Date(oldestDateData.oldestDate);
+      } else {
+        // Si no hay transacciones, usar hace 10 años por defecto para mostrar todo el rango posible
+        oldestDate = new Date();
+        oldestDate.setFullYear(oldestDate.getFullYear() - 10);
+      }
+
+      const now = new Date();
+      let start, end;
+
+      // Por defecto, mostrar todo el histórico desde la fecha más antigua hasta hoy
+      start = oldestDate;
+      end = now;
+
+      setStartDate(format(start, "yyyy-MM-dd"));
+      setEndDate(format(end, "yyyy-MM-dd"));
+      setIsInitialized(true);
+    } catch (error) {
+      console.error("Error initializing dates:", error);
+      // Fallback: usar hace 10 años hasta hoy si hay error
+      const now = new Date();
+      const start = new Date();
+      start.setFullYear(now.getFullYear() - 10);
+
+      setStartDate(format(start, "yyyy-MM-dd"));
+      setEndDate(format(now, "yyyy-MM-dd"));
+      setIsInitialized(true);
     }
-
-    setStartDate(format(start, "yyyy-MM-dd"));
-    setEndDate(format(end, "yyyy-MM-dd"));
   };
 
   const fetchData = async () => {
@@ -226,14 +255,17 @@ const FinancialAnalysis = ({ businessId = null }) => {
               value={period}
               onChange={(e) => {
                 setPeriod(e.target.value);
-                initializeDates();
+                // No cambiar las fechas al cambiar el período, solo el tipo de agrupación
               }}
             >
               <option value="monthly">{t("financialAnalysis.monthly")}</option>
               <option value="quarterly">
                 {t("financialAnalysis.quarterly")}
               </option>
-              <option value="yearly">{t("financialAnalysis.yearly")}</option>
+              {/* Solo mostrar opción anual si no es personal (tiene businessId) */}
+              {businessId && (
+                <option value="yearly">{t("financialAnalysis.yearly")}</option>
+              )}
             </select>
           </div>
           <div>

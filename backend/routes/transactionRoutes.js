@@ -84,6 +84,38 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET fecha más antigua de transacciones
+router.get("/oldest-date", async (req, res) => {
+  try {
+    const { business } = req.query;
+    const query = { user: req.userId };
+
+    // Filtro por negocio
+    if (business !== undefined) {
+      if (business === "null" || business === "") {
+        query.business = null;
+      } else {
+        query.business = business;
+      }
+    }
+
+    // Obtener solo la fecha más antigua usando sort y limit
+    const oldestTransaction = await Transaction.findOne(query)
+      .sort({ date: 1 })
+      .select("date")
+      .limit(1);
+
+    if (oldestTransaction && oldestTransaction.date) {
+      res.json({ oldestDate: oldestTransaction.date });
+    } else {
+      // Si no hay transacciones, devolver null o una fecha por defecto
+      res.json({ oldestDate: null });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET estadísticas de transacciones
 router.get("/statistics/summary", async (req, res) => {
   try {

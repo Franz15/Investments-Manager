@@ -77,7 +77,9 @@ const Accounts = () => {
     description: "",
     initialBalance: 0,
     color: "#3b82f6", // Azul por defecto
+    business: null,
   });
+  const [businesses, setBusinesses] = useState([]);
   const [subAccountFormData, setSubAccountFormData] = useState({
     name: "",
     type: "cash",
@@ -737,6 +739,7 @@ const Accounts = () => {
       description: account.description || "",
       initialBalance: 0, // No se usa en edición, solo en creación
       color: account.color || "#3b82f6",
+      business: account.business?._id || account.business || null,
     });
     setShowAccountModal(true);
   };
@@ -786,6 +789,7 @@ const Accounts = () => {
       description: "",
       initialBalance: 0,
       color: "#3b82f6", // Azul por defecto
+      business: null,
     });
     setEditingAccount(null);
   };
@@ -2076,6 +2080,28 @@ const Accounts = () => {
                     })
                   }
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("accounts.business")} {t("common.optional")}
+                </label>
+                <select
+                  className="input-field"
+                  value={accountFormData.business || ""}
+                  onChange={(e) =>
+                    setAccountFormData({
+                      ...accountFormData,
+                      business: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">{t("accounts.personal")}</option>
+                  {businesses.map((business) => (
+                    <option key={business._id} value={business._id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -144,6 +144,9 @@ const FinancesDashboard = ({ businessId = null }) => {
                   currency: "EUR",
                 }).format(statistics.totalIncome)}
               </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t("financesDashboard.monthly")}
+              </p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-400" />
           </div>
@@ -159,6 +162,9 @@ const FinancesDashboard = ({ businessId = null }) => {
                   style: "currency",
                   currency: "EUR",
                 }).format(statistics.totalExpenses)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t("financesDashboard.monthly")}
               </p>
             </div>
             <TrendingDown className="h-8 w-8 text-red-400" />
@@ -182,6 +188,9 @@ const FinancesDashboard = ({ businessId = null }) => {
                   currency: "EUR",
                 }).format(statistics.balance)}
               </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t("financesDashboard.monthly")}
+              </p>
             </div>
             <DollarSign className="h-8 w-8 text-gray-400" />
           </div>
@@ -194,6 +203,9 @@ const FinancesDashboard = ({ businessId = null }) => {
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {statistics.transactionCount}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {t("financesDashboard.monthly")}
               </p>
             </div>
             <Calendar className="h-8 w-8 text-gray-400" />
