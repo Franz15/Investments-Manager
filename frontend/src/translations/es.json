@@ -495,12 +495,26 @@
     "saveChanges": "Guardar Cambios",
     "language": "Idioma",
     "spanish": "Español",
-    "catalan": "Català"
+    "catalan": "Català",
+    "changePassword": "Cambiar Contraseña",
+    "currentPassword": "Contraseña Actual",
+    "newPassword": "Nueva Contraseña",
+    "confirmPassword": "Confirmar Nueva Contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "passwordChanged": "Contraseña cambiada correctamente",
+    "changePasswordError": "Error al cambiar la contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
   },
   "login": {
     "title": "Iniciar Sesión",
     "selectUser": "Selecciona un usuario",
-    "login": "Iniciar Sesión"
+    "login": "Iniciar Sesión",
+    "enterPassword": "Ingresa tu contraseña",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Ingresa tu contraseña",
+    "back": "Volver",
+    "error": "Error al iniciar sesión"
   },
   "errors": {
     "generic": "Ha ocurrido un error",

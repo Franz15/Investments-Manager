@@ -7,21 +7,36 @@ const api = axios.create({
   },
 });
 
-// Interceptor para agregar userId a todas las peticiones
+// Interceptor para agregar token JWT a todas las peticiones
 api.interceptors.request.use(
   (config) => {
-    // Obtener userId del localStorage
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        config.headers['x-user-id'] = user.id;
-      } catch (error) {
-      }
+    // Obtener token del localStorage
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para manejar errores de autenticación
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // No redirigir si la petición es al endpoint de login (el error es esperado)
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      
+      if (!isLoginRequest) {
+        // Token inválido o expirado, limpiar y redirigir a login
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );
