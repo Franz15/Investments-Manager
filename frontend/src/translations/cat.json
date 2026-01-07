@@ -621,7 +621,8 @@
     "transactions": "Transaccions",
     "activeBudgets": "Pressupostos Actius",
     "recentTransactions": "Transaccions Recents",
-    "spent": "gastat"
+    "spent": "gastat",
+    "monthly": "Mensual"
   },
   "quickTransaction": {
     "title": "Afegir Transacció Ràpida",

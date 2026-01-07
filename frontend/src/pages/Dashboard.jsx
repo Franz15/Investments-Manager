@@ -132,6 +132,7 @@ const Dashboard = () => {
     useState(null);
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
+  const [includeBusinessAccounts, setIncludeBusinessAccounts] = useState(false);
   const navigate = useNavigate();
   const resizeTimeoutRef = useRef(null);
 
@@ -433,10 +434,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [includeBusinessAccounts]);
 
   const fetchDashboardData = async () => {
     try {
+      const params = includeBusinessAccounts
+        ? { includeBusinessAccounts: "true" }
+        : {};
       const [
         statsRes,
         balanceRes,
@@ -447,14 +451,13 @@ const Dashboard = () => {
         bankRes,
         performanceRes,
       ] = await Promise.all([
-        api.get("/dashboard/stats"),
-        api.get("/dashboard/balance-daily"),
+        api.get("/dashboard/stats", { params }),
+        api.get("/dashboard/balance-daily", { params }),
         api.get("/investment-history/evolution?months=6"),
-        api.get("/dashboard/distribution-by-asset-class"),
-        api.get("/dashboard/distribution-by-asset-type"),
-        api.get("/dashboard/investments-detailed"),
-        api.get("/dashboard/distribution-by-bank"),
-        api.get("/dashboard/performance"),
+        api.get("/dashboard/distribution-by-asset-class", { params }),
+        api.get("/dashboard/investments-detailed", { params }),
+        api.get("/dashboard/distribution-by-bank", { params }),
+        api.get("/dashboard/performance", { params }),
       ]);
       setStats(statsRes.data);
       // Asegurar que los datos estén ordenados por fecha
@@ -569,13 +572,28 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      <div className="mb-2">
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-          {t("dashboard.title")}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 tracking-tight">
-          {t("dashboard.subtitle")}
-        </p>
+      <div className="mb-2 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
+            {t("dashboard.title")}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 tracking-tight">
+            {t("dashboard.subtitle")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeBusinessAccounts}
+              onChange={(e) => setIncludeBusinessAccounts(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t("dashboard.includeBusinessAccounts")}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Primera fila: Resumen financiero */}

@@ -95,7 +95,8 @@
     },
     "byInvestment": "Distribución por Inversión Individual",
     "totalNetWorthEvolution": "Evolución del Patrimonio Total",
-    "totalNetWorth": "Patrimonio Total"
+    "totalNetWorth": "Patrimonio Total",
+    "includeBusinessAccounts": "Incluir cuentas de negocios"
   },
   "investments": {
     "title": "Inversiones",
@@ -488,6 +489,8 @@
       "credit": "Crédito",
       "other": "Otro"
     },
+    "business": "Negocio",
+    "personal": "Personal",
     "modals": {
       "newAccount": "Nueva Cuenta Bancaria",
       "editAccount": "Editar Cuenta",
@@ -615,7 +618,8 @@
     "transactions": "Transacciones",
     "activeBudgets": "Presupuestos Activos",
     "recentTransactions": "Transacciones Recientes",
-    "spent": "gastado"
+    "spent": "gastado",
+    "monthly": "Mensual"
   },
   "quickTransaction": {
     "title": "Añadir Transacción Rápida",

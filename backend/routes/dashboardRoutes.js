@@ -60,30 +60,43 @@ router.use(authenticateToken);
 // GET estadísticas del dashboard
 router.get("/stats", async (req, res) => {
   try {
-    // Total de cuentas del usuario
-    const totalAccounts = await Account.countDocuments({ user: req.userId });
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Total de cuentas del usuario (según filtro)
+    const totalAccounts = await Account.countDocuments(accountQuery);
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
 
     // Balance total de todas las subcuentas (efectivo + ahorro) del usuario
+    // Solo de cuentas que cumplen el filtro
     const cashSavingsSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const investmentSubAccounts = await SubAccount.find({
       user: req.userId,
       type: "investment",
+      account: { $in: filteredAccountIds },
     });
     const totalCashSavings =
       cashSavingsSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0) +
       investmentSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
 
     // Total de inversiones del usuario (valor actual de las inversiones)
-    // Solo obtener inversiones que tienen account (requerido)
+    // Solo obtener inversiones que tienen account (requerido) y que cumplen el filtro
     const investments = await Investment.find({
       user: req.userId,
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -663,18 +676,28 @@ function getLocalDateKey(d) {
 // Enfoque acumulativo: calcula el balance histórico aplicando todas las operaciones en orden cronológico
 router.get("/balance-daily", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
     const DailyVariation = (await import("../models/DailyVariation.js"))
       .default;
     const SubAccount = (await import("../models/SubAccount.js")).default;
     const Debt = (await import("../models/Debt.js")).default;
 
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const perfInvestments = await Investment.find({
       user: req.userId,
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     });
 
     if (perfInvestments.length === 0) {
@@ -712,10 +735,11 @@ router.get("/balance-daily", async (req, res) => {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // Obtener balance actual de cash
+    // Obtener balance actual de cash (solo de cuentas que cumplen el filtro)
     const cashSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const investmentSubAccounts = await SubAccount.find({
       user: req.userId,
@@ -863,6 +887,18 @@ router.get("/balance-daily", async (req, res) => {
 
       initialCash = Math.max(0, initialCash);
     }
+
+    // Obtener subcuentas de inversión (dinero disponible para invertir)
+    // Solo de cuentas que cumplen el filtro
+    const investmentSubAccounts = await SubAccount.find({
+      user: req.userId,
+      type: "investment",
+      account: { $in: filteredAccountIds },
+    });
+    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
+      (sum, subAcc) => sum + subAcc.balance,
+      0,
+    );
 
     // Obtener deudas actuales (no tenemos histórico de deudas)
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
@@ -1302,14 +1338,24 @@ router.get("/investments-by-type", async (req, res) => {
 // GET distribución por clase de activo (Renta Fija, Renta Variable, Cash)
 router.get("/distribution-by-asset-class", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones del usuario
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1343,9 +1389,11 @@ router.get("/distribution-by-asset-class", async (req, res) => {
     });
 
     // Obtener total de cash (efectivo + ahorro) del usuario
+    // Solo de cuentas que cumplen el filtro
     const cashSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const totalCash = cashSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
@@ -1423,13 +1471,21 @@ router.get("/distribution-by-asset-type", async (req, res) => {
 // GET distribución detallada por inversión individual
 router.get("/investments-detailed", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null;
+    }
+
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1530,8 +1586,17 @@ router.get("/investments-detailed", async (req, res) => {
 // GET distribución por banco y subcuentas
 router.get("/distribution-by-bank", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
     // Obtener todas las cuentas del usuario con sus subcuentas
-    const accounts = await Account.find({ user: req.userId })
+    const accounts = await Account.find(accountQuery)
       .populate({
         path: "subAccounts",
         select: "name type balance currency",
@@ -1539,14 +1604,14 @@ router.get("/distribution-by-bank", async (req, res) => {
       })
       .sort({ bankName: 1 });
 
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccountIds = accounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones del usuario para calcular valores de subcuentas de inversión
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1926,10 +1991,21 @@ router.get("/accounts-summary", async (req, res) => {
 // GET rendimiento anualizado (CAGR) y comparación con S&P 500
 router.get("/performance", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null;
+    }
+
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Nueva lógica unificada basada en DailyVariation
     const perfInvestments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     });
 
     if (perfInvestments.length === 0) {
