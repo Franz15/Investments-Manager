@@ -167,11 +167,9 @@ router.post("/", async (req, res) => {
       const subAccountAccountId =
         subAccount.account?._id?.toString() || subAccount.account?.toString();
       if (subAccountAccountId !== req.body.account.toString()) {
-        return res
-          .status(400)
-          .json({
-            message: "La subcuenta no pertenece a la cuenta seleccionada",
-          });
+        return res.status(400).json({
+          message: "La subcuenta no pertenece a la cuenta seleccionada",
+        });
       }
     }
 

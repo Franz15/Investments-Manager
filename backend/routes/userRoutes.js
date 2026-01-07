@@ -29,11 +29,9 @@ router.get("/me", async (req, res) => {
     const user = await User.findOne({ id: req.userId });
 
     if (!user) {
-      return res
-        .status(404)
-        .json({
-          message: "Usuario no encontrado. Debe iniciar sesión primero.",
-        });
+      return res.status(404).json({
+        message: "Usuario no encontrado. Debe iniciar sesión primero.",
+      });
     }
 
     res.json(user);
@@ -57,12 +55,10 @@ router.patch("/me/color", async (req, res) => {
     const { color } = req.body;
 
     if (!color || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Color inválido. Debe ser un código hexadecimal válido (ej: #3b82f6)",
-        });
+      return res.status(400).json({
+        message:
+          "Color inválido. Debe ser un código hexadecimal válido (ej: #3b82f6)",
+      });
     }
 
     const user = await User.findOneAndUpdate(
@@ -87,19 +83,15 @@ router.patch("/me/password", async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res
-        .status(400)
-        .json({
-          message: "Contraseña actual y nueva contraseña son requeridas",
-        });
+      return res.status(400).json({
+        message: "Contraseña actual y nueva contraseña son requeridas",
+      });
     }
 
     if (newPassword.length < 4) {
-      return res
-        .status(400)
-        .json({
-          message: "La nueva contraseña debe tener al menos 4 caracteres",
-        });
+      return res.status(400).json({
+        message: "La nueva contraseña debe tener al menos 4 caracteres",
+      });
     }
 
     // Buscar usuario con el campo password incluido
