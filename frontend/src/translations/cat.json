@@ -501,12 +501,26 @@
     "saveChanges": "Desar Canvis",
     "language": "Idioma",
     "spanish": "Español",
-    "catalan": "Català"
+    "catalan": "Català",
+    "changePassword": "Canviar Contrasenya",
+    "currentPassword": "Contrasenya Actual",
+    "newPassword": "Nova Contrasenya",
+    "confirmPassword": "Confirmar Nova Contrasenya",
+    "passwordMismatch": "Les contrasenyes no coincideixen",
+    "passwordChanged": "Contrasenya canviada correctament",
+    "changePasswordError": "Error en canviar la contrasenya",
+    "showPassword": "Mostrar contrasenya",
+    "hidePassword": "Ocultar contrasenya"
   },
   "login": {
     "title": "Iniciar Sessió",
     "selectUser": "Selecciona un usuari",
-    "login": "Iniciar Sessió"
+    "login": "Iniciar Sessió",
+    "enterPassword": "Introdueix la teva contrasenya",
+    "password": "Contrasenya",
+    "passwordPlaceholder": "Introdueix la teva contrasenya",
+    "back": "Tornar",
+    "error": "Error en iniciar sessió"
   },
   "errors": {
     "generic": "S'ha produït un error",

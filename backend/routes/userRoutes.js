@@ -1,11 +1,12 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import { getUserFromRequest } from '../middleware/userMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Aplicar middleware a todas las rutas
-router.use(getUserFromRequest);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authenticateToken);
 
 // GET obtener información del usuario actual
 router.get('/me', async (req, res) => {
@@ -21,45 +22,11 @@ router.get('/me', async (req, res) => {
       return res.status(503).json({ message: 'Database not available' });
     }
 
-    // Generar nombre más robusto
-    const name = req.userId.includes('-') 
-      ? req.userId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-      : req.userId.charAt(0).toUpperCase() + req.userId.slice(1);
-
-    // Usar findOneAndUpdate con upsert para crear o obtener el usuario
-    let user;
-    try {
-      user = await User.findOneAndUpdate(
-        { id: req.userId },
-        {
-          $setOnInsert: {
-            id: req.userId,
-            name: name,
-            avatar: '👤',
-            color: '#3b82f6',
-          }
-        },
-        {
-          new: true,
-          upsert: true,
-          setDefaultsOnInsert: true,
-          runValidators: false // Desactivar validadores para evitar problemas con campos opcionales
-        }
-      );
-    } catch (dbError) {
-      console.error('Error en findOneAndUpdate:', dbError);
-      // Si falla, intentar solo buscar
-      user = await User.findOne({ id: req.userId });
-      if (!user) {
-        // Si no existe, crear uno nuevo sin validadores
-        user = new User({
-          id: req.userId,
-          name: name,
-          avatar: '👤',
-          color: '#3b82f6',
-        });
-        await user.save();
-      }
+    // Buscar usuario (no crear si no existe, debe estar autenticado)
+    const user = await User.findOne({ id: req.userId });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado. Debe iniciar sesión primero.' });
     }
     
     res.json(user);
@@ -89,12 +56,57 @@ router.patch('/me/color', async (req, res) => {
     const user = await User.findOneAndUpdate(
       { id: req.userId },
       { color },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true }
     );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
     
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// PATCH cambiar contraseña del usuario
+router.patch('/me/password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Contraseña actual y nueva contraseña son requeridas' });
+    }
+    
+    if (newPassword.length < 4) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 4 caracteres' });
+    }
+    
+    // Buscar usuario con el campo password incluido
+    const user = await User.findOne({ id: req.userId }).select('+password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Verificar contraseña actual
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Contraseña actual incorrecta' });
+    }
+    
+    // Hashear nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Actualizar contraseña
+    user.password = hashedPassword;
+    await user.save();
+    
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    res.status(500).json({ message: 'Error al cambiar la contraseña' });
   }
 });
 
