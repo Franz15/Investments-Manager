@@ -11,11 +11,16 @@ import {
   LogOut,
   Building2,
   ShieldCheck,
+  DollarSign,
+  Calendar,
+  Briefcase,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { useUserColor } from "../hooks/useUserColor";
 import { useTranslation } from "../contexts/TranslationContext";
+import { useBusiness } from "../contexts/BusinessContext";
 import ThemeToggle from "./ThemeToggle";
 import packageJson from "../../package.json";
 
@@ -29,11 +34,23 @@ const Layout = ({ children }) => {
   const { currentUser, logout } = useUser();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { businesses, selectedBusiness, selectBusiness } = useBusiness();
+  const [businessesExpanded, setBusinessesExpanded] = useState(() => {
+    const saved = localStorage.getItem("businessesExpanded");
+    return saved ? JSON.parse(saved) : false;
+  });
   useUserColor(); // Aplicar color del usuario como variables CSS
 
   useEffect(() => {
     localStorage.setItem("sidebarCollapsed", JSON.stringify(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "businessesExpanded",
+      JSON.stringify(businessesExpanded),
+    );
+  }, [businessesExpanded]);
 
   const handleLogout = () => {
     logout();
@@ -47,33 +64,31 @@ const Layout = ({ children }) => {
     (currentUser?.permissions?.portfolioBuilder &&
       currentUser?.id !== "test-dca");
 
-  const navigation = [
+  const investmentsSection = [
     { name: t("sidebar.dashboard"), href: "/", icon: LayoutDashboard },
     { name: t("sidebar.accounts"), href: "/accounts", icon: Wallet },
+    { name: t("sidebar.investments"), href: "/investments", icon: TrendingUp },
+    { name: t("sidebar.debts"), href: "/debts", icon: AlertCircle },
+  ];
+
+  const financesSection = [
     {
       name: t("sidebar.transactions"),
       href: "/transactions",
       icon: ArrowLeftRight,
     },
-    { name: t("sidebar.investments"), href: "/investments", icon: TrendingUp },
-    { name: t("sidebar.debts"), href: "/debts", icon: AlertCircle },
+    { name: t("sidebar.budgets"), href: "/budgets", icon: DollarSign },
+    { name: t("sidebar.forecasts"), href: "/forecasts", icon: Calendar },
+  ];
+
+  const navigation = [
+    ...investmentsSection,
+    ...financesSection,
     ...(hasPortfolioBuilderAccess
-      ? [
-          {
-            name: t("sidebar.portfolioBuilder"),
-            href: "/portfolio-builder",
-            icon: Building2,
-          },
-        ]
+      ? [{ name: t("sidebar.portfolioBuilder"), href: "/portfolio-builder", icon: Building2 }]
       : []),
     ...(isAdmin
-      ? [
-          {
-            name: t("sidebar.adminAccess") || "Gestión accesos",
-            href: "/admin/access",
-            icon: ShieldCheck,
-          },
-        ]
+      ? [{ name: t("sidebar.adminAccess") || "Gestión accesos", href: "/admin/access", icon: ShieldCheck }]
       : []),
     {
       name: currentUser?.name || t("sidebar.profile"),
@@ -116,7 +131,13 @@ const Layout = ({ children }) => {
             </button>
           </div>
           <nav className="flex-1 space-y-2 px-4 py-6 overflow-y-auto">
-            {navigation.map((item) => {
+            {/* Sección Inversiones */}
+            <div className="px-2 py-1 mb-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                {t("sidebar.investmentsSection")}
+              </span>
+            </div>
+            {investmentsSection.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
               return (
@@ -141,6 +162,167 @@ const Layout = ({ children }) => {
                 </Link>
               );
             })}
+
+            {/* Separador */}
+            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+
+            {/* Sección Finanzas */}
+            <div className="px-2 py-1 mb-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                {t("sidebar.financesSection")}
+              </span>
+            </div>
+            {financesSection.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`sidebar-link group ${isActive ? "sidebar-link-active" : "sidebar-link-inactive"}`}
+                >
+                  <Icon
+                    className={`mr-3 h-4 w-4 transition-colors ${isActive ? "" : "text-gray-500 dark:text-gray-400"}`}
+                    style={isActive ? { color: "var(--user-color-600)" } : {}}
+                    strokeWidth={2}
+                  />
+                  <span className="flex-1">{item.name}</span>
+                  {isActive && (
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: "var(--user-color-600)" }}
+                    ></div>
+                  )}
+                </Link>
+              );
+            })}
+
+            {/* Negocios desplegable */}
+            <div>
+              <button
+                onClick={() => {
+                  setBusinessesExpanded(!businessesExpanded);
+                  if (!businessesExpanded) {
+                    navigate("/businesses");
+                  }
+                }}
+                className={`sidebar-link group w-full text-left ${
+                  location.pathname === "/businesses" ||
+                  (selectedBusiness !== null && selectedBusiness !== undefined)
+                    ? "sidebar-link-active"
+                    : "sidebar-link-inactive"
+                }`}
+              >
+                <Briefcase
+                  className={`mr-3 h-4 w-4 transition-colors ${
+                    location.pathname === "/businesses" ||
+                    (selectedBusiness !== null &&
+                      selectedBusiness !== undefined)
+                      ? ""
+                      : "text-gray-500 dark:text-gray-400"
+                  }`}
+                  style={
+                    location.pathname === "/businesses" ||
+                    (selectedBusiness !== null &&
+                      selectedBusiness !== undefined)
+                      ? { color: "var(--user-color-600)" }
+                      : {}
+                  }
+                  strokeWidth={2}
+                />
+                <span className="flex-1">{t("sidebar.businesses")}</span>
+                {businessesExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                )}
+              </button>
+              {businessesExpanded && (
+                <div className="ml-4 mt-1 space-y-1">
+                  {/* Personal */}
+                  <button
+                    onClick={() => {
+                      selectBusiness("personal");
+                      navigate("/businesses");
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                      selectedBusiness === "personal"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    <User className="h-3 w-3" />
+                    {t("businesses.personal")}
+                  </button>
+                  {/* Lista de negocios */}
+                  {businesses
+                    .filter((b) => b.isActive)
+                    .map((business) => (
+                      <button
+                        key={business._id}
+                        onClick={() => {
+                          selectBusiness(business._id);
+                          navigate("/businesses");
+                          setSidebarOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                          selectedBusiness === business._id
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                        style={
+                          selectedBusiness === business._id
+                            ? {
+                                backgroundColor: `${business.color}20`,
+                                color: business.color,
+                              }
+                            : {}
+                        }
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: business.color }}
+                        ></div>
+                        {business.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Separador */}
+            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+
+            {/* Perfil */}
+            {navigation
+              .filter((item) => item.href === "/profile")
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`sidebar-link group ${isActive ? "sidebar-link-active" : "sidebar-link-inactive"}`}
+                  >
+                    <Icon
+                      className={`mr-3 h-4 w-4 transition-colors ${isActive ? "" : "text-gray-500 dark:text-gray-400"}`}
+                      style={isActive ? { color: "var(--user-color-600)" } : {}}
+                      strokeWidth={2}
+                    />
+                    <span className="flex-1">{item.name}</span>
+                    {isActive && (
+                      <div
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: "var(--user-color-600)" }}
+                      ></div>
+                    )}
+                  </Link>
+                );
+              })}
           </nav>
           {currentUser && (
             <div className="p-4 border-t border-gray-200 dark:border-[#404040]">
@@ -208,7 +390,15 @@ const Layout = ({ children }) => {
           <nav
             className={`flex-1 space-y-2 overflow-y-auto transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? "px-2 py-6" : "px-4 py-6"}`}
           >
-            {navigation.map((item) => {
+            {/* Sección Inversiones */}
+            {!sidebarCollapsed && (
+              <div className="px-2 py-1 mb-2">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {t("sidebar.investmentsSection")}
+                </span>
+              </div>
+            )}
+            {investmentsSection.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
               return (
@@ -235,6 +425,190 @@ const Layout = ({ children }) => {
                 </Link>
               );
             })}
+
+            {/* Separador */}
+            {!sidebarCollapsed && (
+              <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            )}
+
+            {/* Sección Finanzas */}
+            {!sidebarCollapsed && (
+              <div className="px-2 py-1 mb-2">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {t("sidebar.financesSection")}
+                </span>
+              </div>
+            )}
+            {financesSection.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`sidebar-link group ${isActive ? "sidebar-link-active" : "sidebar-link-inactive"} transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? "justify-center px-0" : ""}`}
+                  title={sidebarCollapsed ? item.name : ""}
+                >
+                  <Icon
+                    className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${!isActive ? "text-gray-500 dark:text-gray-400" : ""} ${sidebarCollapsed ? "h-5 w-5 mx-0" : "mr-3 h-4 w-4"}`}
+                    style={isActive ? { color: "var(--user-color-600)" } : {}}
+                    strokeWidth={2}
+                  />
+                  <span
+                    className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? "max-w-0 opacity-0 translate-x-2" : "max-w-[150px] opacity-100 translate-x-0"}`}
+                  >
+                    {item.name}
+                  </span>
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${isActive && !sidebarCollapsed ? "opacity-100 scale-100" : "opacity-0 scale-0"}`}
+                    style={{ backgroundColor: "var(--user-color-600)" }}
+                  ></div>
+                </Link>
+              );
+            })}
+
+            {/* Negocios desplegable */}
+            {!sidebarCollapsed && (
+              <div>
+                <button
+                  onClick={() => {
+                    setBusinessesExpanded(!businessesExpanded);
+                    if (!businessesExpanded) {
+                      navigate("/businesses");
+                    }
+                  }}
+                  className={`sidebar-link group w-full text-left ${
+                    location.pathname === "/businesses" ||
+                    (selectedBusiness !== null &&
+                      selectedBusiness !== undefined)
+                      ? "sidebar-link-active"
+                      : "sidebar-link-inactive"
+                  } transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]`}
+                >
+                  <Briefcase
+                    className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${
+                      location.pathname === "/businesses" ||
+                      (selectedBusiness !== null &&
+                        selectedBusiness !== undefined)
+                        ? ""
+                        : "text-gray-500 dark:text-gray-400"
+                    } mr-3 h-4 w-4`}
+                    style={
+                      location.pathname === "/businesses" ||
+                      (selectedBusiness !== null &&
+                        selectedBusiness !== undefined)
+                        ? { color: "var(--user-color-600)" }
+                        : {}
+                    }
+                    strokeWidth={2}
+                  />
+                  <span className="flex-1">{t("sidebar.businesses")}</span>
+                  {businessesExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  )}
+                </button>
+                {businessesExpanded && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    {/* Personal */}
+                    <button
+                      onClick={() => {
+                        selectBusiness("personal");
+                        navigate("/businesses");
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                        selectedBusiness === "personal"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      <User className="h-3 w-3" />
+                      {t("businesses.personal")}
+                    </button>
+                    {/* Lista de negocios */}
+                    {businesses
+                      .filter((b) => b.isActive)
+                      .map((business) => (
+                        <button
+                          key={business._id}
+                          onClick={() => {
+                            selectBusiness(business._id);
+                            navigate("/businesses");
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                            selectedBusiness === business._id
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          }`}
+                          style={
+                            selectedBusiness === business._id
+                              ? {
+                                  backgroundColor: `${business.color}20`,
+                                  color: business.color,
+                                }
+                              : {}
+                          }
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: business.color }}
+                          ></div>
+                          {business.name}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {sidebarCollapsed && (
+              <Link
+                to="/businesses"
+                className="sidebar-link group sidebar-link-inactive justify-center px-0"
+                title={t("sidebar.businesses")}
+              >
+                <Briefcase
+                  className="h-5 w-5 mx-0 text-gray-500 dark:text-gray-400"
+                  strokeWidth={2}
+                />
+              </Link>
+            )}
+
+            {/* Separador */}
+            {!sidebarCollapsed && (
+              <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            )}
+
+            {/* Perfil */}
+            {navigation
+              .filter((item) => item.href === "/profile")
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`sidebar-link group ${isActive ? "sidebar-link-active" : "sidebar-link-inactive"} transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? "justify-center px-0" : ""}`}
+                    title={sidebarCollapsed ? item.name : ""}
+                  >
+                    <Icon
+                      className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${!isActive ? "text-gray-500 dark:text-gray-400" : ""} ${sidebarCollapsed ? "h-5 w-5 mx-0" : "mr-3 h-4 w-4"}`}
+                      style={isActive ? { color: "var(--user-color-600)" } : {}}
+                      strokeWidth={2}
+                    />
+                    <span
+                      className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? "max-w-0 opacity-0 translate-x-2" : "max-w-[150px] opacity-100 translate-x-0"}`}
+                    >
+                      {item.name}
+                    </span>
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${isActive && !sidebarCollapsed ? "opacity-100 scale-100" : "opacity-0 scale-0"}`}
+                      style={{ backgroundColor: "var(--user-color-600)" }}
+                    ></div>
+                  </Link>
+                );
+              })}
           </nav>
           {currentUser && (
             <div

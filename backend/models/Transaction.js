@@ -51,6 +51,11 @@ const transactionSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    business: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      default: null, // null = personal
+    },
   },
   {
     timestamps: true,
@@ -64,5 +69,8 @@ transactionSchema.pre("validate", function (next) {
   }
   next();
 });
+
+// Índice compuesto para búsquedas por negocio
+transactionSchema.index({ user: 1, business: 1 });
 
 export default mongoose.model("Transaction", transactionSchema);

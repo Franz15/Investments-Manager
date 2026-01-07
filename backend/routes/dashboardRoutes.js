@@ -5,6 +5,7 @@ import Transaction from "../models/Transaction.js";
 import Investment from "../models/Investment.js";
 import Debt from "../models/Debt.js";
 import InvestmentHistory from "../models/InvestmentHistory.js";
+import Business from "../models/Business.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { getQuote } from "../services/quoteService.js";
 import { getLatestDailyVariation } from "../services/dailyVariationService.js";
@@ -116,25 +117,9 @@ router.get("/stats", async (req, res) => {
       }
     }, 0);
 
-    // Transacciones del mes actual del usuario
+    // Calcular rentabilidad de inversiones en el mes en curso
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const monthlyTransactions = await Transaction.find({
-      user: req.userId,
-      date: { $gte: startOfMonth, $lte: endOfMonth },
-    });
-
-    const monthlyIncome = monthlyTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const monthlyExpenses = monthlyTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    // Calcular rentabilidad de inversiones en el mes en curso
     // Obtener el valor de las inversiones al inicio del mes
     const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
       .default;
@@ -242,9 +227,8 @@ router.get("/stats", async (req, res) => {
     // Patrimonio neto = Balance total - Deudas
     const netWorth = totalBalance - totalDebts;
 
-    // Balance mensual = Ingresos - Gastos + Rentabilidad de inversiones del mes
-    const monthlyBalance =
-      monthlyIncome - monthlyExpenses + monthlyInvestmentReturn;
+    // Balance mensual = Rentabilidad de inversiones del mes (sin incluir ingresos/gastos de finanzas)
+    const monthlyBalance = monthlyInvestmentReturn;
 
     // Capital aportado real: TODAS las operaciones del usuario (no solo inversiones activas)
     const allHistoryForStats = await InvestmentHistory.find({
@@ -305,8 +289,6 @@ router.get("/stats", async (req, res) => {
       totalProfitLoss,
       totalDebts,
       totalMonthlyDebtPayments,
-      monthlyIncome,
-      monthlyExpenses,
       monthlyInvestmentReturn: parseFloat(monthlyInvestmentReturn.toFixed(2)),
       monthlyBalance: parseFloat(monthlyBalance.toFixed(2)),
       totalCashSavings: parseFloat(totalCashSavings.toFixed(2)),
@@ -2220,6 +2202,101 @@ router.get("/performance", async (req, res) => {
       years: parseFloat(perfYears.toFixed(2)),
       sp500Comparison: perfSp500Comparison,
       historicalReturns,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET estadísticas de transacciones por contexto (personal y negocios)
+router.get("/transactions-by-context", async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = endDate
+      ? new Date(endDate)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Obtener todos los negocios del usuario
+    const businesses = await Business.find({
+      user: req.userId,
+      isActive: true,
+    });
+
+    // Calcular estadísticas para personal (business = null)
+    const personalTransactions = await Transaction.find({
+      user: req.userId,
+      business: null,
+      date: { $gte: start, $lte: end },
+    });
+
+    const personalIncome = personalTransactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const personalExpenses = personalTransactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const personalBalance = personalIncome - personalExpenses;
+
+    const contexts = [
+      {
+        id: "personal",
+        name: "Personal",
+        type: "personal",
+        income: personalIncome,
+        expenses: personalExpenses,
+        balance: personalBalance,
+        transactionCount: personalTransactions.length,
+      },
+    ];
+
+    // Calcular estadísticas para cada negocio
+    for (const business of businesses) {
+      const businessTransactions = await Transaction.find({
+        user: req.userId,
+        business: business._id,
+        date: { $gte: start, $lte: end },
+      });
+
+      const businessIncome = businessTransactions
+        .filter((t) => t.type === "income")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const businessExpenses = businessTransactions
+        .filter((t) => t.type === "expense")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const businessBalance = businessIncome - businessExpenses;
+
+      contexts.push({
+        id: business._id.toString(),
+        name: business.name,
+        type: "business",
+        color: business.color,
+        income: businessIncome,
+        expenses: businessExpenses,
+        balance: businessBalance,
+        transactionCount: businessTransactions.length,
+      });
+    }
+
+    // Calcular total general
+    const totalIncome = contexts.reduce((sum, ctx) => sum + ctx.income, 0);
+    const totalExpenses = contexts.reduce((sum, ctx) => sum + ctx.expenses, 0);
+    const totalBalance = totalIncome - totalExpenses;
+
+    res.json({
+      contexts,
+      totals: {
+        income: totalIncome,
+        expenses: totalExpenses,
+        balance: totalBalance,
+      },
+      period: {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
