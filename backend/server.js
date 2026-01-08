@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: true,
+    origin: process.env.FRONTEND_URL || true, // En producción, usa la URL del frontend
     credentials: true,
     exposedHeaders: ["x-user-id"],
     allowedHeaders: ["Content-Type", "Authorization", "x-user-id"],
