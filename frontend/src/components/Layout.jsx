@@ -15,6 +15,7 @@ import { useUser } from "../contexts/UserContext";
 import { useUserColor } from "../hooks/useUserColor";
 import { useTranslation } from "../contexts/TranslationContext";
 import ThemeToggle from "./ThemeToggle";
+import packageJson from "../../package.json";
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -274,7 +275,7 @@ const Layout = ({ children }) => {
                 </span>
                 <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-[#525252]"></span>
                 <span className="font-mono font-medium text-gray-600 dark:text-gray-400">
-                  v0.0.0
+                  v{packageJson.version}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-amber-500 dark:bg-amber-600"></span>
                 <span className="font-normal">
