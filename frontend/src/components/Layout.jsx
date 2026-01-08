@@ -9,6 +9,7 @@ import {
   X,
   User,
   LogOut,
+  Building2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useUser } from "../contexts/UserContext";
@@ -48,6 +49,11 @@ const Layout = ({ children }) => {
     },
     { name: t("sidebar.investments"), href: "/investments", icon: TrendingUp },
     { name: t("sidebar.debts"), href: "/debts", icon: AlertCircle },
+    {
+      name: t("sidebar.portfolioBuilder"),
+      href: "/portfolio-builder",
+      icon: Building2,
+    },
     {
       name: currentUser?.name || t("sidebar.profile"),
       href: "/profile",
