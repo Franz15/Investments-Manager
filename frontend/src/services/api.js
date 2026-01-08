@@ -1,7 +1,24 @@
 import axios from "axios";
 
+// Asegurar que baseURL siempre termine en /api
+const getBaseURL = () => {
+  const envURL = import.meta.env.VITE_API_URL;
+  if (!envURL) return "/api";
+
+  // Si la URL no termina en /api, agregarlo
+  if (envURL.endsWith("/api")) {
+    return envURL;
+  }
+  // Si termina en /, agregar api
+  if (envURL.endsWith("/")) {
+    return `${envURL}api`;
+  }
+  // Si no termina en / ni /api, agregar /api
+  return `${envURL}/api`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api",
+  baseURL: getBaseURL(),
   headers: {
     "Content-Type": "application/json",
   },

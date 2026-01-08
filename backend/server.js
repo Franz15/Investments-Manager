@@ -17,10 +17,35 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Middleware CORS
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map((url) => url.trim())
+  : true; // En desarrollo permite todos los orígenes
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || true, // En producción, usa la URL del frontend
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (Postman, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      // Si FRONTEND_URL es "*" o true, permitir todos
+      if (allowedOrigins === true || allowedOrigins.includes("*")) {
+        return callback(null, true);
+      }
+
+      // Si el origin está en la lista permitida
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Por defecto, permitir en desarrollo
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+
+      // En producción, rechazar si no está en la lista
+      callback(new Error("No permitido por CORS"));
+    },
     credentials: true,
     exposedHeaders: ["x-user-id"],
     allowedHeaders: ["Content-Type", "Authorization", "x-user-id"],
@@ -39,6 +64,21 @@ app.use("/api/investment-history", investmentHistoryRoutes);
 app.use("/api/debts", debtRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
+
+// Root route
+app.get("/", (req, res) => {
+  res.json({
+    message: "Investments Manager API",
+    version: "0.0.1",
+    endpoints: {
+      health: "/api/health",
+      auth: "/api/auth",
+      accounts: "/api/accounts",
+      investments: "/api/investments",
+      dashboard: "/api/dashboard",
+    },
+  });
+});
 
 // Health check
 app.get("/api/health", (req, res) => {
