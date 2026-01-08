@@ -9,33 +9,49 @@ const router = express.Router();
 router.get("/debug", async (req, res) => {
   try {
     const User = (await import("../models/User.js")).default;
-    const user = await User.findOne({ id: "javier" }).select("+password");
+    const bcrypt = (await import("bcryptjs")).default;
 
-    if (!user) {
-      return res.json({
-        error: "Usuario javier no encontrado",
-        users: await User.find({}).select("id name"),
+    // Listar todos los usuarios
+    const allUsers = await User.find({}).select("id name");
+
+    // Probar con diferentes usuarios
+    const testUsers = ["javier", "ana", "test-dca"];
+    const testPassword = "admin";
+
+    const results = [];
+
+    for (const testUserId of testUsers) {
+      const user = await User.findOne({ id: testUserId }).select("+password");
+
+      if (!user) {
+        results.push({
+          userId: testUserId,
+          found: false,
+          message: "Usuario no encontrado",
+        });
+        continue;
+      }
+
+      const isValid = user.password
+        ? await bcrypt.compare(testPassword, user.password)
+        : false;
+
+      results.push({
+        userId: testUserId,
+        found: true,
+        name: user.name,
+        hasPassword: !!user.password,
+        passwordValid: isValid,
+        message: isValid
+          ? "✅ Contraseña 'admin' es CORRECTA"
+          : "❌ Contraseña 'admin' es INCORRECTA",
       });
     }
 
-    const bcrypt = (await import("bcryptjs")).default;
-    const testPassword = "admin";
-    const isValid = await bcrypt.compare(testPassword, user.password);
-
     res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        hasPassword: !!user.password,
-        passwordHashPreview: user.password
-          ? user.password.substring(0, 30) + "..."
-          : null,
-      },
+      allUsersInDB: allUsers.map((u) => ({ id: u.id, name: u.name })),
+      testResults: results,
       testPassword: testPassword,
-      passwordValid: isValid,
-      message: isValid
-        ? "✅ La contraseña 'admin' es CORRECTA"
-        : "❌ La contraseña 'admin' es INCORRECTA",
     });
   } catch (error) {
     res.status(500).json({ error: error.message, stack: error.stack });
@@ -65,9 +81,32 @@ router.post("/login", async (req, res) => {
 
     if (!user) {
       console.log("[LOGIN] Usuario no encontrado:", userId);
-      return res
-        .status(401)
-        .json({ message: "Usuario o contraseña incorrectos" });
+
+      // Debug: listar todos los usuarios disponibles
+      const allUsers = await User.find({}).select("id name");
+      const mongoose = (await import("mongoose")).default;
+      const dbName = mongoose.connection.db?.databaseName || "unknown";
+      const mongoUri = process.env.MONGODB_URI || "not set";
+
+      console.log(
+        "[LOGIN] Usuarios disponibles en BD:",
+        allUsers.map((u) => ({ id: u.id, name: u.name })),
+      );
+      console.log("[LOGIN] Búsqueda realizada con:", {
+        id: userId,
+        type: typeof userId,
+      });
+      console.log("[LOGIN] Base de datos:", dbName);
+      console.log("[LOGIN] MongoDB URI completa:", mongoUri);
+
+      return res.status(401).json({
+        message: "Usuario o contraseña incorrectos",
+        debug: {
+          searchedUserId: userId,
+          availableUsers: allUsers.map((u) => u.id),
+          database: dbName,
+        },
+      });
     }
 
     console.log("[LOGIN] Usuario encontrado:", {

@@ -95,7 +95,10 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
+    const dbName = mongoose.connection.db?.databaseName || "unknown";
     console.log("MongoDB conectado correctamente");
+    console.log(`Base de datos: ${dbName}`);
+    console.log(`MongoDB URI: ${MONGODB_URI.substring(0, 60)}...`);
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
