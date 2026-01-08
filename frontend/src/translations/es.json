@@ -34,6 +34,7 @@
     "accounts": "Cuentas",
     "transactions": "Transacciones",
     "debts": "Deudas",
+    "portfolioBuilder": "Portfolio Builder",
     "profile": "Perfil",
     "logout": "Cerrar Sesión",
     "developmentVersion": "Desarrollo en curso"
@@ -526,5 +527,16 @@
     "investmentSaveError": "Error al guardar la inversión",
     "investmentDeleteError": "Error al eliminar la inversión",
     "investmentUpdateError": "Error al actualizar la inversión"
+  },
+  "portfolioBuilder": {
+    "title": "Portfolio Builder",
+    "subtitle": "Construye y analiza tu cartera de inversiones",
+    "uploadFile": "Cargar Archivo Excel",
+    "selectFile": "Seleccionar archivo Excel (.xlsx, .xls)",
+    "loading": "Cargando archivo...",
+    "fileLoaded": "Archivo cargado correctamente",
+    "sheets": "hojas",
+    "dataAndCalculations": "Datos y Cálculos",
+    "processingData": "Procesando datos del archivo..."
   }
 }

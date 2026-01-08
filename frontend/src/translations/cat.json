@@ -34,6 +34,7 @@
     "accounts": "Comptes",
     "transactions": "Transaccions",
     "debts": "Deutes",
+    "portfolioBuilder": "Portfolio Builder",
     "profile": "Perfil",
     "logout": "Tancar Sessió",
     "developmentVersion": "Desenvolupament en curs"
@@ -532,5 +533,16 @@
     "investmentSaveError": "Error en desar la inversió",
     "investmentDeleteError": "Error en eliminar la inversió",
     "investmentUpdateError": "Error en actualitzar la inversió"
+  },
+  "portfolioBuilder": {
+    "title": "Portfolio Builder",
+    "subtitle": "Construeix i analitza la teva cartera d'inversions",
+    "uploadFile": "Carregar Fitxer Excel",
+    "selectFile": "Seleccionar fitxer Excel (.xlsx, .xls)",
+    "loading": "Carregant fitxer...",
+    "fileLoaded": "Fitxer carregat correctament",
+    "sheets": "fulles",
+    "dataAndCalculations": "Dades i Càlculs",
+    "processingData": "Processant dades del fitxer..."
   }
 }

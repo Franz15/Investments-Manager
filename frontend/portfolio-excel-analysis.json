@@ -1,0 +1,2009 @@
+{
+  "sheetNames": [
+    "Monetarios",
+    "RF corto plazo",
+    "RF medio plazo",
+    "Renta Variable",
+    "Renta Fija largo plazo",
+    "ETFs",
+    "Mixtos",
+    "Alternativos",
+    "Revisar",
+    "Cartera1"
+  ],
+  "sheets": {
+    "Monetarios": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M", null, null],
+        [
+          "La Francaise Tresorerie",
+          "FR0000991390",
+          "https://www.finect.com/fondos-inversion/FR0000991390-La_francaise_tresorerie_isr_r",
+          "0.08%",
+          "4.02%",
+          null,
+          "Monetario Myinvestor"
+        ],
+        [
+          "AXA Tresor Court Terme C",
+          "FR0000447823",
+          "https://www.finect.com/fondos-inversion/FR0000447823-Axa_tresor_court_terme_c",
+          "0.09%",
+          "4.09%",
+          null,
+          null
+        ],
+        [
+          "Groupama Tresorerie",
+          "FR0000989626",
+          "https://www.finect.com/fondos-inversion/FR0000989626-Groupama_tresorerie_ic",
+          "0.08%",
+          "4.16%",
+          null,
+          null
+        ],
+        [
+          "Renta 4 Renta Fija 6M",
+          "ES0128520006",
+          "https://www.finect.com/fondos-inversion/ES0128520006-Renta_4_renta_fija_6_meses_fi",
+          "0.10%",
+          "3.96%",
+          null,
+          "Monetario R4"
+        ],
+        [null, null, null, null, null, null, null],
+        [
+          "Blackrock Global Funds Euro Reserve Fund A2 Eur",
+          "LU0432365988",
+          "https://www.finect.com/fondos-inversion/LU0432365988-Bgf_euro_reserve_a2_eur",
+          "0.09%",
+          "3.53%",
+          null,
+          null
+        ],
+        [
+          "Santander Rendimiento Cartera FI",
+          "ES0138534054",
+          "https://www.finect.com/fondos-inversion/ES0138534054-Santander_rendimiento_cartera_fi",
+          "0.10%",
+          "4.04%",
+          null,
+          null
+        ],
+        [
+          "Pictet-Short-Term Money Market JPY P",
+          "LU0309035441",
+          "https://www.finect.com/fondos-inversion/LU0309035441-Pictetshortterm_money_market_jpy_p",
+          "-",
+          "-",
+          null,
+          null
+        ],
+        [
+          "Caixabank Monetario Rendimiento Institucional FI",
+          "ES0138045002",
+          "https://www.finect.com/fondos-inversion/ES0138045051-Caixabank_monetario_rend_instituc_fi",
+          "0.07%",
+          "4.04%",
+          null,
+          null
+        ],
+        [
+          "Lyxor Smart Overnight Return UCITS ETF C-EUR",
+          "LU1190417599",
+          "https://www.justetf.com/en/etf-profile.html?isin=LU1190417599#overview",
+          "0.07%",
+          "4.11%",
+          null,
+          null
+        ],
+        [
+          "BlackRock Euro Ultra Short Core Bond Fund Accumulating EUR",
+          "IE00BMYPM319",
+          "https://www.finect.com/fondos-inversion/IE00BMYPM319-Blackrock_euro_ultra_shrt_cor_bdfdacceur",
+          "-",
+          "-",
+          null,
+          null
+        ]
+      ],
+      "formulas": {},
+      "range": "A1:G12",
+      "merges": []
+    },
+    "RF corto plazo": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M", null, null, null],
+        [
+          "DWS Floating Rates",
+          "LU0034353002",
+          "https://www.finect.com/fondos-inversion/LU0034353002-Dws_floating_rate_notes_lc",
+          "0.19%",
+          "4.73%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Carmignac Sécurité AW EUR Acc",
+          "FR0010149120",
+          "https://www.finect.com/fondos-inversion/FR0010149120-Carmignac_securite_aw_eur_acc",
+          "1.83%",
+          "6.42%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Renta 4 Renta Fija R FI",
+          "ES0176954008",
+          "https://www.finect.com/fondos-inversion/ES0176954008-Renta_4_renta_fija_r_fi",
+          "0.84%",
+          "5.63%",
+          null,
+          null,
+          null
+        ],
+        [
+          "BlackRock Global Funds - Euro Short Duration Bond Fund I2 EUR",
+          "LU0468289250",
+          "https://www.finect.com/fondos-inversion/LU0468289250-Bgf_euro_short_duration_bond_i2_eur",
+          "1.88%",
+          "5.09%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Vanguard Global Short-Term Bond Index Fund EUR Hedged Acc",
+          "IE00BH65QP47",
+          "https://www.finect.com/fondos-inversion/IE00BH65QP47-Vanguard_glb_st_bd_idx__h_acc",
+          "2.52%",
+          "6.06%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Amundi Enhanced Ultra Short Term Bond SRI R2-C",
+          "FR0010830885",
+          "https://www.finect.com/fondos-inversion/FR0013508934-Amundi_enhanced_ult_sht_trm_bd_sri_r2",
+          "0.37%",
+          "5.22%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Amundi Ultra Short Term Bond SRI I C",
+          "FR0011088657",
+          "https://www.finect.com/fondos-inversion/FR0011088657-Amundi_ultra_short_term_bond_sri_i_c",
+          "0.19%",
+          "4.47%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Ostrum SRI Crédit Euro 1-3 R (C) EUR",
+          "FR0011071778",
+          "https://www.finect.com/fondos-inversion/FR0011071778-Ostrum_sri_credit_euro_13_rc",
+          "1.68%",
+          "6.19%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Evli Nordic Corporate Bond B",
+          "FI0008811997",
+          "https://www.finect.com/fondos-inversion/FI0008811997-Evli_nordic_corporate_bond_b",
+          "1.69%",
+          "9.74%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Neuberger Berman Ultra Short Term Euro Bond Fund Class EUR I Accumulating",
+          "IE00BFZMJT78",
+          "https://www.finect.com/fondos-inversion/IE00BFZMJT78-Neuberger_berman_ultr_st_er_bd_eur_iacc",
+          "1.06%",
+          "7.41%",
+          null,
+          null,
+          null
+        ],
+        [
+          "UBAM - Dynamic US Dollar Bond AHC EUR",
+          "LU0352158918",
+          "https://www.finect.com/fondos-inversion/LU0352158918-Ubam_dynamic_us_dollar_bond_ahc_eur",
+          "0.46%",
+          "5.35%",
+          null,
+          null,
+          null
+        ],
+        [
+          "LAZARD EUR SHORT DUR SRI IC",
+          "FR0000027609",
+          "https://www.finect.com/fondos-inversion/FR0000027609-Lazard_euro_short_duration_sri_ic",
+          "1.57%",
+          "4.90%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Amundi S.F. - Diversified Short-Term Bond A EUR ND",
+          "LU1706854152",
+          "https://www.finect.com/fondos-inversion/LU1706854152-Amundi_sf_diversified_st_bd_a_eur_nd",
+          "1.70%",
+          "5.18%",
+          null,
+          null,
+          null
+        ],
+        [
+          "GAM Star Fund plc - GAM Star Cat Bond Class Ordinary EUR Accumulation Hedged",
+          "IE00B3Q8M574",
+          "https://www.finect.com/fondos-inversion/IE00B3Q8M574-Gam_star_cat_bond_ord_eur_acc",
+          "2.70%",
+          "8.88%",
+          null,
+          null,
+          null
+        ],
+        [
+          "UBS Renta Fija 0-5 B FI",
+          "ES0124880032",
+          "https://www.finect.com/fondos-inversion/ES0124880032-Cs_renta_fija_05_b_fi",
+          "2.17%",
+          "4.95%",
+          null,
+          null,
+          null
+        ],
+        [
+          "B&H Deuda FI",
+          "ES0112618006",
+          "https://www.finect.com/fondos-inversion/ES0112618006-Bh_deuda_fi",
+          "1.16%",
+          "5.37%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Tikehau Short Duration Fund SF EUR Acc",
+          "LU1585265066",
+          "https://www.finect.com/fondos-inversion/LU2098119287-Tikehau_short_duration_sf_eur_acc",
+          "0.59%",
+          "4.71%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Aegon European ABS Fund B EUR Acc",
+          "IE00BZ005D22",
+          "https://www.finect.com/fondos-inversion/IE00BZ005D22-Aegon_european_abs_b_eur_acc",
+          "0.70%",
+          "4.77%",
+          null,
+          null,
+          null
+        ],
+        [null, "LU1953144208", null, null, null, null, null, null]
+      ],
+      "formulas": {},
+      "range": "A1:H20",
+      "merges": []
+    },
+    "RF medio plazo": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M", null, null, null],
+        [
+          "Buy & Hold Luxembourg B&H Bond Class 2",
+          "LU1988110927",
+          "https://www.finect.com/fondos-inversion/LU2278574988-Buy__hold_luxembourg_bh_bond_class_2",
+          "3.72%",
+          "10.20%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Carmignac Pf Credit A EUR Acc",
+          "LU1623762843",
+          "https://www.finect.com/fondos-inversion/LU1623762843-Carmignac_pf_credit_a_eur_acc",
+          "3.55%",
+          "13.11%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Vanguard Global Bond Index Fund EUR Hedged Acc",
+          "IE00B18GC888",
+          "https://www.finect.com/fondos-inversion/IE00B18GC888-Vanguard_global_bd_idx_eur_h_acc",
+          "6.43%",
+          "5.93%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Vanguard U.S. Government Bond Index Fund EUR Hedged Acc",
+          "IE0007471471",
+          "https://www.finect.com/fondos-inversion/IE0007471471-Vanguard_us_govt_bd_idx__h_acc",
+          "6.72%",
+          "6.49%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Man Funds plc - Man Global Investment Grade Opportunities D H EUR",
+          "IE000MI53C66 ",
+          "https://www.finect.com/fondos-inversion/IE000VA5W9H0-Man_glg_glingd_opports_i_h_eur_acc",
+          "5.80%",
+          "21.28%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Sigma Investment House FCP - BrightGate Global Income Fund A I",
+          "LU0942882589",
+          "https://www.finect.com/fondos-inversion/LU0942882589-Sigma_inv_house_fcp_brightg_glb_inc_a_i",
+          "3.45%",
+          "13.39%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Schroder International Selection Fund EURO Corporate Bond A Accumulation EUR Duration Hedged",
+          "LU0607220562",
+          "https://www.finect.com/fondos-inversion/LU0607220562-Schroder_isf_euro_corp_bd_a_acc_eur_h",
+          "1.65%",
+          "10.23%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Candriam Bonds Global High Yield Class C EUR Cap",
+          "LU0170291933",
+          "https://www.finect.com/fondos-inversion/LU0170291933-Candriam_bds_global_hi_yld_c_eur_cap",
+          "4.38%",
+          "12.80%",
+          null,
+          null,
+          null
+        ],
+        [
+          "BlueBay Funds - BlueBay High Yield ESG Bond Fund M - EUR",
+          "LU0438373382",
+          "https://www.finect.com/fondos-inversion/LU0438373382-Bluebay_high_yield_esg_bond_m_eur",
+          "2.60%",
+          "5.35%",
+          null,
+          null,
+          null
+        ],
+        [
+          "M&G (Lux) Global Floating Rate High Yield Fund EUR A-H Acc",
+          "LU1670722161",
+          "https://www.finect.com/fondos-inversion/LU1670722161-Mg_lux_glb_fl_rt_hy_a_h_eur_acc",
+          "1.94%",
+          "5.25%",
+          null,
+          null,
+          null
+        ]
+      ],
+      "formulas": {},
+      "range": "A1:H11",
+      "merges": []
+    },
+    "Renta Variable": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M", null, null, null],
+        [
+          "Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation",
+          "IE0031786696",
+          "https://www.finect.com/fondos-inversion/IE0031786142-Vanguard_emerg_mkts_stk_idx_inv_eur_acc",
+          "11.84%",
+          "9.92%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity MSCI World Index Fund EUR P Acc",
+          "IE00BYX5NX33",
+          "https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc",
+          "10.38%",
+          "19.39%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity S&P 500 Index Fund EUR P Acc",
+          "IE00BYX5MX67",
+          "https://www.finect.com/fondos-inversion/IE00BYX5MX67-Fidelity_sp_500_index_eur_p_acc",
+          "11.01%",
+          "21.03%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity Funds - Euro 50 Index Fund A-Acc-EUR",
+          "LU0261952682",
+          "https://www.finect.com/fondos-inversion/LU0261952682-Fidelity_euro_stoxx_50_aacceur",
+          "13.38%",
+          "16.93%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Robeco QI European Conservative Equities D €",
+          "LU0339661307",
+          "https://www.finect.com/fondos-inversion/LU0339661307-Robeco_qi_european_cnsrv_eqs_d_",
+          "5.08%",
+          "15.32%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity Funds - Sustainable Health Care Fund A-Acc-EUR",
+          "LU0261952419",
+          "https://www.finect.com/fondos-inversion/LU0261952419-Fidelity_sust_glb_hlthcare_aacceur",
+          "9.41%",
+          "16.91%",
+          null,
+          null,
+          null
+        ],
+        [
+          "PICTET CHINA INDEX P ACC (EUR)",
+          "LU0625737910",
+          "https://www.finect.com/fondos-inversion/LU0625737910-Pictetchina_index_p_eur",
+          "16.82%",
+          "-8.54%",
+          null,
+          null,
+          null
+        ],
+        [
+          "iShares Emerging Markets Index Fund (IE) D Acc EUR",
+          "IE00BYWYCC39",
+          "https://www.finect.com/fondos-inversion/IE00BYWYCC39-Ishares_emergmkts_idx_ie_d_acc_eur",
+          "10.06%",
+          "9.69%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity Funds - Global Technology Fund A-Acc-EUR",
+          "LU0346389348 ",
+          "https://www.finect.com/fondos-inversion/LU1213836080-Fidelity_global_technology_aacceur",
+          "14.36%",
+          "35.08%",
+          null,
+          null,
+          null
+        ],
+        [
+          "JPMorgan Funds - Global Focus Fund A (acc) - EUR",
+          "LU0210534227",
+          "https://www.finect.com/fondos-inversion/LU0210534227-Jpm_global_focus_a_acc_eur",
+          "11.15%",
+          "29.89%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Jupiter India Select Class L EUR Acc",
+          "LU0329070915",
+          "https://www.finect.com/fondos-inversion/LU0329070915-Jupiter_india_select_l_eur_acc",
+          "17.24%",
+          "22.29%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Allianz Global Investors Fund - Allianz Global Artificial Intelligence AT EUR",
+          "LU1548497699",
+          "https://www.finect.com/fondos-inversion/LU1548497699-Allianz_global_artfcl_intlgc_at_eur",
+          "21.05%",
+          "-15.96%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Allianz Pet and Animal Wellbeing AT H2 EUR",
+          "LU1931536152LU1931536152",
+          "https://www.finect.com/fondos-inversion/LU1931536152-Allianz_pet_and_animal_wlb_at_h2_eur",
+          "13.81%",
+          "-9.24%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Janus Henderson Horizon Global Smaller Companies Fund A2 EUR",
+          "LU1984712320",
+          "https://www.finect.com/fondos-inversion/LU1984712320-Janus_henderson_hrzn_glb_sc_a2_eur_acc",
+          "15.95%",
+          "-4.33%",
+          null,
+          null,
+          null
+        ],
+        [
+          "GUINNESS GLOBAL EQUITY INCOME D EUR ACC",
+          "IE00BDGV0290",
+          "https://www.finect.com/fondos-inversion/IE00BDGV0290-Guinness_global_equity_income_d_eur_acc",
+          "11.50%",
+          "11.92%",
+          null,
+          null,
+          null
+        ],
+        [
+          "JPMorgan Funds - Pacific Equity Fund A (acc) - EUR",
+          "LU0217390573",
+          "https://www.finect.com/fondos-inversion/LU0217390573-Jpm_pacific_equity_a_acc_eur",
+          "9.67%",
+          "-5.27%",
+          null,
+          null,
+          null
+        ],
+        [
+          "GQG Partners Global Equity Fund Class I Euro Accumulating",
+          "IE00BH480S68",
+          "https://www.finect.com/fondos-inversion/IE00BH480S68-Gqg_partners_global_equity_i_eur_acc",
+          "14.71%",
+          "-11.36%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Azvalor Internacional FI",
+          "ES0112611001",
+          "https://www.finect.com/fondos-inversion/ES0112611001-Azvalor_internacional_fi",
+          "9.06%",
+          "-15.83%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Cobas Internacional C FI",
+          "ES0119199000",
+          "https://www.finect.com/fondos-inversion/ES0119199000-Cobas_internacional_c_fi",
+          "9.35%",
+          "-1.08%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Bestinver Internacional FI",
+          "ES0114638036",
+          "https://www.finect.com/fondos-inversion/ES0114638036-Bestinver_internacional_fi",
+          "10.80%",
+          "-9.28%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Renta 4 Multigestión Numantia Patrimonio Global FI",
+          "ES0173311103",
+          "https://www.finect.com/fondos-inversion/ES0173311103-Renta_4_multigestion_num_patr_glb_fi",
+          "18.00%",
+          "2.63%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Alken Fund - Small Cap Europe Class A",
+          "LU0524465548",
+          "https://www.finect.com/fondos-inversion/LU0524465548-Alken_small_cap_europe_a",
+          "16.70%",
+          "14.97%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Evli Emerging Frontier B",
+          "FI4000066915",
+          "https://www.finect.com/fondos-inversion/FI4000066915-Evli_emerging_frontier_b",
+          "11.50%",
+          "9.63%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Fidelity Funds - Global Equity Income Fund A-MINCOME(G)-EUR",
+          "LU1084165056",
+          "https://www.finect.com/fondos-inversion/LU1084165056-Fidelity_global_equity_inc_amincgeur",
+          "8.09%",
+          "17.93%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Robeco QI Emerging Markets Active Equities D €",
+          "LU0329355670",
+          "https://www.finect.com/fondos-inversion/LU0329355670-Robeco_qi_em_active_equities_d_",
+          "10.41%",
+          "5.44%",
+          null,
+          null,
+          null
+        ],
+        [
+          "Multi Units Luxembourg - Amundi STOXX Europe 600 Insurance UCITS ETF Acc",
+          "LU1834987973",
+          "https://www.finect.com/etfs/LU1834987973-Lyxor_stoxx_europe_600_insurance_etf",
+          "9.40%",
+          "32.02%",
+          null,
+          null,
+          null
+        ]
+      ],
+      "formulas": {},
+      "range": "A1:H27",
+      "merges": []
+    },
+    "Renta Fija largo plazo": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M"],
+        [
+          "Vanguard 20+ Year Euro Treasury Index Fund EUR Acc",
+          "IE00B246KL88",
+          "https://www.finect.com/fondos-inversion/IE00B246KL88-Vanguard_20_yr__trs_idx__acc",
+          "17.67%",
+          "9.44%"
+        ],
+        [
+          "AXA World Funds - Euro Long Duration Bonds E Capitalisation EUR",
+          "LU0251661590",
+          "https://www.finect.com/fondos-inversion/LU0251661590-Axawf_euro_10__lt_e_cap_eur",
+          "13.22%",
+          "10.90%"
+        ],
+        [
+          "ETF ISHARES EURO GOV 20Y TGT D (EUR)",
+          "IE00BSKRJX20",
+          "https://www.finect.com/etfs/IE00BSKRJX20-Ishares__govt_bond_20y_tgtdur_etf_dist",
+          "17.08%",
+          "9.74%"
+        ],
+        [
+          "iShares $ Treasury Bond 20+yr UCITS ETF",
+          "IE00BD8PGZ49",
+          "https://www.finect.com/etfs/IE00BFM6TC58-Ishares__treasury_bd_20y_etf_usd_acc",
+          "13.98%",
+          "7.47%"
+        ]
+      ],
+      "formulas": {},
+      "range": "A1:E5",
+      "merges": []
+    },
+    "ETFs": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M"],
+        [
+          "iShares € Govt Bond 20yr Target Duration UCITS ETF",
+          "E20Y",
+          "https://www.finect.com/etfs/IE00BSKRJX20-Ishares__govt_bond_20y_tgtdur_etf_dist",
+          "12.13%",
+          "-3.52%"
+        ],
+        [
+          "iShares Physical Gold ETC",
+          "PPFB",
+          "https://www.finect.com/etfs/IE00B4ND3602-Ishares_physical_gold_etc",
+          "11.24%",
+          "29.88%"
+        ],
+        [
+          "iShares Core MSCI World UCITS ETF USD (Acc)",
+          "EUNL",
+          "https://www.finect.com/etfs/IE00B4L5Y983-Ishares_core_msci_world_etf_usd_acc",
+          "15.15%",
+          "12.96%"
+        ],
+        [
+          "Fidelity Physical Bitcoin ETP",
+          "XS2434891219 / FBTCG",
+          "https://www.finect.com/etfs/XS2434891219-Fidelity_physical_bitcoin_etp",
+          "59.11%",
+          "10.71%"
+        ],
+        [
+          "VanEck Defense ETF A USD Acc",
+          "IE000YYE6WK5",
+          "https://www.finect.com/etfs/IE000YYE6WK5-Vaneck_defense_etf_a_usd_acc",
+          "-",
+          "-"
+        ],
+        [
+          "Multi Units Luxembourg - Amundi Smart Overnight Return UCITS ETF Acc",
+          "LU1190417599",
+          "https://www.finect.com/etfs/LU1190417599-Lyxor_smart_overnight_return_etf_c_eur",
+          "0.11%",
+          "3.86%"
+        ],
+        [
+          "Xtrackers II Eurozone Government Bond 25+ UCITS ETF 1C",
+          "LU0290357846",
+          "https://www.finect.com/etfs/LU0290357846-Xtrackers_ii_euroz_govt_bd_25_etf_1c",
+          "13.21%",
+          "-5.68%"
+        ],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null]
+      ],
+      "formulas": {},
+      "range": "A1:E11",
+      "merges": []
+    },
+    "Mixtos": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M"],
+        [
+          "Gamma Global A FI",
+          "ES0140794001",
+          "https://www.finect.com/fondos-inversion/ES0140794001-Gamma_global_fi",
+          "2.37%",
+          "6.57%"
+        ],
+        [
+          "EVERCAPITAL INVESTMN I ACC EUR",
+          "LU1953238794",
+          "https://www.finect.com/fondos-inversion/LU1953238877-Ec_sicav_evercapital_invms_ucits_i_ins_i",
+          "8.58%",
+          "-3.58%"
+        ],
+        [
+          "Acatis Value Event Fonds A",
+          "DE000A0X7541",
+          "https://www.finect.com/fondos-inversion/DE000A0X7541-Acatis_value_event_fonds_a",
+          "5.66%",
+          "0.27%"
+        ],
+        [
+          "Avantage Fund A FI",
+          "ES0112231008",
+          "https://www.finect.com/fondos-inversion/ES0112231008-Avantage_fund_a_fi",
+          "10.07%",
+          "5.32%"
+        ],
+        [
+          "Invesco Funds - Invesco Pan European High Income Fund A Accumulation EUR",
+          "LU0243957239",
+          "https://www.finect.com/fondos-inversion/LU0243957239-Invesco_pan_european_hi_inc_a_eur_acc",
+          "3.05%",
+          "1.91%"
+        ],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null]
+      ],
+      "formulas": {},
+      "range": "A1:E22",
+      "merges": []
+    },
+    "Alternativos": {
+      "data": [
+        ["Nombre", "Isin", "Link", "Vol 12M", "R 12M", null, null],
+        [
+          "Candriam Index Arbitrage Classique en EUR",
+          "FR0010016477",
+          "https://www.finect.com/fondos-inversion/FR0010016477-Candriam_index_arbitrage_classique_eur",
+          "0.78%",
+          "4.36%",
+          null,
+          null
+        ],
+        [
+          "Renta 4 Valor Relativo R FI",
+          "ES0128522002",
+          "https://www.finect.com/fondos-inversion/ES0128522002-Renta_4_valor_relativo_r_fi",
+          "2.07%",
+          "6.54%",
+          null,
+          null
+        ],
+        [
+          "MAN GLGALPHASELECT \"INH\"",
+          "IE00B5ZNKR51",
+          "https://www.finect.com/fondos-inversion/IE00BJQ2XG97-Man_glg_alpha_select_alt_inh_eur",
+          "2.85%",
+          "3.32%",
+          null,
+          null
+        ],
+        [
+          "European Specialist Investment Funds - M&G Total Return Credit Investment Fund P EUR Acc",
+          "LU2482630675",
+          "https://www.finect.com/fondos-inversion/LU2482630675-Mg_total_return_crdt_invmt_p_eur_acc",
+          "0.89%",
+          "4.44%",
+          null,
+          null
+        ],
+        [
+          "AXA World Funds - Euro Credit Total Return F Capitalisation EUR",
+          "LU1164221589",
+          "https://www.finect.com/fondos-inversion/LU1164221589-Axawf_euro_credit_total_ret_f_cap_eur",
+          "3.32%",
+          "6.11%",
+          null,
+          null
+        ],
+        [
+          "Dunas Valor Equilibrado R FI",
+          "ES0175414012",
+          "https://www.finect.com/fondos-inversion/ES0175414012-Dunas_valor_equilibrado_r_fi",
+          "1.49%",
+          "5.27%",
+          null,
+          null
+        ],
+        [
+          "Dunas Valor Prudente R FI",
+          "ES0175437005",
+          "https://www.finect.com/fondos-inversion/ES0175437005-Dunas_valor_prudente_r_fi",
+          "0.51%",
+          "4.13%",
+          null,
+          null
+        ],
+        [
+          "JPMorgan Funds - Europe Equity Absolute Alpha Fund C (perf) (acc) - EUR",
+          "LU1001748398",
+          "https://www.finect.com/fondos-inversion/LU1001748398-Jpm_europe_eq_abs_alp_c_perf_acc_eur",
+          "3.83%",
+          "14.87%",
+          null,
+          null
+        ],
+        [
+          "DNCA Invest Alpha Bonds A EUR",
+          "LU1694789451 ",
+          "https://www.finect.com/fondos-inversion/LU1694789451-Dnca_invest_alpha_bonds_a_eur",
+          "1.74%",
+          "4.93%",
+          null,
+          null
+        ],
+        [
+          "Acacia Renta Dinámica Origen FI",
+          "ES0157935000",
+          "https://www.finect.com/fondos-inversion/ES0157935000-Acacia_renta_dinamica_fi",
+          "0.86%",
+          "0.43%",
+          null,
+          null
+        ],
+        [
+          "Carmignac Portfolio Long-Short European Equities A EUR Acc",
+          "LU1317704051",
+          "https://www.finect.com/fondos-inversion/LU1317704051-Carmignac_pf_ls_eurp_eqs_a_eur_acc",
+          "8.18%",
+          "3.17%",
+          null,
+          null
+        ],
+        [
+          "BlackRock Strategic Fds - BlackRock Systematic Asia Pacific Equity Absolute Return Fd A2 EUR Hedged",
+          "LU1508158430",
+          "https://www.finect.com/fondos-inversion/LU1508158430-Bsf_asia_pacific_divers_eq_ar_a2_eur_h",
+          "3.70%",
+          "15.63%",
+          null,
+          null
+        ],
+        [
+          "JupiterMerian Global Equity Absolute Return Fund L (EUR) Hedged Acc",
+          "IE00BLP5S460",
+          "https://www.finect.com/fondos-inversion/IE00BLP5S460-Jupitermerian_glb_eq_absrt_l__h_acc",
+          "2.59%",
+          "8.42%",
+          null,
+          null
+        ],
+        [
+          "Vontobel Fund Credit Opportunities HI (hedged) EUR Cap",
+          "LU2416422751",
+          "https://www.finect.com/fondos-inversion/LU2416422751-Vontobel_credit_opps_hi_hdg_eur_cap",
+          "3.29%",
+          "13.02%",
+          null,
+          null
+        ],
+        [
+          "AQR Apex UCITS Fund RAEFT EUR Acc",
+          "LU1662496279",
+          "https://www.finect.com/fondos-inversion/LU1662496279-Aqr_systematic_total_return_ucits_raeft",
+          "5.99%",
+          "7.33%",
+          null,
+          null
+        ]
+      ],
+      "formulas": {},
+      "range": "A1:G16",
+      "merges": []
+    },
+    "Revisar": {
+      "data": [
+        ["AB INTL HEALTH CARE I ACC EUR (EUR)"],
+        ["AMRC SMALLER COMPANIES IE EUR (EUR)"],
+        ["ELEVA EUROPEAN SELECTION I EUR (EUR)"],
+        ["GQG EM MARKET EQUITY R EUR ACC (EUR)"],
+        ["INDEX MSCI EUROPE IE ACC EUR (EUR)"],
+        ["INDEX S&P 500 IE ACC EUR (EUR)"],
+        ["ISHARES WORLD EQ IDX D2 AC EUR (EUR)"],
+        ["PICTET EMERG MKTS INDEX I EUR (EUR)"],
+        ["POLAR GLBL TECHNOLOGY I ACC EU (EUR)"],
+        ["SISF JAPANESE OPPOR C ACC EUR (EUR)"],
+        ["US PREMIUM EQUITIES IH ACC EUR (EUR)"],
+        ["US STRUCTUR RESEARCH EQ IN EUR (EUR)"],
+        ["MARCH NEXT GENERATION FI B ACC (EUR)"],
+        ["EURIZON BD USD LTE Z ACC EUR (EUR)"],
+        ["GIS EURO BOND BX EUR (EUR)"],
+        ["GLB SHRT DRTN INVST H ACC EUR (EUR)"],
+        ["JPM ESG EMU GO IG 3-5Y ACC EUR (EUR)"],
+        ["JUPITER DYN BOND I ACC EUR (EUR)"],
+        ["MARCH GREEN TRANSITION BD C AC (EUR)"],
+        ["SISF EURO CORP BND IZ ACC EUR (EUR)"],
+        ["MARCH RENTA FIJA CP C EUR ACC (EUR)"],
+        ["INVEST ALPHA BONDS N ACC EUR (EUR)"],
+        ["OYSTER BM ALTERNATIVOS R AC EU (EUR)"],
+        ["GROUPAMA ENTREPRISE RC ACC EUR (EUR)"],
+        ["GLB SHRT DRTN INVST H ACC EUR (EUR)"]
+      ],
+      "formulas": {},
+      "range": "B3:B27",
+      "merges": []
+    },
+    "Cartera1": {
+      "data": [
+        [
+          null,
+          null,
+          "Tipos de Inversiones",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "1. Inmuebles",
+          null,
+          null,
+          "https://youtu.be/Ld5HVQY30fY",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Siempre y cuando te lo permita el apalancamiento, adquirir nuevos.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Cosas a saber",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Ratios minimos Compra/alquiler",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Precio",
+          "Alquiler",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "200000",
+          "1000",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, "150000", "750", null, null, null, null, null, null, null],
+        [null, null, "100000", "500", null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Finaciación",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "Cuanto más largo plazo mejor",
+          null,
+          null,
+          null,
+          null,
+          null,
+          "Myinvestor:",
+          "codigo: pizarra",
+          null
+        ],
+        [
+          null,
+          null,
+          "Cuanto más dinero mejor",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "Tipo más bajo posible (fijo)",
+          null,
+          null,
+          "Hipotecas fijas al 2%",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "2. Ahorro remunerado / Fondo Monetarios",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "La Francaise Tresorerie",
+          "FR0000991390",
+          "https://www.finect.com/fondos-inversion/FR0000991390-La_francaise_tresorerie_isr_r",
+          "0.08%",
+          "4.02%",
+          null,
+          "Monetario Myinvestor",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "AXA Tresor Court Terme C",
+          "FR0000447823",
+          "https://www.finect.com/fondos-inversion/FR0000447823-Axa_tresor_court_terme_c",
+          "0.09%",
+          "4.09%",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "Groupama Tresorerie",
+          "FR0000989626",
+          "https://www.finect.com/fondos-inversion/FR0000989626-Groupama_tresorerie_ic",
+          "0.08%",
+          "4.16%",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "Renta 4 Renta Fija 6M",
+          "ES0128520006",
+          "https://www.finect.com/fondos-inversion/ES0128520006-Renta_4_renta_fija_6_meses_fi",
+          "0.10%",
+          "3.96%",
+          null,
+          "Monetario R4",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "https://youtu.be/GJCm99xWUJE",
+          null,
+          "Ejemplo compra de Groupama min 13:30",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "https://youtu.be/UseVRu7tVpQ",
+          null,
+          "Explicación fondos monetarios",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Máxima rentabilidad que puedes obtener del activo libre de riesgo. No es una promoción (puedes estar el tiempo que quieras). Difieres impuestos (no pagas hasta que vendes). Liquidez diaria. ",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "3. Inversión a largo plazo / Fondos Indexados (RV)",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Inversión en empresas de primer nivel a largo plazo (con riesgo) para hacer la bola de nieve del interés compuesto.",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        ["400", null, null, null, null, null, null, null, null, null, null],
+        [
+          "80",
+          "20%",
+          "Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation",
+          "IE0031786696",
+          "https://www.finect.com/fondos-inversion/LU0115763970-Fidelity_em_mkts_eacceur",
+          "-",
+          null,
+          null,
+          "http://www.moneychimp.com/international/es/calculator/compound_interest_calculator.htm",
+          null,
+          null
+        ],
+        [
+          "320",
+          "80%",
+          "Fidelity MSCI World Index Fund EUR P Acc",
+          "IE00BYX5NX33",
+          "https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc",
+          "10.38%",
+          "19.39%",
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "En caso de caidas fuertes en la RV, utilizar parte del dinero de monetarios para compras adicionales",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "https://www.youtube.com/watch?v=Au98IMqZV7U",
+          null,
+          "Automatizando indexados en myinvestor",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "4. Renta Fija / Bonos / Inversión de medio plazo",
+          null,
+          null,
+          "Deja de ser atractiva con los tipos de Europa muy bajos (<1,5%-2%)",
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "https://youtu.be/bkYK-akFam4",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "Pestañas",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "RF Corto Plazo",
+          "Hermano mayor del FM, para bsucar retornos del 5%-6% con bajo riesgo",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "RF Medio Plazo",
+          "RF con riesgo medio, para buscar retornos del 7%-8%",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          null,
+          "Retorno esperado",
+          "Pesos",
+          "Rentabilidad cartera",
+          "120000",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Monetarios",
+          "2.00%",
+          "0%",
+          "0.00%",
+          "0",
+          "Liquidez sin riesgo, ideal para sacar dinero",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "RF Corto",
+          "4.00%",
+          "40%",
+          "1.60%",
+          "48000",
+          "Inversion de bajo riesgo, ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "RF Medio",
+          "5.50%",
+          "25%",
+          "1.38%",
+          "30000",
+          "Ganar dinero con la mitad de volatilidad que la RV",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "RV",
+          "9%",
+          "25%",
+          "2.25%",
+          "30000",
+          "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Alternativos",
+          "5%",
+          "10%",
+          "0.50%",
+          "12000",
+          "Ganar dinero mientras bajas el riesgo de la cartera. Maxima diversificación",
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, "5.73%", "6870", null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          "Monetarios",
+          "0",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Groupama Tresorerie",
+          "FR0000989626",
+          "https://www.finect.com/fondos-inversion/FR0000989626-Groupama_tresorerie_ic",
+          "0.08%",
+          "4.16%",
+          "0",
+          "231000",
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          "RF Corto",
+          "48000",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "riesgo alto",
+          "Evli Nordic Corporate Bond B",
+          "FI0008811997",
+          "https://www.finect.com/fondos-inversion/FI0008811997-Evli_nordic_corporate_bond_b",
+          "1.69%",
+          "9.74%",
+          "16000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "riesgo medio",
+          "Neuberger Berman Ultra Short Term Euro Bond Fund Class EUR I Accumulating",
+          "IE00BFZMJT78",
+          "https://www.finect.com/fondos-inversion/IE00BFZMJT78-Neuberger_berman_ultr_st_er_bd_eur_iacc",
+          "1.06%",
+          "7.41%",
+          "16000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "riesgo bajo",
+          "B&H Deuda FI",
+          "ES0112618006",
+          "https://www.finect.com/fondos-inversion/ES0112618006-Bh_deuda_fi",
+          "1.16%",
+          "5.37%",
+          "16000",
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          "RF Medio",
+          "30000",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Carmignac Pf Credit A EUR Acc",
+          "LU1623762843",
+          "https://www.finect.com/fondos-inversion/LU1623762843-Carmignac_pf_credit_a_eur_acc",
+          "3.55%",
+          "13.11%",
+          "7500.0",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Sigma Investment House FCP - BrightGate Global Income Fund A I",
+          "LU0942882589",
+          "https://www.finect.com/fondos-inversion/LU0942882589-Sigma_inv_house_fcp_brightg_glb_inc_a_i",
+          "3.45%",
+          "13.39%",
+          "7500.0",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Gamma Global A FI",
+          "ES0140794001",
+          "https://www.finect.com/fondos-inversion/ES0140794001-Gamma_global_fi",
+          "2.37%",
+          "6.57%",
+          "7500.0",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Ábaco Renta Fija Mixta Global I FI",
+          "ES0140072002",
+          "https://www.finect.com/fondos-inversion/ES0140072002-Abaco_renta_fija_mixta_global_i_fi",
+          "2.70%",
+          "4.67%",
+          "7500.0",
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, "RV", "30000", null, null, null, null, null, null],
+        [
+          null,
+          null,
+          "20%",
+          "Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation",
+          "IE0031786696",
+          "https://www.finect.com/fondos-inversion/LU0115763970-Fidelity_em_mkts_eacceur",
+          "-",
+          null,
+          "6000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "50%",
+          "Fidelity MSCI World Index Fund EUR P Acc",
+          "IE00BYX5NX33",
+          "https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc",
+          "10.38%",
+          "19.39%",
+          "15000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "15%",
+          "Cobas Internacional C FI",
+          "ES0119199000",
+          "https://www.finect.com/fondos-inversion/ES0119199000-Cobas_internacional_c_fi",
+          "9.35%",
+          "-1.08%",
+          "4500",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          "15%",
+          "Heptagon",
+          null,
+          null,
+          null,
+          null,
+          "4500",
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          "Alternativos",
+          "12000",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "Dunas Valor Equilibrado R FI",
+          "ES0175414012",
+          "https://www.finect.com/fondos-inversion/ES0175414012-Dunas_valor_equilibrado_r_fi",
+          "1.49%",
+          "5.27%",
+          "3000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "DNCA Invest Alpha Bonds A EUR",
+          "LU1694789451 ",
+          "https://www.finect.com/fondos-inversion/LU1694789451-Dnca_invest_alpha_bonds_a_eur",
+          "1.74%",
+          "4.93%",
+          "3000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "BlackRock Strategic Fds - BlackRock Systematic Asia Pacific Equity Absolute Return Fd A2 EUR Hedged",
+          "LU1508158430",
+          "https://www.finect.com/fondos-inversion/LU1508158430-Bsf_asia_pacific_divers_eq_ar_a2_eur_h",
+          "3.70%",
+          "15.63%",
+          "3000",
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "JupiterMerian Global Equity Absolute Return Fund L (EUR) Hedged Acc",
+          "IE00BLP5S460",
+          "https://www.finect.com/fondos-inversion/IE00BLP5S460-Jupitermerian_glb_eq_absrt_l__h_acc",
+          "2.59%",
+          "8.42%",
+          "3000",
+          null,
+          null
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, "Pones"],
+        [null, null, null, null, null, null, null, null, null, null, "125000"],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, "Costes"],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "1475.045455"
+        ],
+        [null, null, null, null, null, null, null, null, null, null, "600"],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "2075.045455"
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "Obtienes"
+        ],
+        [null, null, null, null, null, null, null, null, null, null, "9600"],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "7524.954545"
+        ],
+        [null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, "6.02%"]
+      ],
+      "formulas": {
+        "B37": {
+          "formula": "C37*B36",
+          "value": 80
+        },
+        "B38": {
+          "formula": "B36*C38",
+          "value": 320
+        },
+        "H54": {
+          "formula": "G54*F54",
+          "value": 0
+        },
+        "I54": {
+          "formula": "$I$53*G54",
+          "value": 0
+        },
+        "H55": {
+          "formula": "G55*F55",
+          "value": 0.016
+        },
+        "I55": {
+          "formula": "$I$53*G55",
+          "value": 48000
+        },
+        "H56": {
+          "formula": "G56*F56",
+          "value": 0.01375
+        },
+        "I56": {
+          "formula": "$I$53*G56",
+          "value": 30000
+        },
+        "H57": {
+          "formula": "G57*F57",
+          "value": 0.0225
+        },
+        "I57": {
+          "formula": "$I$53*G57",
+          "value": 30000
+        },
+        "H58": {
+          "formula": "G58*F58",
+          "value": 0.005000000000000001
+        },
+        "I58": {
+          "formula": "$I$53*G58",
+          "value": 12000
+        },
+        "H60": {
+          "formula": "SUM(H54:H58)",
+          "value": 0.057249999999999995
+        },
+        "I60": {
+          "formula": "H60*I53",
+          "value": 6869.999999999999
+        },
+        "F62": {
+          "formula": "I54",
+          "value": 0
+        },
+        "J63": {
+          "formula": "F62",
+          "value": 0
+        },
+        "F65": {
+          "formula": "I55",
+          "value": 48000
+        },
+        "J66": {
+          "formula": "$F$65/3",
+          "value": 16000
+        },
+        "J67": {
+          "formula": "$F$65/3",
+          "value": 16000
+        },
+        "J68": {
+          "formula": "$F$65/3",
+          "value": 16000
+        },
+        "F70": {
+          "formula": "I56",
+          "value": 30000
+        },
+        "J71": {
+          "formula": "$F$70/4",
+          "value": 7500
+        },
+        "J72": {
+          "formula": "$F$70/4",
+          "value": 7500
+        },
+        "J73": {
+          "formula": "$F$70/4",
+          "value": 7500
+        },
+        "J74": {
+          "formula": "$F$70/4",
+          "value": 7500
+        },
+        "F76": {
+          "formula": "I57",
+          "value": 30000
+        },
+        "J77": {
+          "formula": "D77*$F$76",
+          "value": 6000
+        },
+        "J78": {
+          "formula": "D78*$F$76",
+          "value": 15000
+        },
+        "J79": {
+          "formula": "D79*$F$76",
+          "value": 4500
+        },
+        "J80": {
+          "formula": "D80*$F$76",
+          "value": 4500
+        },
+        "F84": {
+          "formula": "I58",
+          "value": 12000
+        },
+        "J85": {
+          "formula": "$F$84/4",
+          "value": 3000
+        },
+        "J86": {
+          "formula": "$F$84/4",
+          "value": 3000
+        },
+        "J87": {
+          "formula": "$F$84/4",
+          "value": 3000
+        },
+        "J88": {
+          "formula": "$F$84/4",
+          "value": 3000
+        },
+        "L103": {
+          "formula": "32451/22",
+          "value": 1475.0454545454545
+        },
+        "L105": {
+          "formula": "L103+L104",
+          "value": 2075.0454545454545
+        },
+        "L108": {
+          "formula": "800*12",
+          "value": 9600
+        },
+        "L110": {
+          "formula": "L108-L105",
+          "value": 7524.954545454546
+        },
+        "L112": {
+          "formula": "L110/L99",
+          "value": 0.060199636363636365
+        }
+      },
+      "range": "B2:L112",
+      "merges": []
+    }
+  }
+}
