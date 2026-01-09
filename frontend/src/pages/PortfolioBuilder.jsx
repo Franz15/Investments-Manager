@@ -42,35 +42,31 @@ const PortfolioBuilder = () => {
         name: "Monetarios",
         expectedReturn: 2.0,
         weight: 0,
-        description: "Liquidez sin riesgo, ideal para sacar dinero",
+        description: t("portfolioBuilder.categories.descriptions.monetarios"),
       },
       {
         name: "RF Corto",
         expectedReturn: 4.0,
         weight: 40,
-        description:
-          "Inversión de bajo riesgo, ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
+        description: t("portfolioBuilder.categories.descriptions.rfCorto"),
       },
       {
         name: "RF Medio",
         expectedReturn: 5.5,
         weight: 25,
-        description:
-          "Ganar dinero con la mitad de volatilidad que la Renta Variable",
+        description: t("portfolioBuilder.categories.descriptions.rfMedio"),
       },
       {
         name: "RV",
         expectedReturn: 9.0,
         weight: 25,
-        description:
-          "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+        description: t("portfolioBuilder.categories.descriptions.rv"),
       },
       {
         name: "Alternativos",
         expectedReturn: 5.0,
         weight: 10,
-        description:
-          "Ganar dinero mientras bajas el riesgo de la cartera. Maxima diversificación",
+        description: t("portfolioBuilder.categories.descriptions.alternativos"),
       },
     ],
   });
@@ -151,7 +147,7 @@ const PortfolioBuilder = () => {
         // Sincronizar fondos con MongoDB
         syncFundsToDatabase(sheets);
       } catch (err) {
-        setError(`Error al cargar el archivo: ${err.message}`);
+        setError(`${t("portfolioBuilder.errors.loadExcel")}: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -190,7 +186,7 @@ const PortfolioBuilder = () => {
         ) {
           currentSection = {
             number: 2,
-            title: "Ahorro Remunerado / Fondos Monetarios",
+            title: t("portfolioBuilder.sections.monetarios.title"),
             icon: PiggyBank,
             description: "",
             funds: [],
@@ -206,8 +202,7 @@ const PortfolioBuilder = () => {
         ) {
           currentSection = {
             number: 3,
-            title:
-              "Inversión a Largo Plazo / Fondos Indexados de Renta Variable",
+            title: t("portfolioBuilder.sections.rentaVariable.title"),
             icon: TrendingUp,
             description: "",
             totalAmount: null,
@@ -225,7 +220,7 @@ const PortfolioBuilder = () => {
         ) {
           currentSection = {
             number: 4,
-            title: "Renta Fija / Bonos / Inversión de Medio Plazo",
+            title: t("portfolioBuilder.sections.rentaFija.title"),
             icon: DollarSign,
             description: "",
             note: "",
@@ -239,9 +234,12 @@ const PortfolioBuilder = () => {
           if (currentSection && currentSection.number === 4) {
             currentSection.subsections = currentSection.subsections || [];
             currentSection.subsections.push({
-              name: "Renta Fija Corto Plazo",
-              description:
-                "Hermano mayor del Fondo Monetario, para bsucar retornos del 5%-6% con bajo riesgoInversion de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
+              name: t(
+                "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
+              ),
+              description: t(
+                "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
+              ),
               funds: [],
             });
           }
@@ -251,8 +249,12 @@ const PortfolioBuilder = () => {
           if (currentSection && currentSection.number === 4) {
             currentSection.subsections = currentSection.subsections || [];
             currentSection.subsections.push({
-              name: "Renta Fija Medio Plazo",
-              description: row[3] || "",
+              name: t(
+                "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
+              ),
+              description: t(
+                "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
+              ),
               funds: [],
             });
           }
@@ -264,9 +266,11 @@ const PortfolioBuilder = () => {
           if (!prevRow || !prevRow[3] || prevRow[3] !== "Retorno esperado") {
             currentSection = {
               number: 5,
-              title: "Inversiones Alternativas",
+              title: t("portfolioBuilder.sections.alternativos.title"),
               icon: Layers,
-              description: "",
+              description: t(
+                "portfolioBuilder.sections.alternativos.description",
+              ),
               funds: [],
               videos: [],
             };
@@ -304,17 +308,20 @@ const PortfolioBuilder = () => {
               cellValue.includes("Máxima rentabilidad") ||
               cellValue.includes("Inversión en empresas")
             ) {
+              // Guardar el texto original, se traducirá al mostrar
               currentSection.description = cellValue;
             } else if (
               cellValue.includes("En caso de caidas") ||
               cellValue.includes("Siempre y cuando")
             ) {
+              // Guardar el texto original, se traducirá al mostrar
               currentSection.tips = currentSection.tips || [];
               currentSection.tips.push(cellValue);
             } else if (
               currentSection.number === 4 &&
               cellValue.includes("Deja de ser")
             ) {
+              // Guardar el texto original, se traducirá al mostrar
               currentSection.note = cellValue;
             }
           }
@@ -667,12 +674,20 @@ const PortfolioBuilder = () => {
                 subsection = {
                   name:
                     category === "RF Corto"
-                      ? "Renta Fija Corto Plazo"
-                      : "Renta Fija Medio Plazo",
+                      ? t(
+                          "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
+                        )
+                      : t(
+                          "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
+                        ),
                   description:
                     category === "RF Corto"
-                      ? "Hermano mayor del Fondo Monetario, para bsucar retornos del 5%-6% con bajo riesgoInversion de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
-                      : "Renta Fija con riesgo medio, para buscar retornos del 7%-8%",
+                      ? t(
+                          "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
+                        )
+                      : t(
+                          "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
+                        ),
                   funds: [],
                 };
                 rentaFijaSection.subsections.push(subsection);
@@ -682,8 +697,9 @@ const PortfolioBuilder = () => {
                 subsection.description.length < 100
               ) {
                 // Actualizar la descripción si ya existe pero es corta
-                subsection.description =
-                  "Hermano mayor del Fondo Monetario, para bsucar retornos del 5%-6% con bajo riesgoInversion de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees";
+                subsection.description = t(
+                  "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
+                );
               }
             }
           }
@@ -694,10 +710,11 @@ const PortfolioBuilder = () => {
             if (!alternativosSection) {
               alternativosSection = {
                 number: 5,
-                title: "Inversiones Alternativas",
+                title: t("portfolioBuilder.sections.alternativos.title"),
                 icon: Layers,
-                description:
-                  "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación",
+                description: t(
+                  "portfolioBuilder.sections.alternativos.description",
+                ),
                 funds: [],
                 videos: [],
               };
@@ -916,7 +933,7 @@ const PortfolioBuilder = () => {
   const syncFundsToDatabase = async (sheets) => {
     try {
       setSyncing(true);
-      setSyncStatus("Extrayendo fondos del Excel...");
+      setSyncStatus(t("portfolioBuilder.sync.extracting"));
 
       const fundCategories = [
         "Monetarios",
@@ -962,7 +979,7 @@ const PortfolioBuilder = () => {
       });
 
       setSyncStatus(
-        `Sincronizando ${fundsToSync.length} fondos con la base de datos...`,
+        t("portfolioBuilder.sync.syncing", { count: fundsToSync.length }),
       );
 
       const response = await api.post("/portfolio-funds/sync-from-excel", {
@@ -971,7 +988,9 @@ const PortfolioBuilder = () => {
 
       setSyncStatus({
         type: "success",
-        message: `✓ ${response.data.count} fondos sincronizados correctamente`,
+        message: t("portfolioBuilder.sync.success", {
+          count: response.data.count,
+        }),
       });
 
       setTimeout(() => {
@@ -981,7 +1000,9 @@ const PortfolioBuilder = () => {
       console.error("Error al sincronizar fondos:", err);
       setSyncStatus({
         type: "error",
-        message: `Error al sincronizar fondos: ${err.response?.data?.message || err.message}`,
+        message: t("portfolioBuilder.sync.error", {
+          message: err.response?.data?.message || err.message,
+        }),
       });
     } finally {
       setSyncing(false);
@@ -1055,7 +1076,10 @@ const PortfolioBuilder = () => {
     );
 
     if (totalWeight === 0) {
-      return { profile: "Sin asignar", color: "gray" };
+      return {
+        profile: t("portfolioBuilder.calculator.riskProfiles.unassigned"),
+        color: "gray",
+      };
     }
 
     // Calcular riesgo promedio ponderado
@@ -1068,19 +1092,19 @@ const PortfolioBuilder = () => {
     // Clasificar el perfil de riesgo
     let profile, color;
     if (weightedRisk <= 1.5) {
-      profile = "Conservador";
+      profile = t("portfolioBuilder.calculator.riskProfiles.conservative");
       color = "green";
     } else if (weightedRisk <= 2.5) {
-      profile = "Moderado";
+      profile = t("portfolioBuilder.calculator.riskProfiles.moderate");
       color = "blue";
     } else if (weightedRisk <= 3.5) {
-      profile = "Equilibrado";
+      profile = t("portfolioBuilder.calculator.riskProfiles.balanced");
       color = "yellow";
     } else if (weightedRisk <= 4.5) {
-      profile = "Agresivo";
+      profile = t("portfolioBuilder.calculator.riskProfiles.aggressive");
       color = "orange";
     } else {
-      profile = "Muy Agresivo";
+      profile = t("portfolioBuilder.calculator.riskProfiles.veryAggressive");
       color = "red";
     }
 
@@ -1116,13 +1140,99 @@ const PortfolioBuilder = () => {
   // Función para obtener el nombre completo de la categoría para mostrar
   const getCategoryDisplayName = (categoryName) => {
     const displayNames = {
-      Monetarios: "Monetarios",
-      "RF Corto": "Renta Fija Corto Plazo",
-      "RF Medio": "Renta Fija Medio Plazo",
-      RV: "Renta Variable",
-      Alternativos: "Alternativos",
+      Monetarios: t("portfolioBuilder.categories.monetarios"),
+      "RF Corto": t("portfolioBuilder.categories.rfCorto"),
+      "RF Medio": t("portfolioBuilder.categories.rfMedio"),
+      RV: t("portfolioBuilder.categories.rv"),
+      Alternativos: t("portfolioBuilder.categories.alternativos"),
     };
     return displayNames[categoryName] || categoryName;
+  };
+
+  // Función para traducir descripciones de categorías
+  const translateCategoryDescription = (categoryName) => {
+    const descriptions = {
+      Monetarios: t("portfolioBuilder.categories.descriptions.monetarios"),
+      "RF Corto": t("portfolioBuilder.categories.descriptions.rfCorto"),
+      "RF Medio": t("portfolioBuilder.categories.descriptions.rfMedio"),
+      RV: t("portfolioBuilder.categories.descriptions.rv"),
+      Alternativos: t("portfolioBuilder.categories.descriptions.alternativos"),
+    };
+    return descriptions[categoryName] || "";
+  };
+
+  // Función para traducir títulos de secciones
+  const translateSectionTitle = (sectionNumber, originalTitle) => {
+    if (sectionNumber === 2) {
+      return t("portfolioBuilder.sections.monetarios.title");
+    } else if (sectionNumber === 3) {
+      return t("portfolioBuilder.sections.rentaVariable.title");
+    } else if (sectionNumber === 4) {
+      return t("portfolioBuilder.sections.rentaFija.title");
+    } else if (sectionNumber === 5) {
+      return t("portfolioBuilder.sections.alternativos.title");
+    }
+    return originalTitle;
+  };
+
+  // Función para traducir nombres de subsecciones
+  const translateSubsectionName = (name) => {
+    if (name === "Renta Fija Corto Plazo" || name === "RF Corto Plazo") {
+      return t("portfolioBuilder.sections.subsections.rfCortoPlazo.name");
+    } else if (name === "Renta Fija Medio Plazo" || name === "RF Medio Plazo") {
+      return t("portfolioBuilder.sections.subsections.rfMedioPlazo.name");
+    }
+    return name;
+  };
+
+  // Función para traducir descripciones de subsecciones
+  const translateSubsectionDescription = (name, originalDescription) => {
+    if (name === "Renta Fija Corto Plazo" || name === "RF Corto Plazo") {
+      return t(
+        "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
+      );
+    } else if (name === "Renta Fija Medio Plazo" || name === "RF Medio Plazo") {
+      return t(
+        "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
+      );
+    }
+    return originalDescription || "";
+  };
+
+  // Función para traducir tips comunes
+  const translateTip = (tip) => {
+    if (!tip) return "";
+
+    // Traducir tips conocidos por patrones
+    if (tip.includes("En caso de caidas") || tip.includes("caidas fuertes")) {
+      return t("portfolioBuilder.tips.enCasoDeCaidas");
+    }
+    if (tip.includes("Siempre y cuando")) {
+      return t("portfolioBuilder.tips.siempreYCuando");
+    }
+    if (tip.includes("Máxima rentabilidad")) {
+      return t("portfolioBuilder.tips.maximaRentabilidad");
+    }
+    if (tip.includes("Inversión en empresas")) {
+      return t("portfolioBuilder.tips.inversionEnEmpresas");
+    }
+
+    // Si no hay traducción específica, devolver el original
+    return tip;
+  };
+
+  // Función para traducir descripciones comunes
+  const translateDescription = (description) => {
+    if (!description) return "";
+
+    if (description.includes("Máxima rentabilidad")) {
+      return t("portfolioBuilder.descriptions.maximaRentabilidad");
+    }
+    if (description.includes("Inversión en empresas")) {
+      return t("portfolioBuilder.descriptions.inversionEnEmpresas");
+    }
+
+    return description;
   };
 
   // Función para calcular el monto total de una categoría
@@ -1308,11 +1418,10 @@ const PortfolioBuilder = () => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Calculadora de Asignación de Cartera
+                {t("portfolioBuilder.calculator.title")}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Tabla de cálculos interactiva - Ingresa el monto total y ajusta
-                los pesos
+                {t("portfolioBuilder.calculator.subtitle")}
               </p>
             </div>
           </div>
@@ -1336,7 +1445,7 @@ const PortfolioBuilder = () => {
               }
             >
               <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                Monto Total a Invertir:
+                {t("portfolioBuilder.calculator.totalAmount")}
               </label>
               <input
                 type="number"
@@ -1358,22 +1467,22 @@ const PortfolioBuilder = () => {
                 <thead>
                   <tr className="bg-gray-100 dark:bg-[#1d1d1f]">
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Categoría
+                      {t("portfolioBuilder.calculator.category")}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Retorno Esperado
+                      {t("portfolioBuilder.calculator.expectedReturn")}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Peso (%)
+                      {t("portfolioBuilder.calculator.weight")}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Rentabilidad Cartera
+                      {t("portfolioBuilder.calculator.portfolioReturn")}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Monto
+                      {t("portfolioBuilder.calculator.amount")}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      Descripción
+                      {t("portfolioBuilder.calculator.description")}
                     </th>
                   </tr>
                 </thead>
@@ -1439,7 +1548,8 @@ const PortfolioBuilder = () => {
                         {formatCurrency(category.amount)}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 italic">
-                        {category.description}
+                        {translateCategoryDescription(category.name) ||
+                          category.description}
                       </td>
                     </tr>
                   ))}
@@ -1461,7 +1571,7 @@ const PortfolioBuilder = () => {
                       className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100"
                       colSpan="3"
                     >
-                      Total
+                      {t("portfolioBuilder.calculator.total")}
                       {totalWeightSum !== 100 && (
                         <span
                           className={`ml-2 text-xs font-normal ${
@@ -1493,7 +1603,7 @@ const PortfolioBuilder = () => {
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-600 dark:text-gray-400">
-                            Perfil de riesgo:
+                            {t("portfolioBuilder.calculator.riskProfile")}
                           </span>
                           <span
                             className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -1526,7 +1636,7 @@ const PortfolioBuilder = () => {
                         </div>
                         {totalWeightSum > 100 && (
                           <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                            ⚠ La suma de pesos supera el 100%
+                            {t("portfolioBuilder.calculator.weightSumWarning")}
                           </span>
                         )}
                       </div>
@@ -1603,37 +1713,75 @@ const PortfolioBuilder = () => {
           // Función para formatear títulos con nombres completos
           const formatDisplayTitle = (title) => {
             if (title.includes("RF Corto Plazo")) {
-              return title.replace("RF Corto Plazo", "Renta Fija Corto Plazo");
+              return title.replace(
+                "RF Corto Plazo",
+                t("portfolioBuilder.sections.subsections.rfCortoPlazo.name"),
+              );
+            }
+            if (title.includes("Renta Fija Corto Plazo")) {
+              return t(
+                "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
+              );
             }
             if (title.includes("RF Medio Plazo")) {
-              return title.replace("RF Medio Plazo", "Renta Fija Medio Plazo");
+              return title.replace(
+                "RF Medio Plazo",
+                t("portfolioBuilder.sections.subsections.rfMedioPlazo.name"),
+              );
+            }
+            if (title.includes("Renta Fija Medio Plazo")) {
+              return t(
+                "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
+              );
             }
             if (title.includes("(RV)")) {
               return title.replace("(RV)", "");
+            }
+            // Traducir títulos de secciones
+            if (
+              title.includes("Ahorro Remunerado") ||
+              title.includes("Fondos Monetarios")
+            ) {
+              return t("portfolioBuilder.sections.monetarios.title");
+            }
+            if (
+              title.includes("Inversión a Largo Plazo") ||
+              title.includes("Fondos Indexados")
+            ) {
+              return t("portfolioBuilder.sections.rentaVariable.title");
+            }
+            if (title.includes("Renta Fija") || title.includes("Bonos")) {
+              return t("portfolioBuilder.sections.rentaFija.title");
+            }
+            if (title.includes("Inversiones Alternativas")) {
+              return t("portfolioBuilder.sections.alternativos.title");
             }
             return title;
           };
 
           const displayTitle = isSubsection
-            ? formatDisplayTitle(section.subsectionName)
-            : formatDisplayTitle(`${section.number}. ${section.title}`);
+            ? translateSubsectionName(section.subsectionName)
+            : `${section.number}. ${translateSectionTitle(section.number, section.title)}`;
 
-          // Función para formatear descripciones eliminando diminutivos
+          // Función para formatear descripciones eliminando diminutivos y traduciendo
           const formatDescription = (description) => {
             if (!description) return "";
-            return description
-              .replace(/\bRF\b/g, "Renta Fija")
-              .replace(/\bRV\b/g, "Renta Variable")
+            let formatted = description
+              .replace(/\bRF\b/g, t("portfolioBuilder.categories.rfCorto"))
+              .replace(/\bRV\b/g, t("portfolioBuilder.categories.rv"))
               .replace(/\bFM\b/g, "Fondo Monetario")
-              .replace(/RF Corto/g, "Renta Fija Corto Plazo")
-              .replace(/RF Medio/g, "Renta Fija Medio Plazo");
+              .replace(/RF Corto/g, t("portfolioBuilder.categories.rfCorto"))
+              .replace(/RF Medio/g, t("portfolioBuilder.categories.rfMedio"));
+            return formatted;
           };
 
-          const displayDescription = formatDescription(
-            isSubsection
-              ? subsection?.description || ""
-              : section.description || "",
-          );
+          const displayDescription = isSubsection
+            ? translateSubsectionDescription(
+                subsection?.name,
+                subsection?.description,
+              )
+            : translateDescription(section.description) ||
+              formatDescription(section.description || "");
 
           const Icon = section.icon;
           const sectionId = isSubsection
@@ -1687,7 +1835,9 @@ const PortfolioBuilder = () => {
                       <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
                         <p className="text-sm text-amber-800 dark:text-amber-200">
                           <AlertCircle className="h-4 w-4 inline mr-2" />
-                          {isSubsection ? subsection?.note : section.note}
+                          {translateTip(
+                            isSubsection ? subsection?.note : section.note,
+                          )}
                         </p>
                       </div>
                     )}
@@ -1727,7 +1877,7 @@ const PortfolioBuilder = () => {
                             }
                           />
                           <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {tip}
+                            {translateTip(tip)}
                           </p>
                         </div>
                       ))}
@@ -1738,20 +1888,20 @@ const PortfolioBuilder = () => {
                   {section.ratios && section.ratios.length > 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        Ratios Mínimos Compra/Alquiler
+                        {t("portfolioBuilder.sections.ratios.title")}
                       </h3>
                       <div className="overflow-x-auto">
                         <table className="min-w-full">
                           <thead className="bg-gray-100 dark:bg-[#1d1d1f]">
                             <tr>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                Precio
+                                {t("portfolioBuilder.sections.ratios.price")}
                               </th>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                Alquiler
+                                {t("portfolioBuilder.sections.ratios.rent")}
                               </th>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                Ratio
+                                {t("portfolioBuilder.sections.ratios.ratio")}
                               </th>
                             </tr>
                           </thead>
@@ -1779,7 +1929,7 @@ const PortfolioBuilder = () => {
                   {section.financing && section.financing.length > 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        Financiación
+                        {t("portfolioBuilder.sections.financing.title")}
                       </h3>
                       <ul className="space-y-2">
                         {section.financing.map((item, idx) => (
@@ -1823,10 +1973,17 @@ const PortfolioBuilder = () => {
                     return (
                       <div className="mb-6">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                          Distribución de Capital
+                          {t(
+                            "portfolioBuilder.sections.capitalDistribution.title",
+                          )}
                           {dynamicTotal > 0 && (
                             <span className="ml-2 text-gray-600 dark:text-gray-400 font-normal">
-                              (Total: {formatCurrency(dynamicTotal)})
+                              {t(
+                                "portfolioBuilder.sections.capitalDistribution.total",
+                                {
+                                  amount: formatCurrency(dynamicTotal),
+                                },
+                              )}
                             </span>
                           )}
                         </h3>
@@ -1854,7 +2011,10 @@ const PortfolioBuilder = () => {
                                       </h4>
                                       {item.isin && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          ISIN: {item.isin}
+                                          {t(
+                                            "portfolioBuilder.sections.capitalDistribution.isin",
+                                          )}{" "}
+                                          {item.isin}
                                         </p>
                                       )}
                                     </div>
@@ -1886,7 +2046,9 @@ const PortfolioBuilder = () => {
                                               }
                                         }
                                       >
-                                        Ver en Finect
+                                        {t(
+                                          "portfolioBuilder.sections.capitalDistribution.viewFinect",
+                                        )}
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
@@ -1972,7 +2134,9 @@ const PortfolioBuilder = () => {
                                         {fund.volatility12M && (
                                           <div>
                                             <span className="text-gray-600 dark:text-gray-400">
-                                              Vol 12M:{" "}
+                                              {t(
+                                                "portfolioBuilder.sections.capitalDistribution.vol12M",
+                                              )}{" "}
                                             </span>
                                             <span className="font-medium text-gray-900 dark:text-gray-100">
                                               {fund.volatility12M}
@@ -1982,7 +2146,9 @@ const PortfolioBuilder = () => {
                                         {fund.return12M && (
                                           <div>
                                             <span className="text-gray-600 dark:text-gray-400">
-                                              R 12M:{" "}
+                                              {t(
+                                                "portfolioBuilder.sections.capitalDistribution.r12M",
+                                              )}{" "}
                                             </span>
                                             <span className="font-medium text-gray-900 dark:text-gray-100">
                                               {fund.return12M}
@@ -2009,7 +2175,9 @@ const PortfolioBuilder = () => {
                                                   }
                                             }
                                           >
-                                            Ver detalles
+                                            {t(
+                                              "portfolioBuilder.sections.capitalDistribution.viewDetails",
+                                            )}
                                             <ExternalLink className="h-3 w-3" />
                                           </a>
                                         )}
@@ -2036,10 +2204,17 @@ const PortfolioBuilder = () => {
                       return (
                         <div className="mb-6">
                           <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                            Distribución de Capital
+                            {t(
+                              "portfolioBuilder.sections.capitalDistribution.title",
+                            )}
                             {dynamicTotal > 0 && (
                               <span className="ml-2 text-gray-600 dark:text-gray-400 font-normal">
-                                (Total: {formatCurrency(dynamicTotal)})
+                                {t(
+                                  "portfolioBuilder.sections.capitalDistribution.total",
+                                  {
+                                    amount: formatCurrency(dynamicTotal),
+                                  },
+                                )}
                               </span>
                             )}
                           </h3>
@@ -2067,7 +2242,10 @@ const PortfolioBuilder = () => {
                                       </h4>
                                       {fund.isin && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          ISIN: {fund.isin}
+                                          {t(
+                                            "portfolioBuilder.sections.capitalDistribution.isin",
+                                          )}{" "}
+                                          {fund.isin}
                                         </p>
                                       )}
                                       {fund.risk &&
@@ -2083,11 +2261,17 @@ const PortfolioBuilder = () => {
                                             }`}
                                           >
                                             {fund.risk.includes("alto")
-                                              ? "Dinámico"
+                                              ? t(
+                                                  "portfolioBuilder.calculator.riskProfiles.veryAggressive",
+                                                )
                                               : fund.risk.includes("medio")
-                                                ? "Estándar"
+                                                ? t(
+                                                    "portfolioBuilder.calculator.riskProfiles.moderate",
+                                                  )
                                                 : fund.risk.includes("bajo")
-                                                  ? "Conservador"
+                                                  ? t(
+                                                      "portfolioBuilder.calculator.riskProfiles.conservative",
+                                                    )
                                                   : fund.risk}
                                           </span>
                                         )}
@@ -2107,7 +2291,9 @@ const PortfolioBuilder = () => {
                                     {fund.volatility12M && (
                                       <div>
                                         <span className="text-gray-600 dark:text-gray-400">
-                                          Vol:{" "}
+                                          {t(
+                                            "portfolioBuilder.sections.capitalDistribution.vol",
+                                          )}{" "}
                                         </span>
                                         <span className="font-medium text-gray-900 dark:text-gray-100">
                                           {fund.volatility12M}
@@ -2142,7 +2328,9 @@ const PortfolioBuilder = () => {
                                               }
                                         }
                                       >
-                                        Ver en Finect
+                                        {t(
+                                          "portfolioBuilder.sections.capitalDistribution.viewFinect",
+                                        )}
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
@@ -2162,7 +2350,7 @@ const PortfolioBuilder = () => {
                       <div className="mt-6">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                            Videos y Recursos
+                            {t("portfolioBuilder.sections.videos.title")}
                           </h3>
                           <button
                             onClick={() =>
@@ -2199,7 +2387,10 @@ const PortfolioBuilder = () => {
                                 <Play className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {video.description || "Ver video"}
+                                    {video.description ||
+                                      t(
+                                        "portfolioBuilder.sections.videos.viewVideo",
+                                      )}
                                   </p>
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     {video.url}
