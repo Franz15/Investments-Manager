@@ -15,6 +15,7 @@ import Transactions from "./pages/Transactions";
 import Investments from "./pages/Investments";
 import Debts from "./pages/Debts";
 import Profile from "./pages/Profile";
+import PortfolioBuilder from "./pages/PortfolioBuilder";
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useUser();
@@ -71,6 +72,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Debts />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/portfolio-builder"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PortfolioBuilder />
             </Layout>
           </ProtectedRoute>
         }
