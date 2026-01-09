@@ -71,7 +71,7 @@ app.use("/api/portfolio-funds", portfolioFundRoutes);
 app.get("/", (req, res) => {
   res.json({
     message: "Investments Manager API",
-    version: "0.0.1",
+    version: "0.0.2",
     endpoints: {
       health: "/api/health",
       auth: "/api/auth",
