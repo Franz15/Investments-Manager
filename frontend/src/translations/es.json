@@ -537,6 +537,111 @@
     "fileLoaded": "Archivo cargado correctamente",
     "sheets": "hojas",
     "dataAndCalculations": "Datos y Cálculos",
-    "processingData": "Procesando datos del archivo..."
+    "processingData": "Procesando datos del archivo...",
+    "calculator": {
+      "title": "Calculadora de Asignación de Cartera",
+      "subtitle": "Tabla de cálculos interactiva - Ingresa el monto total y ajusta los pesos",
+      "totalAmount": "Monto Total a Invertir:",
+      "category": "Categoría",
+      "expectedReturn": "Retorno Esperado",
+      "weight": "Peso (%)",
+      "portfolioReturn": "Rentabilidad Cartera",
+      "amount": "Monto",
+      "description": "Descripción",
+      "total": "Total",
+      "riskProfile": "Perfil de riesgo:",
+      "weightSumWarning": "⚠ La suma de pesos supera el 100%",
+      "riskProfiles": {
+        "conservative": "Conservador",
+        "moderate": "Moderado",
+        "balanced": "Equilibrado",
+        "aggressive": "Agresivo",
+        "veryAggressive": "Muy Agresivo",
+        "unassigned": "Sin asignar"
+      }
+    },
+    "sections": {
+      "ratios": {
+        "title": "Ratios Mínimos Compra/Alquiler",
+        "price": "Precio",
+        "rent": "Alquiler",
+        "ratio": "Ratio"
+      },
+      "financing": {
+        "title": "Financiación"
+      },
+      "capitalDistribution": {
+        "title": "Distribución de Capital",
+        "total": "(Total: {amount})",
+        "isin": "ISIN:",
+        "viewFinect": "Ver en Finect",
+        "viewDetails": "Ver detalles",
+        "vol12M": "Vol 12M:",
+        "r12M": "R 12M:",
+        "vol": "Vol:"
+      },
+      "videos": {
+        "title": "Videos y Recursos",
+        "viewVideo": "Ver video"
+      }
+    },
+    "sync": {
+      "extracting": "Extrayendo fondos del Excel...",
+      "syncing": "Sincronizando {count} fondos con la base de datos...",
+      "success": "✓ {count} fondos sincronizados correctamente",
+      "error": "Error al sincronizar fondos: {message}"
+    },
+    "errors": {
+      "loadExcel": "Error al cargar el archivo Excel"
+    },
+    "categories": {
+      "monetarios": "Monetarios",
+      "rfCorto": "Renta Fija Corto Plazo",
+      "rfMedio": "Renta Fija Medio Plazo",
+      "rv": "Renta Variable",
+      "alternativos": "Alternativos",
+      "descriptions": {
+        "monetarios": "Liquidez sin riesgo, ideal para sacar dinero",
+        "rfCorto": "Inversión de bajo riesgo, ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
+        "rfMedio": "Ganar dinero con la mitad de volatilidad que la Renta Variable",
+        "rv": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+        "alternativos": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
+      }
+    },
+    "sections": {
+      "monetarios": {
+        "title": "Ahorro Remunerado / Fondos Monetarios"
+      },
+      "rentaVariable": {
+        "title": "Inversión a Largo Plazo / Fondos Indexados de Renta Variable"
+      },
+      "rentaFija": {
+        "title": "Renta Fija / Bonos / Inversión de Medio Plazo"
+      },
+      "alternativos": {
+        "title": "Inversiones Alternativas",
+        "description": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
+      },
+      "subsections": {
+        "rfCortoPlazo": {
+          "name": "Renta Fija Corto Plazo",
+          "description": "Hermano mayor del Fondo Monetario, para buscar retornos del 5%-6% con bajo riesgo. Inversión de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
+        },
+        "rfMedioPlazo": {
+          "name": "Renta Fija Medio Plazo",
+          "description": "Renta Fija con riesgo medio, para buscar retornos del 7%-8%"
+        }
+      }
+    },
+    "tips": {
+      "enCasoDeCaidas": "En caso de caidas fuertes en la RV, utilizar parte del dinero de monetarios para compras adicionales",
+      "siempreYCuando": "Siempre y cuando tengas un fondo de emergencia suficiente",
+      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo",
+      "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar"
+    },
+    "descriptions": {
+      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+      "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar el riesgo"
+    }
   }
 }
