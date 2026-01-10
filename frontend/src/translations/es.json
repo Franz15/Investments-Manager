@@ -583,6 +583,29 @@
       "videos": {
         "title": "Videos y Recursos",
         "viewVideo": "Ver video"
+      },
+      "monetarios": {
+        "title": "Ahorro Remunerado / Fondos Monetarios"
+      },
+      "rentaVariable": {
+        "title": "Inversión a Largo Plazo / Fondos Indexados de Renta Variable"
+      },
+      "rentaFija": {
+        "title": "Renta Fija / Bonos / Inversión de Medio Plazo"
+      },
+      "alternativos": {
+        "title": "Inversiones Alternativas",
+        "description": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
+      },
+      "subsections": {
+        "rfCortoPlazo": {
+          "name": "Renta Fija Corto Plazo",
+          "description": "Hermano mayor del Fondo Monetario, para buscar retornos del 5%-6% con bajo riesgo. Inversión de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
+        },
+        "rfMedioPlazo": {
+          "name": "Renta Fija Medio Plazo",
+          "description": "Renta Fija con riesgo medio, para buscar retornos del 7%-8%"
+        }
       }
     },
     "sync": {
@@ -606,31 +629,6 @@
         "rfMedio": "Ganar dinero con la mitad de volatilidad que la Renta Variable",
         "rv": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
         "alternativos": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
-      }
-    },
-    "sections": {
-      "monetarios": {
-        "title": "Ahorro Remunerado / Fondos Monetarios"
-      },
-      "rentaVariable": {
-        "title": "Inversión a Largo Plazo / Fondos Indexados de Renta Variable"
-      },
-      "rentaFija": {
-        "title": "Renta Fija / Bonos / Inversión de Medio Plazo"
-      },
-      "alternativos": {
-        "title": "Inversiones Alternativas",
-        "description": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
-      },
-      "subsections": {
-        "rfCortoPlazo": {
-          "name": "Renta Fija Corto Plazo",
-          "description": "Hermano mayor del Fondo Monetario, para buscar retornos del 5%-6% con bajo riesgo. Inversión de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
-        },
-        "rfMedioPlazo": {
-          "name": "Renta Fija Medio Plazo",
-          "description": "Renta Fija con riesgo medio, para buscar retornos del 7%-8%"
-        }
       }
     },
     "tips": {
