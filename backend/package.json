@@ -1,6 +1,6 @@
 {
   "name": "investments-manager-backend",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Backend para el gestor de inversiones",
   "main": "server.js",
   "type": "module",
