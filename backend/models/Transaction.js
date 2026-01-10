@@ -7,10 +7,15 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    account: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+      index: true,
+    },
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubAccount",
-      required: true,
+      index: true,
     },
     type: {
       type: String,
@@ -51,5 +56,13 @@ const transactionSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+// Validación: debe tener account o subAccount
+transactionSchema.pre("validate", function (next) {
+  if (!this.account && !this.subAccount) {
+    return next(new Error("Debe especificar una cuenta o subcuenta"));
+  }
+  next();
+});
 
 export default mongoose.model("Transaction", transactionSchema);
