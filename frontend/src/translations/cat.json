@@ -589,6 +589,29 @@
       "videos": {
         "title": "Vídeos i Recursos",
         "viewVideo": "Veure vídeo"
+      },
+      "monetarios": {
+        "title": "Estalvi Remunerat / Fons Monetaris"
+      },
+      "rentaVariable": {
+        "title": "Inversió a Llarg Termini / Fons Indexats de Renda Variable"
+      },
+      "rentaFija": {
+        "title": "Renda Fixa / Bons / Inversió de Mitjà Termini"
+      },
+      "alternativos": {
+        "title": "Inversions Alternatives",
+        "description": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
+      },
+      "subsections": {
+        "rfCortoPlazo": {
+          "name": "Renda Fixa Curt Termini",
+          "description": "Germà major del Fons Monetari, per buscar retorns del 5%-6% amb baix risc. Inversió de baix risc. Ideal per superar la inflació i moure't a altres coses en cas que ho desitgis"
+        },
+        "rfMedioPlazo": {
+          "name": "Renda Fixa Mitjà Termini",
+          "description": "Renda Fixa amb risc mitjà, per buscar retorns del 7%-8%"
+        }
       }
     },
     "sync": {
@@ -612,31 +635,6 @@
         "rfMedio": "Guanyar diners amb la meitat de volatilitat que la Renda Variable",
         "rv": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
         "alternativos": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
-      }
-    },
-    "sections": {
-      "monetarios": {
-        "title": "Estalvi Remunerat / Fons Monetaris"
-      },
-      "rentaVariable": {
-        "title": "Inversió a Llarg Termini / Fons Indexats de Renda Variable"
-      },
-      "rentaFija": {
-        "title": "Renda Fixa / Bons / Inversió de Mitjà Termini"
-      },
-      "alternativos": {
-        "title": "Inversions Alternatives",
-        "description": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
-      },
-      "subsections": {
-        "rfCortoPlazo": {
-          "name": "Renda Fixa Curt Termini",
-          "description": "Germà major del Fons Monetari, per buscar retorns del 5%-6% amb baix risc. Inversió de baix risc. Ideal per superar la inflació i moure't a altres coses en cas que ho desitgis"
-        },
-        "rfMedioPlazo": {
-          "name": "Renda Fixa Mitjà Termini",
-          "description": "Renda Fixa amb risc mitjà, per buscar retorns del 7%-8%"
-        }
       }
     },
     "tips": {
