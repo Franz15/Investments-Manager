@@ -13,6 +13,8 @@ import {
   CgBot,
 } from "react-icons/cg";
 import { SiBitcoin } from "react-icons/si";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   LineChart,
   Line,
@@ -54,10 +56,13 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [investments, setInvestments] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [dailyVariations, setDailyVariations] = useState({}); // { investmentId: { changeAmount, changePercent } }
   const [loading, setLoading] = useState(true);
   const [expandedAccounts, setExpandedAccounts] = useState(new Set());
   const [expandedSubAccounts, setExpandedSubAccounts] = useState(new Set());
+  const [expandedSubAccountTransactions, setExpandedSubAccountTransactions] =
+    useState(new Set());
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showSubAccountModal, setShowSubAccountModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
@@ -84,6 +89,19 @@ const Accounts = () => {
   const [detailInvestment, setDetailInvestment] = useState(null);
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
+  const [showTransactionDetailModal, setShowTransactionDetailModal] =
+    useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [editingTransaction, setEditingTransaction] = useState(false);
+  const [transactionFormData, setTransactionFormData] = useState({
+    subAccount: "",
+    type: "expense",
+    category: "",
+    amount: 0,
+    currency: "EUR",
+    description: "",
+    date: "",
+  });
 
   useEffect(() => {
     fetchData();
@@ -91,14 +109,17 @@ const Accounts = () => {
 
   const fetchData = async () => {
     try {
-      const [accountsRes, subAccountsRes, investmentsRes] = await Promise.all([
-        api.get("/accounts"),
-        api.get("/subaccounts"),
-        api.get("/investments"),
-      ]);
+      const [accountsRes, subAccountsRes, investmentsRes, transactionsRes] =
+        await Promise.all([
+          api.get("/accounts"),
+          api.get("/subaccounts"),
+          api.get("/investments"),
+          api.get("/transactions"),
+        ]);
       setAccounts(accountsRes.data);
       setSubAccounts(subAccountsRes.data);
       setInvestments(investmentsRes.data);
+      setTransactions(transactionsRes.data);
 
       // Obtener variaciones diarias de todas las inversiones
       const variationsMap = {};
@@ -177,6 +198,91 @@ const Accounts = () => {
       newExpanded.add(subAccountId);
     }
     setExpandedSubAccounts(newExpanded);
+  };
+
+  const toggleSubAccountTransactions = (subAccountId) => {
+    const newExpanded = new Set(expandedSubAccountTransactions);
+    if (newExpanded.has(subAccountId)) {
+      newExpanded.delete(subAccountId);
+    } else {
+      newExpanded.add(subAccountId);
+    }
+    setExpandedSubAccountTransactions(newExpanded);
+  };
+
+  const getTransactionsForSubAccount = (subAccountId) => {
+    return transactions
+      .filter(
+        (t) =>
+          (t.subAccount?._id || t.subAccount)?.toString() ===
+          subAccountId?.toString(),
+      )
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
+  const handleEditTransaction = () => {
+    if (!selectedTransaction) return;
+
+    setEditingTransaction(true);
+    setTransactionFormData({
+      subAccount:
+        selectedTransaction.subAccount?._id ||
+        selectedTransaction.subAccount ||
+        "",
+      type: selectedTransaction.type,
+      category: selectedTransaction.category,
+      amount: selectedTransaction.amount,
+      currency: selectedTransaction.currency,
+      description: selectedTransaction.description || "",
+      date: new Date(selectedTransaction.date).toISOString().split("T")[0],
+    });
+  };
+
+  const handleSaveTransaction = async () => {
+    if (!selectedTransaction) return;
+
+    try {
+      const transactionData = {
+        subAccount: transactionFormData.subAccount,
+        type: transactionFormData.type,
+        category: transactionFormData.category,
+        amount: transactionFormData.amount,
+        currency: transactionFormData.currency,
+        description: transactionFormData.description,
+        date: transactionFormData.date,
+      };
+
+      await api.put(
+        `/transactions/${selectedTransaction._id}`,
+        transactionData,
+      );
+
+      // Recargar datos
+      await fetchData();
+
+      // Cerrar modal y resetear estado
+      setEditingTransaction(false);
+      setShowTransactionDetailModal(false);
+      setSelectedTransaction(null);
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      alert(
+        error.response?.data?.message || "Error al actualizar la transacción",
+      );
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTransaction(false);
+    setTransactionFormData({
+      subAccount: "",
+      type: "expense",
+      category: "",
+      amount: 0,
+      currency: "EUR",
+      description: "",
+      date: "",
+    });
   };
 
   const getInvestmentsForSubAccount = (subAccountId) => {
@@ -1194,6 +1300,146 @@ const Accounts = () => {
                                   </div>
                                 </div>
                               )}
+
+                            {/* Mostrar transacciones de la subcuenta */}
+                            {(() => {
+                              const subAccountTransactions =
+                                getTransactionsForSubAccount(subAccount._id);
+                              const isTransactionsExpanded =
+                                expandedSubAccountTransactions.has(
+                                  subAccount._id,
+                                );
+
+                              if (subAccountTransactions.length === 0)
+                                return null;
+
+                              return (
+                                <div className="px-3 pb-1.5 border-t border-gray-100 dark:border-gray-800/50">
+                                  <button
+                                    onClick={() =>
+                                      toggleSubAccountTransactions(
+                                        subAccount._id,
+                                      )
+                                    }
+                                    className="flex items-center justify-between w-full mt-1.5 py-0.5 px-1 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 rounded transition-colors text-left group"
+                                  >
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400">
+                                      {subAccountTransactions.length}{" "}
+                                      {t("transactions.title").toLowerCase()}
+                                    </span>
+                                    {isTransactionsExpanded ? (
+                                      <CgChevronDown className="h-3 w-3 text-gray-300 dark:text-gray-600" />
+                                    ) : (
+                                      <CgChevronRight className="h-3 w-3 text-gray-300 dark:text-gray-600" />
+                                    )}
+                                  </button>
+
+                                  {isTransactionsExpanded && (
+                                    <div className="mt-1.5 space-y-1.5 max-h-48 overflow-y-auto">
+                                      {subAccountTransactions.map(
+                                        (transaction) => (
+                                          <div
+                                            key={transaction._id}
+                                            onClick={() => {
+                                              setSelectedTransaction(
+                                                transaction,
+                                              );
+                                              setShowTransactionDetailModal(
+                                                true,
+                                              );
+                                            }}
+                                            className="bg-gray-50/50 dark:bg-gray-800/30 rounded border border-gray-100 dark:border-gray-800/50 p-2 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+                                          >
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <span
+                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                                      transaction.type ===
+                                                      "income"
+                                                        ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-500"
+                                                        : transaction.type ===
+                                                            "expense"
+                                                          ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-500"
+                                                          : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-500"
+                                                    }`}
+                                                  >
+                                                    {transaction.type ===
+                                                    "income"
+                                                      ? t(
+                                                          "transactions.types.income",
+                                                        )
+                                                      : transaction.type ===
+                                                          "expense"
+                                                        ? t(
+                                                            "transactions.types.expense",
+                                                          )
+                                                        : t(
+                                                            "transactions.types.transfer",
+                                                          )}
+                                                  </span>
+                                                  <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                                                    {format(
+                                                      new Date(
+                                                        transaction.date,
+                                                      ),
+                                                      "dd MMM",
+                                                      {
+                                                        locale: es,
+                                                      },
+                                                    )}
+                                                  </span>
+                                                </div>
+                                                <div className="mt-1">
+                                                  <span className="text-sm text-gray-600 dark:text-gray-400 truncate block">
+                                                    {transaction.category}
+                                                  </span>
+                                                  {transaction.description && (
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                                                      {transaction.description}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="text-right flex-shrink-0">
+                                                <span
+                                                  className={`text-sm font-medium whitespace-nowrap ${
+                                                    transaction.type ===
+                                                    "income"
+                                                      ? "text-green-500 dark:text-green-500"
+                                                      : transaction.type ===
+                                                          "expense"
+                                                        ? "text-red-500 dark:text-red-500"
+                                                        : "text-blue-500 dark:text-blue-500"
+                                                  }`}
+                                                >
+                                                  {transaction.type === "income"
+                                                    ? "+"
+                                                    : transaction.type ===
+                                                        "expense"
+                                                      ? "-"
+                                                      : "↔"}
+                                                  {new Intl.NumberFormat(
+                                                    "es-ES",
+                                                    {
+                                                      style: "currency",
+                                                      currency:
+                                                        transaction.currency,
+                                                      minimumFractionDigits: 0,
+                                                      maximumFractionDigits: 0,
+                                                    },
+                                                  ).format(transaction.amount)}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -1452,10 +1698,6 @@ const Accounts = () => {
         <div
           className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
           style={{ zIndex: 10000 }}
-          onClick={() => {
-            setShowAccountModal(false);
-            resetAccountForm();
-          }}
         >
           <div
             className="modal-content max-w-md w-full"
@@ -1649,10 +1891,6 @@ const Accounts = () => {
         <div
           className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
           style={{ zIndex: 10000 }}
-          onClick={() => {
-            setShowSubAccountModal(false);
-            resetSubAccountForm();
-          }}
         >
           <div
             className="modal-content max-w-md w-full"
@@ -2512,6 +2750,342 @@ const Accounts = () => {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de detalle de transacción */}
+      {showTransactionDetailModal && selectedTransaction && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            if (!editingTransaction) {
+              setShowTransactionDetailModal(false);
+              setSelectedTransaction(null);
+              setEditingTransaction(false);
+            }
+          }}
+        >
+          <div
+            className="modal-content max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {editingTransaction
+                  ? t("transactions.editTransaction") || "Editar Transacción"
+                  : t("transactions.details") || "Detalle de Transacción"}
+              </h2>
+              {!editingTransaction && (
+                <button
+                  onClick={handleEditTransaction}
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title={t("transactions.editTransaction") || "Editar"}
+                >
+                  <CgEditMarkup className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            <div className="space-y-4">
+              {editingTransaction ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.subAccount")}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={transactionFormData.subAccount}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          subAccount: e.target.value,
+                        })
+                      }
+                      required
+                      disabled
+                    >
+                      <option value={transactionFormData.subAccount}>
+                        {selectedTransaction.subAccount?.account?.name ||
+                          selectedTransaction.account?.name ||
+                          ""}{" "}
+                        - {selectedTransaction.subAccount?.name || ""}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.type")}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={transactionFormData.type}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          type: e.target.value,
+                        })
+                      }
+                      required
+                      disabled
+                    >
+                      <option value="income">
+                        {t("transactions.types.income")}
+                      </option>
+                      <option value="expense">
+                        {t("transactions.types.expense")}
+                      </option>
+                      <option value="transfer">
+                        {t("transactions.types.transfer")}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.category")}
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={transactionFormData.category}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          category: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.amount")}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-field"
+                      value={transactionFormData.amount}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          amount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.date")}
+                    </label>
+                    <input
+                      type="date"
+                      className="input-field"
+                      value={transactionFormData.date}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          date: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.description")}
+                    </label>
+                    <textarea
+                      className="input-field"
+                      rows="3"
+                      value={transactionFormData.description}
+                      onChange={(e) =>
+                        setTransactionFormData({
+                          ...transactionFormData,
+                          description: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.type")}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedTransaction.type === "income"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : selectedTransaction.type === "expense"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                        }`}
+                      >
+                        {selectedTransaction.type === "income"
+                          ? t("transactions.types.income")
+                          : selectedTransaction.type === "expense"
+                            ? t("transactions.types.expense")
+                            : t("transactions.types.transfer")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.amount")}
+                    </label>
+                    <p
+                      className={`text-lg font-semibold ${
+                        selectedTransaction.type === "income"
+                          ? "text-green-600 dark:text-green-400"
+                          : selectedTransaction.type === "expense"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-blue-600 dark:text-blue-400"
+                      }`}
+                    >
+                      {selectedTransaction.type === "income"
+                        ? "+"
+                        : selectedTransaction.type === "expense"
+                          ? "-"
+                          : "↔"}
+                      {new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: selectedTransaction.currency,
+                      }).format(selectedTransaction.amount)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.category")}
+                    </label>
+                    <p className="text-gray-900 dark:text-gray-100">
+                      {selectedTransaction.category}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.date")}
+                    </label>
+                    <p className="text-gray-900 dark:text-gray-100">
+                      {format(
+                        new Date(selectedTransaction.date),
+                        "dd 'de' MMMM 'de' yyyy",
+                        {
+                          locale: es,
+                        },
+                      )}
+                    </p>
+                  </div>
+
+                  {selectedTransaction.description && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t("transactions.description")}
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {selectedTransaction.description}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("transactions.account")}
+                </label>
+                <p className="text-gray-900 dark:text-gray-100">
+                  {selectedTransaction.account?.name
+                    ? `${selectedTransaction.account.bankName || ""} ${selectedTransaction.account.name}`.trim()
+                    : selectedTransaction.subAccount?.account?.name
+                      ? `${selectedTransaction.subAccount.account.bankName || ""} ${selectedTransaction.subAccount.account.name}`.trim()
+                      : "-"}
+                </p>
+              </div>
+
+              {selectedTransaction.subAccount && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("transactions.subAccount")}
+                  </label>
+                  <p className="text-gray-900 dark:text-gray-100">
+                    {selectedTransaction.subAccount.name} (
+                    {selectedTransaction.subAccount.type === "cash"
+                      ? t("accounts.subAccountTypes.cash")
+                      : selectedTransaction.subAccount.type === "investment"
+                        ? t("accounts.subAccountTypes.investment")
+                        : selectedTransaction.subAccount.type === "savings"
+                          ? t("accounts.subAccountTypes.savings")
+                          : t("accounts.subAccountTypes.credit")}
+                    )
+                  </p>
+                </div>
+              )}
+
+              {selectedTransaction.tags &&
+                selectedTransaction.tags.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("transactions.tags") || "Etiquetas"}
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedTransaction.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              <div className="flex gap-3 pt-4">
+                {editingTransaction ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="flex-1 btn-secondary"
+                    >
+                      {t("common.cancel") || "Cancelar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTransaction}
+                      className="flex-1 btn-primary"
+                    >
+                      {t("transactions.update") || "Actualizar"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTransactionDetailModal(false);
+                      setSelectedTransaction(null);
+                      setEditingTransaction(false);
+                    }}
+                    className="flex-1 btn-primary"
+                  >
+                    {t("common.close") || "Cerrar"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
