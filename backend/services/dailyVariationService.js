@@ -62,9 +62,13 @@ export async function saveDailyVariation(
     let capitalChangeToday = 0;
     for (const op of todayOperations) {
       if (op.operation === "add") {
-        capitalChangeToday += op.operationAmount || 0;
+        // Usar operationAmount o calcular desde quantity * operationPrice
+        capitalChangeToday +=
+          op.operationAmount || op.quantity * (op.operationPrice || 0);
       } else if (op.operation === "sell" || op.operation === "withdraw") {
-        capitalChangeToday -= Math.abs(op.operationAmount || 0);
+        // Usar operationAmount o calcular desde quantity * operationPrice
+        capitalChangeToday -=
+          op.operationAmount || op.quantity * (op.operationPrice || 0);
       }
     }
 
