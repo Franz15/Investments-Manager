@@ -24,6 +24,12 @@ const Login = () => {
       color: "#ec4899",
     },
     {
+      id: "celia",
+      name: "Cèlia",
+      avatar: "👩",
+      color: "#8b5cf6",
+    },
+    {
       id: "test-dca",
       name: "Test DCA",
       avatar: "🧪",

@@ -19,6 +19,8 @@ async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
     // Buscar el registro más reciente anterior a hoy
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const previousEntry = await InvestmentHistory.findOne({
       investment: investmentId,
@@ -28,8 +30,33 @@ async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
       .sort({ date: -1 })
       .limit(1);
 
+    // Verificar si hay operaciones (add/sell/withdraw) hoy que puedan afectar el cálculo
+    const todayOperations = await InvestmentHistory.find({
+      investment: investmentId,
+      user: userId,
+      date: { $gte: today, $lt: tomorrow },
+      operation: { $in: ["add", "sell", "withdraw"] },
+    });
+
+    // Calcular el capital añadido/retirado hoy
+    let capitalChangeToday = 0;
+    for (const op of todayOperations) {
+      if (op.operation === "add") {
+        // Usar operationAmount o calcular desde quantity * operationPrice
+        capitalChangeToday +=
+          op.operationAmount || op.quantity * (op.operationPrice || 0);
+      } else if (op.operation === "sell" || op.operation === "withdraw") {
+        // Usar operationAmount o calcular desde quantity * operationPrice
+        capitalChangeToday -=
+          op.operationAmount || op.quantity * (op.operationPrice || 0);
+      }
+    }
+
     if (previousEntry && previousEntry.totalValue) {
-      const changeAmount = currentTotalValue - previousEntry.totalValue;
+      // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
+      // Esto da la variación pura del precio, sin contar el capital añadido
+      const valueChange = currentTotalValue - previousEntry.totalValue;
+      const changeAmount = valueChange - capitalChangeToday;
       const changePercent =
         previousEntry.totalValue !== 0
           ? (changeAmount / previousEntry.totalValue) * 100
