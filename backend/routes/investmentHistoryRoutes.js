@@ -5,6 +5,8 @@ import { authenticateToken } from "../middleware/authMiddleware.js";
 import {
   saveDailyVariation,
   getDailyVariations,
+  recalculateDailyVariationsForInvestmentFromDate,
+  calculateDailyChangeFromHistory,
 } from "../services/dailyVariationService.js";
 import {
   migrateExistingDailyVariations,
@@ -14,71 +16,18 @@ import {
 const router = express.Router();
 
 // Función helper para calcular diferencias respecto al día anterior
-async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
-  try {
-    // Buscar el registro más reciente anterior a hoy
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const previousEntry = await InvestmentHistory.findOne({
-      investment: investmentId,
-      user: userId,
-      date: { $lt: today },
-    })
-      .sort({ date: -1 })
-      .limit(1);
-
-    // Verificar si hay operaciones (add/sell/withdraw) hoy que puedan afectar el cálculo
-    const todayOperations = await InvestmentHistory.find({
-      investment: investmentId,
-      user: userId,
-      date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ["add", "sell", "withdraw"] },
-    });
-
-    // Calcular el capital añadido/retirado hoy
-    let capitalChangeToday = 0;
-    for (const op of todayOperations) {
-      if (op.operation === "add") {
-        // Usar operationAmount o calcular desde quantity * operationPrice
-        capitalChangeToday +=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
-      } else if (op.operation === "sell" || op.operation === "withdraw") {
-        // Usar operationAmount o calcular desde quantity * operationPrice
-        capitalChangeToday -=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
-      }
-    }
-
-    if (previousEntry && previousEntry.totalValue) {
-      // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
-      // Esto da la variación pura del precio, sin contar el capital añadido
-      const valueChange = currentTotalValue - previousEntry.totalValue;
-      const changeAmount = valueChange - capitalChangeToday;
-      const changePercent =
-        previousEntry.totalValue !== 0
-          ? (changeAmount / previousEntry.totalValue) * 100
-          : 0;
-
-      return {
-        dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
-        dailyChangePercent: parseFloat(changePercent.toFixed(2)),
-      };
-    }
-
-    // Si no hay registro anterior, no hay cambio
-    return {
-      dailyChangeAmount: null,
-      dailyChangePercent: null,
-    };
-  } catch (error) {
-    return {
-      dailyChangeAmount: null,
-      dailyChangePercent: null,
-    };
-  }
+async function calculateDailyChanges(
+  investmentId,
+  userId,
+  currentTotalValue,
+  date,
+) {
+  return await calculateDailyChangeFromHistory(
+    investmentId,
+    userId,
+    currentTotalValue,
+    date || new Date(),
+  );
 }
 
 // Aplicar middleware de autenticación a todas las rutas
@@ -373,6 +322,19 @@ router.post("/", async (req, res) => {
         operation: "update",
       }).sort({ date: -1 });
 
+      const resolveOperationAmount = (op, totalValueToUse) => {
+        if (req.body.operationAmount !== undefined) {
+          return req.body.operationAmount;
+        }
+        if (req.body.operationPrice && quantity) {
+          return req.body.operationPrice * quantity;
+        }
+        if (op === "creation" && totalValueToUse) {
+          return totalValueToUse;
+        }
+        return undefined;
+      };
+
       if (existingSameDayEntry) {
         // Calcular el valor total con los nuevos datos
         let totalValueUpdate;
@@ -387,6 +349,7 @@ router.post("/", async (req, res) => {
           investmentId,
           req.userId,
           totalValueUpdate,
+          date || existingSameDayEntry.date,
         );
 
         existingSameDayEntry.date = date || existingSameDayEntry.date;
@@ -394,7 +357,10 @@ router.post("/", async (req, res) => {
         existingSameDayEntry.quantity = quantity;
         existingSameDayEntry.totalValue = totalValueUpdate;
         existingSameDayEntry.notes = notes;
-        existingSameDayEntry.operationAmount = req.body.operationAmount;
+        existingSameDayEntry.operationAmount = resolveOperationAmount(
+          operation,
+          totalValueUpdate,
+        );
         existingSameDayEntry.operationPrice = req.body.operationPrice;
         existingSameDayEntry.dailyChangeAmount =
           dailyChangesUpdate.dailyChangeAmount;
@@ -408,6 +374,11 @@ router.post("/", async (req, res) => {
         investment.quantity = quantity;
         await investment.save();
 
+        await recalculateDailyVariationsForInvestmentFromDate(
+          investmentId,
+          req.userId,
+          existingSameDayEntry.date || new Date(),
+        );
         return res.status(200).json(updatedEntry);
       }
     }
@@ -428,6 +399,7 @@ router.post("/", async (req, res) => {
       investmentId,
       req.userId,
       totalValue,
+      date || new Date(),
     );
 
     // Crear entrada de historial
@@ -440,7 +412,7 @@ router.post("/", async (req, res) => {
       totalValue,
       notes,
       operation,
-      operationAmount: req.body.operationAmount,
+      operationAmount: resolveOperationAmount(operation, totalValue),
       operationPrice: req.body.operationPrice,
       dailyChangeAmount: dailyChanges.dailyChangeAmount,
       dailyChangePercent: dailyChanges.dailyChangePercent,
@@ -453,6 +425,11 @@ router.post("/", async (req, res) => {
     investment.quantity = quantity;
     await investment.save();
 
+    await recalculateDailyVariationsForInvestmentFromDate(
+      investmentId,
+      req.userId,
+      historyEntry.date || new Date(),
+    );
     res.status(201).json(savedEntry);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -703,6 +680,7 @@ router.put("/:id", async (req, res) => {
         historyEntry.investment,
         req.userId,
         historyEntry.totalValue,
+        historyEntry.date,
       );
       historyEntry.dailyChangeAmount = dailyChanges.dailyChangeAmount;
       historyEntry.dailyChangePercent = dailyChanges.dailyChangePercent;

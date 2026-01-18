@@ -43,7 +43,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+    const isAuthError =
+      status === 401 ||
+      status === 403 ||
+      message === "Token de acceso requerido" ||
+      message === "Token inválido o expirado";
+
+    if (isAuthError) {
       // No redirigir si la petición es al endpoint de login (el error es esperado)
       const isLoginRequest = error.config?.url?.includes("/auth/login");
 
