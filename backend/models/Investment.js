@@ -91,6 +91,10 @@ const investmentSchema = new mongoose.Schema(
       enum: ["fixed_income", "variable_income", "mixed"],
       default: "variable_income",
     },
+    fixedIncomeSubtype: {
+      type: String,
+      enum: ["short", "medium"],
+    },
     fixedIncomePercentage: {
       type: Number,
       min: 0,
@@ -102,6 +106,10 @@ const investmentSchema = new mongoose.Schema(
       min: 0,
       max: 100,
       default: 100,
+    },
+    isAlternative: {
+      type: Boolean,
+      default: false,
     },
     notes: {
       type: String,
@@ -213,6 +221,7 @@ investmentSchema.pre("save", function (next) {
   } else if (this.assetClass === "variable_income") {
     this.fixedIncomePercentage = 0;
     this.variableIncomePercentage = 100;
+    this.fixedIncomeSubtype = undefined;
   } else if (this.assetClass === "mixed") {
     // Asegurar que los porcentajes sumen 100
     const total =
@@ -230,6 +239,9 @@ investmentSchema.pre("save", function (next) {
         this.variableIncomePercentage = 50;
       }
     }
+    this.fixedIncomeSubtype = undefined;
+  } else {
+    this.fixedIncomeSubtype = undefined;
   }
   next();
 });

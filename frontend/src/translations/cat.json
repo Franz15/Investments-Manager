@@ -143,6 +143,13 @@
         "variableIncome": "Renda Variable",
         "mixed": "Mixt"
       },
+      "fixedIncomeSubtype": "Tipus de Renda Fixa",
+      "fixedIncomeSubtypes": {
+        "short": "Renda Fixa de Curt",
+        "medium": "Renda Fixa de Mig"
+      },
+      "fixedIncomeSubtypeOptional": "Opcional (sense especificar)",
+      "alternative": "Alternativa",
       "fixedIncomePercentage": "Percentatge de Renda Fixa",
       "variableIncomePercentage": "Percentatge de Renda Variable",
       "notesPlaceholder": "Afegeix qualsevol nota o comentari sobre aquesta inversió...",
@@ -247,8 +254,13 @@
       "fixedIncome": "Renda Fixa",
       "variableIncome": "Renda Variable",
       "mixed": "Mixt",
+      "fixedIncomeShortTerm": "Renda Fixa de Curt",
+      "fixedIncomeMediumTerm": "Renda Fixa de Mig",
+      "fixedIncomeSubtypeShort": "Curt",
+      "fixedIncomeSubtypeMedium": "Mig",
       "fixedIncomeShort": "RF",
-      "variableIncomeShort": "RV"
+      "variableIncomeShort": "RV",
+      "alternative": "Alternativa"
     },
     "dca": {
       "title": "DCA (Dollar Cost Averaging)",
