@@ -107,6 +107,26 @@ const Dashboard = () => {
     return types[type] || type;
   };
 
+  const getFixedIncomeSubtypeLabel = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeShort");
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeMedium");
+    }
+    return "";
+  };
+
+  const getFixedIncomeSubtypeTone = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200";
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return "bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100";
+    }
+    return "";
+  };
+
   const COLORS = [
     "#0ea5e9",
     "#10b981",
@@ -1633,12 +1653,27 @@ const Dashboard = () => {
                         <span className="text-gray-600 dark:text-gray-400">
                           Clase de Activo:
                         </span>
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
                           {selectedTreemapInvestment.assetClass ===
                             "fixed_income" && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              {t("investments.assetClassLabels.fixedIncome")}
-                            </span>
+                            <>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                {t("investments.assetClassLabels.fixedIncome")}
+                              </span>
+                              {getFixedIncomeSubtypeLabel(
+                                selectedTreemapInvestment.fixedIncomeSubtype,
+                              ) && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                    selectedTreemapInvestment.fixedIncomeSubtype,
+                                  )}`}
+                                >
+                                  {getFixedIncomeSubtypeLabel(
+                                    selectedTreemapInvestment.fixedIncomeSubtype,
+                                  )}
+                                </span>
+                              )}
+                            </>
                           )}
                           {selectedTreemapInvestment.assetClass ===
                             "variable_income" && (
@@ -1647,20 +1682,32 @@ const Dashboard = () => {
                             </span>
                           )}
                           {selectedTreemapInvestment.assetClass === "mixed" && (
-                            <div className="flex items-center gap-2">
+                            <>
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
                                 {t("investments.assetClassLabels.mixed")}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
-                                RF:{" "}
+                                {t(
+                                  "investments.assetClassLabels.fixedIncomeShort",
+                                )}
+                                :{" "}
                                 {selectedTreemapInvestment.fixedIncomePercentage ||
                                   0}
-                                % | RV:{" "}
+                                % |{" "}
+                                {t(
+                                  "investments.assetClassLabels.variableIncomeShort",
+                                )}
+                                :{" "}
                                 {selectedTreemapInvestment.variableIncomePercentage ||
                                   0}
                                 %
                               </span>
-                            </div>
+                            </>
+                          )}
+                          {selectedTreemapInvestment.isAlternative && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                              {t("investments.assetClassLabels.alternative")}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -1668,7 +1715,7 @@ const Dashboard = () => {
                     {selectedTreemapInvestment.isAutomatedPortfolio && (
                       <div className="col-span-2">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                          Cartera Automatizada
+                          {t("investments.investmentTypes.automatedPortfolio")}
                         </span>
                       </div>
                     )}

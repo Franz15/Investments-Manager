@@ -129,8 +129,10 @@ const Investments = () => {
     purchaseDate: new Date().toISOString().split("T")[0],
     currency: "EUR",
     assetClass: "variable_income",
+    fixedIncomeSubtype: "",
     fixedIncomePercentage: 0,
     variableIncomePercentage: 100,
+    isAlternative: false,
     notes: "",
     platformUrl: "",
     dcaEnabled: false,
@@ -266,6 +268,11 @@ const Investments = () => {
       // Preparar datos para enviar
       const dataToSend = { ...formData };
 
+      if (dataToSend.assetClass === "alternative") {
+        dataToSend.assetClass = "variable_income";
+        dataToSend.isAlternative = true;
+      }
+
       // Si no se proporciona cotización actual o monto actual, usar el valor de compra
       // Esto aplica tanto para inversiones normales como para carteras automatizadas
       if (
@@ -286,6 +293,12 @@ const Investments = () => {
       // Limpiar subAccount si está vacío
       if (!dataToSend.subAccount) {
         delete dataToSend.subAccount;
+      }
+
+      if (dataToSend.assetClass !== "fixed_income") {
+        delete dataToSend.fixedIncomeSubtype;
+      } else if (!dataToSend.fixedIncomeSubtype) {
+        dataToSend.fixedIncomeSubtype = null;
       }
 
       // Calcular próxima fecha de DCA si está habilitado
@@ -373,9 +386,18 @@ const Investments = () => {
         .toISOString()
         .split("T")[0],
       currency: investment.currency,
-      assetClass: investment.assetClass || "variable_income",
+      assetClass:
+        investment.assetClass === "alternative"
+          ? "variable_income"
+          : investment.assetClass || "variable_income",
+      fixedIncomeSubtype:
+        investment.assetClass === "fixed_income"
+          ? investment.fixedIncomeSubtype || ""
+          : "",
       fixedIncomePercentage: investment.fixedIncomePercentage || 0,
       variableIncomePercentage: investment.variableIncomePercentage || 100,
+      isAlternative:
+        investment.isAlternative || investment.assetClass === "alternative",
       notes: investment.notes || "",
       platformUrl: investment.platformUrl || "",
       dcaEnabled: investment.dcaEnabled || false,
@@ -750,8 +772,10 @@ const Investments = () => {
       purchaseDate: new Date().toISOString().split("T")[0],
       currency: "EUR",
       assetClass: "variable_income",
+      fixedIncomeSubtype: "",
       fixedIncomePercentage: 0,
       variableIncomePercentage: 100,
+      isAlternative: false,
       notes: "",
       platformUrl: "",
       dcaEnabled: false,
@@ -761,6 +785,26 @@ const Investments = () => {
       dcaEndDate: "",
     });
     setEditingInvestment(null);
+  };
+
+  const getFixedIncomeSubtypeLabel = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeShort");
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeMedium");
+    }
+    return "";
+  };
+
+  const getFixedIncomeSubtypeTone = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200";
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return "bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100";
+    }
+    return "";
   };
 
   const getTypeLabel = (type, isAutomatedPortfolio = false) => {
@@ -961,7 +1005,7 @@ const Investments = () => {
                     </h3>
                     {investment.isAutomatedPortfolio && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                        Automatizada
+                        {t("investments.investmentTypes.automatedPortfolio")}
                       </span>
                     )}
                     {investment.dcaEnabled && (
@@ -987,11 +1031,26 @@ const Investments = () => {
                     )}
                   </p>
                   {investment.assetClass && (
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                       {investment.assetClass === "fixed_income" && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                          {t("investments.assetClassLabels.fixedIncome")}
-                        </span>
+                        <>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                            {t("investments.assetClassLabels.fixedIncome")}
+                          </span>
+                          {getFixedIncomeSubtypeLabel(
+                            investment.fixedIncomeSubtype,
+                          ) && (
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                investment.fixedIncomeSubtype,
+                              )}`}
+                            >
+                              {getFixedIncomeSubtypeLabel(
+                                investment.fixedIncomeSubtype,
+                              )}
+                            </span>
+                          )}
+                        </>
                       )}
                       {investment.assetClass === "variable_income" && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
@@ -999,7 +1058,7 @@ const Investments = () => {
                         </span>
                       )}
                       {investment.assetClass === "mixed" && (
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <>
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
                             {t("investments.assetClassLabels.mixed")}
                           </span>
@@ -1011,7 +1070,12 @@ const Investments = () => {
                             )}
                             : {investment.variableIncomePercentage || 0}%
                           </span>
-                        </div>
+                        </>
+                      )}
+                      {investment.isAlternative && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                          {t("investments.assetClassLabels.alternative")}
+                        </span>
                       )}
                     </div>
                   )}
@@ -2088,6 +2152,7 @@ const Investments = () => {
                           assetClass: newAssetClass,
                           fixedIncomePercentage: 100,
                           variableIncomePercentage: 0,
+                          fixedIncomeSubtype: formData.fixedIncomeSubtype || "",
                         });
                       } else if (newAssetClass === "variable_income") {
                         setFormData({
@@ -2102,10 +2167,63 @@ const Investments = () => {
                     }}
                     required
                   >
-                    <option value="fixed_income">Renta Fija</option>
-                    <option value="variable_income">Renta Variable</option>
-                    <option value="mixed">Mixto</option>
+                    <option value="fixed_income">
+                      {t("investments.form.assetClasses.fixedIncome")}
+                    </option>
+                    <option value="variable_income">
+                      {t("investments.form.assetClasses.variableIncome")}
+                    </option>
+                    <option value="mixed">
+                      {t("investments.form.assetClasses.mixed")}
+                    </option>
                   </select>
+                </div>
+                {formData.assetClass === "fixed_income" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("investments.form.fixedIncomeSubtype")}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.fixedIncomeSubtype}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          fixedIncomeSubtype: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">
+                        {t("investments.form.fixedIncomeSubtypeOptional")}
+                      </option>
+                      <option value="short">
+                        {t("investments.form.fixedIncomeSubtypes.short")}
+                      </option>
+                      <option value="medium">
+                        {t("investments.form.fixedIncomeSubtypes.medium")}
+                      </option>
+                    </select>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isAlternative"
+                    checked={formData.isAlternative}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        isAlternative: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label
+                    htmlFor="isAlternative"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    {t("investments.form.alternative")}
+                  </label>
                 </div>
                 {formData.assetClass === "mixed" && (
                   <div className="grid grid-cols-2 gap-4">
@@ -3528,11 +3646,26 @@ const Investments = () => {
                         <span className="text-gray-600 dark:text-gray-400">
                           {t("investments.detail.assetClassLabel")}
                         </span>
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
                           {detailInvestment.assetClass === "fixed_income" && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              {t("investments.assetClassLabels.fixedIncome")}
-                            </span>
+                            <>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                {t("investments.assetClassLabels.fixedIncome")}
+                              </span>
+                              {getFixedIncomeSubtypeLabel(
+                                detailInvestment.fixedIncomeSubtype,
+                              ) && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                    detailInvestment.fixedIncomeSubtype,
+                                  )}`}
+                                >
+                                  {getFixedIncomeSubtypeLabel(
+                                    detailInvestment.fixedIncomeSubtype,
+                                  )}
+                                </span>
+                              )}
+                            </>
                           )}
                           {detailInvestment.assetClass ===
                             "variable_income" && (
@@ -3541,18 +3674,29 @@ const Investments = () => {
                             </span>
                           )}
                           {detailInvestment.assetClass === "mixed" && (
-                            <div className="flex items-center gap-2">
+                            <>
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
                                 {t("investments.assetClassLabels.mixed")}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
-                                RF:{" "}
-                                {detailInvestment.fixedIncomePercentage || 0}% |
-                                RV:{" "}
+                                {t(
+                                  "investments.assetClassLabels.fixedIncomeShort",
+                                )}
+                                : {detailInvestment.fixedIncomePercentage || 0}%
+                                |
+                                {t(
+                                  "investments.assetClassLabels.variableIncomeShort",
+                                )}
+                                :{" "}
                                 {detailInvestment.variableIncomePercentage || 0}
                                 %
                               </span>
-                            </div>
+                            </>
+                          )}
+                          {detailInvestment.isAlternative && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                              {t("investments.assetClassLabels.alternative")}
+                            </span>
                           )}
                         </div>
                       </div>

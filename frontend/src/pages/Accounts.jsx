@@ -672,6 +672,26 @@ const Accounts = () => {
     return types[type] || type;
   };
 
+  const getFixedIncomeSubtypeLabel = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeShort");
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return t("investments.assetClassLabels.fixedIncomeSubtypeMedium");
+    }
+    return "";
+  };
+
+  const getFixedIncomeSubtypeTone = (fixedIncomeSubtype) => {
+    if (fixedIncomeSubtype === "short") {
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200";
+    }
+    if (fixedIncomeSubtype === "medium") {
+      return "bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100";
+    }
+    return "";
+  };
+
   const calculateProfitLoss = (investment) => {
     if (investment.isAutomatedPortfolio) {
       return investment.currentPrice - investment.quantity;
@@ -1219,15 +1239,38 @@ const Accounts = () => {
                                                       </span>{" "}
                                                       {investment.assetClass ===
                                                       "fixed_income"
-                                                        ? t(
-                                                            "accounts.modals.fixedIncome100",
-                                                          )
+                                                        ? `${t(
+                                                            "investments.assetClassLabels.fixedIncome",
+                                                          )}${
+                                                            getFixedIncomeSubtypeLabel(
+                                                              investment.fixedIncomeSubtype,
+                                                            )
+                                                              ? ` · ${getFixedIncomeSubtypeLabel(
+                                                                  investment.fixedIncomeSubtype,
+                                                                )}`
+                                                              : ""
+                                                          }`
                                                         : investment.assetClass ===
                                                             "variable_income"
                                                           ? t(
-                                                              "accounts.modals.variableIncome100",
+                                                              "investments.assetClassLabels.variableIncome",
                                                             )
-                                                          : `Renta Fija: ${investment.fixedIncomePercentage || 0}% | Renta Variable: ${investment.variableIncomePercentage || 0}%`}
+                                                          : `${t(
+                                                              "investments.assetClassLabels.fixedIncome",
+                                                            )}: ${
+                                                              investment.fixedIncomePercentage ||
+                                                              0
+                                                            }% | ${t(
+                                                              "investments.assetClassLabels.variableIncome",
+                                                            )}: ${
+                                                              investment.variableIncomePercentage ||
+                                                              0
+                                                            }%`}
+                                                      {investment.isAlternative
+                                                        ? ` · ${t(
+                                                            "investments.assetClassLabels.alternative",
+                                                          )}`
+                                                        : ""}
                                                     </p>
                                                     {investment.isAutomatedPortfolio ? (
                                                       <p>
@@ -1620,11 +1663,38 @@ const Accounts = () => {
                                         </span>{" "}
                                         {investment.assetClass ===
                                         "fixed_income"
-                                          ? "Renta Fija (100%)"
+                                          ? `${t(
+                                              "investments.assetClassLabels.fixedIncome",
+                                            )}${
+                                              getFixedIncomeSubtypeLabel(
+                                                investment.fixedIncomeSubtype,
+                                              )
+                                                ? ` · ${getFixedIncomeSubtypeLabel(
+                                                    investment.fixedIncomeSubtype,
+                                                  )}`
+                                                : ""
+                                            }`
                                           : investment.assetClass ===
                                               "variable_income"
-                                            ? "Renta Variable (100%)"
-                                            : `Renta Fija: ${investment.fixedIncomePercentage || 0}% | Renta Variable: ${investment.variableIncomePercentage || 0}%`}
+                                            ? t(
+                                                "investments.assetClassLabels.variableIncome",
+                                              )
+                                            : `${t(
+                                                "investments.assetClassLabels.fixedIncome",
+                                              )}: ${
+                                                investment.fixedIncomePercentage ||
+                                                0
+                                              }% | ${t(
+                                                "investments.assetClassLabels.variableIncome",
+                                              )}: ${
+                                                investment.variableIncomePercentage ||
+                                                0
+                                              }%`}
+                                        {investment.isAlternative
+                                          ? ` · ${t(
+                                              "investments.assetClassLabels.alternative",
+                                            )}`
+                                          : ""}
                                       </p>
                                       {investment.isAutomatedPortfolio ? (
                                         <p>
@@ -2179,11 +2249,26 @@ const Accounts = () => {
                         <span className="text-gray-600 dark:text-gray-400">
                           {t("investments.detail.assetClassLabel")}
                         </span>
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
                           {detailInvestment.assetClass === "fixed_income" && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              {t("investments.assetClassLabels.fixedIncome")}
-                            </span>
+                            <>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                {t("investments.assetClassLabels.fixedIncome")}
+                              </span>
+                              {getFixedIncomeSubtypeLabel(
+                                detailInvestment.fixedIncomeSubtype,
+                              ) && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                    detailInvestment.fixedIncomeSubtype,
+                                  )}`}
+                                >
+                                  {getFixedIncomeSubtypeLabel(
+                                    detailInvestment.fixedIncomeSubtype,
+                                  )}
+                                </span>
+                              )}
+                            </>
                           )}
                           {detailInvestment.assetClass ===
                             "variable_income" && (
@@ -2192,18 +2277,29 @@ const Accounts = () => {
                             </span>
                           )}
                           {detailInvestment.assetClass === "mixed" && (
-                            <div className="flex items-center gap-2">
+                            <>
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
                                 {t("investments.assetClassLabels.mixed")}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
-                                RF:{" "}
-                                {detailInvestment.fixedIncomePercentage || 0}% |
-                                RV:{" "}
+                                {t(
+                                  "investments.assetClassLabels.fixedIncomeShort",
+                                )}
+                                : {detailInvestment.fixedIncomePercentage || 0}%
+                                |
+                                {t(
+                                  "investments.assetClassLabels.variableIncomeShort",
+                                )}
+                                :{" "}
                                 {detailInvestment.variableIncomePercentage || 0}
                                 %
                               </span>
-                            </div>
+                            </>
+                          )}
+                          {detailInvestment.isAlternative && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                              {t("investments.assetClassLabels.alternative")}
+                            </span>
                           )}
                         </div>
                       </div>
