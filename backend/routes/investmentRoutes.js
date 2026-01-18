@@ -31,6 +31,21 @@ async function calculateDailyChanges(
   );
 }
 
+const normalizeInvestmentClassification = (payload) => {
+  if (!payload || typeof payload !== "object") return;
+  if (Object.prototype.hasOwnProperty.call(payload, "assetClass")) {
+    if (payload.assetClass === "alternative") {
+      payload.assetClass = "variable_income";
+      payload.isAlternative = true;
+    }
+    if (payload.assetClass !== "fixed_income") {
+      delete payload.fixedIncomeSubtype;
+    } else if (payload.fixedIncomeSubtype === "") {
+      payload.fixedIncomeSubtype = null;
+    }
+  }
+};
+
 // GET todas las inversiones
 router.get("/", async (req, res) => {
   try {
@@ -112,6 +127,8 @@ router.post("/", async (req, res) => {
     if (!req.body.account) {
       return res.status(400).json({ message: "Debe especificar una cuenta" });
     }
+
+    normalizeInvestmentClassification(req.body);
 
     let subAccount = null;
     let account = null;
@@ -269,6 +286,7 @@ router.post("/", async (req, res) => {
 // PUT actualizar inversión
 router.put("/:id", async (req, res) => {
   try {
+    normalizeInvestmentClassification(req.body);
     // Obtener la inversión actual antes de actualizarla para comparar cambios críticos
     const oldInvestment = await Investment.findOne({
       _id: req.params.id,

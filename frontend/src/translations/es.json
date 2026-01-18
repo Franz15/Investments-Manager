@@ -139,8 +139,13 @@
       "fixedIncome": "Renta Fija",
       "variableIncome": "Renta Variable",
       "mixed": "Mixto",
+      "fixedIncomeShortTerm": "Renta Fija de Corto",
+      "fixedIncomeMediumTerm": "Renta Fija de Medio",
+      "fixedIncomeSubtypeShort": "Corto",
+      "fixedIncomeSubtypeMedium": "Medio",
       "fixedIncomeShort": "RF",
-      "variableIncomeShort": "RV"
+      "variableIncomeShort": "RV",
+      "alternative": "Alternativa"
     },
     "form": {
       "location": "Ubicación",
@@ -194,6 +199,13 @@
         "variableIncome": "Renta Variable",
         "mixed": "Mixto"
       },
+      "fixedIncomeSubtype": "Tipo de Renta Fija",
+      "fixedIncomeSubtypes": {
+        "short": "Renta Fija de Corto",
+        "medium": "Renta Fija de Medio"
+      },
+      "fixedIncomeSubtypeOptional": "Opcional (sin especificar)",
+      "alternative": "Alternativa",
       "fixedIncomePercentage": "Porcentaje de Renta Fija",
       "variableIncomePercentage": "Porcentaje de Renta Variable",
       "notesPlaceholder": "Añade cualquier nota o comentario sobre esta inversión...",
