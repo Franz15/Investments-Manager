@@ -4,7 +4,11 @@ import SubAccount from "../models/SubAccount.js";
 import Account from "../models/Account.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { updateMultipleQuotes, getQuote } from "../services/quoteService.js";
-import { saveDailyVariation } from "../services/dailyVariationService.js";
+import {
+  saveDailyVariation,
+  recalculateDailyVariationsForInvestmentFromDate,
+  calculateDailyChangeFromHistory,
+} from "../services/dailyVariationService.js";
 import { calculateHistoricalVariations } from "../services/historicalVariationService.js";
 
 const router = express.Router();
@@ -13,73 +17,18 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Función helper para calcular diferencias respecto al día anterior
-async function calculateDailyChanges(investmentId, userId, currentTotalValue) {
-  try {
-    const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-      .default;
-    // Buscar el registro más reciente anterior a hoy
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const previousEntry = await InvestmentHistory.findOne({
-      investment: investmentId,
-      user: userId,
-      date: { $lt: today },
-    })
-      .sort({ date: -1 })
-      .limit(1);
-
-    // Verificar si hay operaciones (add/sell/withdraw) hoy que puedan afectar el cálculo
-    const todayOperations = await InvestmentHistory.find({
-      investment: investmentId,
-      user: userId,
-      date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ["add", "sell", "withdraw"] },
-    });
-
-    // Calcular el capital añadido/retirado hoy
-    let capitalChangeToday = 0;
-    for (const op of todayOperations) {
-      if (op.operation === "add") {
-        // Usar operationAmount o calcular desde quantity * operationPrice
-        capitalChangeToday +=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
-      } else if (op.operation === "sell" || op.operation === "withdraw") {
-        // Usar operationAmount o calcular desde quantity * operationPrice
-        capitalChangeToday -=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
-      }
-    }
-
-    if (previousEntry && previousEntry.totalValue) {
-      // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
-      // Esto da la variación pura del precio, sin contar el capital añadido
-      const valueChange = currentTotalValue - previousEntry.totalValue;
-      const changeAmount = valueChange - capitalChangeToday;
-      const changePercent =
-        previousEntry.totalValue !== 0
-          ? (changeAmount / previousEntry.totalValue) * 100
-          : 0;
-
-      return {
-        dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
-        dailyChangePercent: parseFloat(changePercent.toFixed(2)),
-      };
-    }
-
-    // Si no hay registro anterior, no hay cambio
-    return {
-      dailyChangeAmount: null,
-      dailyChangePercent: null,
-    };
-  } catch (error) {
-    return {
-      dailyChangeAmount: null,
-      dailyChangePercent: null,
-    };
-  }
+async function calculateDailyChanges(
+  investmentId,
+  userId,
+  currentTotalValue,
+  date,
+) {
+  return await calculateDailyChangeFromHistory(
+    investmentId,
+    userId,
+    currentTotalValue,
+    date || new Date(),
+  );
 }
 
 // GET todas las inversiones
@@ -275,6 +224,7 @@ router.post("/", async (req, res) => {
         savedInvestment._id,
         req.userId,
         totalValue,
+        historyDate,
       );
 
       const initialHistoryEntry = new InvestmentHistory({
@@ -478,6 +428,7 @@ router.post("/:id/add", async (req, res) => {
         investment._id,
         req.userId,
         totalValue,
+        date || new Date(),
       );
 
       const historyEntry = new InvestmentHistory({
@@ -497,6 +448,11 @@ router.post("/:id/add", async (req, res) => {
         dailyChangePercent: dailyChanges.dailyChangePercent,
       });
       await historyEntry.save();
+      await recalculateDailyVariationsForInvestmentFromDate(
+        investment._id,
+        req.userId,
+        date || new Date(),
+      );
     }
 
     const populatedInvestment = await Investment.findById(
@@ -592,6 +548,7 @@ router.post("/:id/sell", async (req, res) => {
           investment._id,
           req.userId,
           totalValue,
+          date || new Date(),
         );
 
         const historyEntry = new InvestmentHistory({
@@ -604,6 +561,9 @@ router.post("/:id/sell", async (req, res) => {
           notes:
             notes ||
             `Retiro completo: ${quantity} ${investment.isAutomatedPortfolio ? "€" : "unidades"} a ${investment.isAutomatedPortfolio ? "" : price + "€"}`,
+          operation: "withdraw",
+          operationAmount: saleAmount,
+          operationPrice: investment.isAutomatedPortfolio ? null : price,
           dailyChangeAmount: dailyChanges.dailyChangeAmount,
           dailyChangePercent: dailyChanges.dailyChangePercent,
         });
@@ -669,6 +629,7 @@ router.post("/:id/sell", async (req, res) => {
         investment._id,
         req.userId,
         totalValue,
+        date || new Date(),
       );
 
       const historyEntry = new InvestmentHistory({
@@ -690,6 +651,11 @@ router.post("/:id/sell", async (req, res) => {
         dailyChangePercent: dailyChanges.dailyChangePercent,
       });
       await historyEntry.save();
+      await recalculateDailyVariationsForInvestmentFromDate(
+        investment._id,
+        req.userId,
+        date || new Date(),
+      );
     }
 
     const populatedInvestment = await Investment.findById(investment._id)
@@ -797,6 +763,7 @@ router.post("/update-prices", async (req, res) => {
               investment._id,
               req.userId,
               totalValue,
+              today,
             );
 
             if (existingHistory) {
@@ -1181,6 +1148,7 @@ router.post("/execute-dca", async (req, res) => {
           investment._id,
           req.userId,
           totalValue,
+          today,
         );
 
         const historyEntry = new InvestmentHistory({
