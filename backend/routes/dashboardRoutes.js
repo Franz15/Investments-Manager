@@ -31,16 +31,6 @@ router.get("/stats", async (req, res) => {
       0,
     );
 
-    // Balance de subcuentas de inversión (dinero disponible para invertir)
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: "investment",
-    });
-    const totalInvestmentSubAccountBalance = investmentSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
-
     // Total de inversiones del usuario (valor actual de las inversiones)
     // Solo obtener inversiones que tienen account (requerido)
     const investments = await Investment.find({
@@ -63,9 +53,8 @@ router.get("/stats", async (req, res) => {
       return sum + value;
     }, 0);
 
-    // Balance total = Cash + Savings + Balance en subcuentas de inversión + Valor de inversiones
-    const totalBalance =
-      totalCashSavings + totalInvestmentSubAccountBalance + totalInvestments;
+    // Balance total = Cash + Savings + Valor de inversiones
+    const totalBalance = totalCashSavings + totalInvestments;
 
     // Ganancias/pérdidas totales de inversiones
     const totalProfitLoss = investments.reduce((sum, inv) => {
@@ -294,14 +283,7 @@ router.get("/balance-chart", async (req, res) => {
       0,
     );
 
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: "investment",
-    });
-    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
+    const currentInvestmentSubAccountBalance = 0;
 
     // Obtener deudas actuales
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
@@ -781,15 +763,7 @@ router.get("/balance-daily", async (req, res) => {
     } else {
     }
 
-    // Obtener subcuentas de inversión (dinero disponible para invertir)
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: "investment",
-    });
-    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
+    const currentInvestmentSubAccountBalance = 0;
 
     // Obtener deudas actuales (no tenemos histórico de deudas)
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
@@ -1183,10 +1157,7 @@ router.get("/balance-daily", async (req, res) => {
           : (inv.quantity || 0) * (inv.currentPrice || 0);
         return sum + value;
       }, 0);
-      const totalBalanceStats =
-        totalCashSavings +
-        currentInvestmentSubAccountBalance +
-        totalInvestmentsStats;
+      const totalBalanceStats = totalCashSavings + totalInvestmentsStats;
       const netWorthStats = totalBalanceStats - currentTotalDebts;
 
       // Verificar valores únicos
