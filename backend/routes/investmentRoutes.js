@@ -46,6 +46,62 @@ const normalizeInvestmentClassification = (payload) => {
   }
 };
 
+const getCashSubAccountForInvestment = async (investment, userId) => {
+  const subAccountId = investment.subAccount?._id || investment.subAccount;
+  const sourceSubAccount = subAccountId
+    ? await SubAccount.findOne({ _id: subAccountId, user: userId })
+    : null;
+  const accountId =
+    sourceSubAccount?.account || investment.account?._id || investment.account;
+  if (!accountId) return null;
+
+  let cashSubAccount = await SubAccount.findOne({
+    account: accountId,
+    user: userId,
+    type: "cash",
+    name: "Efectivo",
+  });
+
+  if (!cashSubAccount) {
+    const fallbackCashSubAccount = await SubAccount.findOne({
+      account: accountId,
+      user: userId,
+      type: "cash",
+    }).sort({ createdAt: 1 });
+
+    if (fallbackCashSubAccount) {
+      fallbackCashSubAccount.name = "Efectivo";
+      await fallbackCashSubAccount.save();
+      return fallbackCashSubAccount;
+    }
+
+    const account = await Account.findOne({ _id: accountId, user: userId });
+    cashSubAccount = new SubAccount({
+      user: userId,
+      account: accountId,
+      name: "Efectivo",
+      type: "cash",
+      balance: 0,
+      currency: account?.currency || sourceSubAccount?.currency || "EUR",
+      description: "Efectivo creado automáticamente para devoluciones",
+    });
+    await cashSubAccount.save();
+  }
+
+  return cashSubAccount;
+};
+
+const applyCashDeltaForInvestment = async (investment, userId, amount) => {
+  const cashSubAccount = await getCashSubAccountForInvestment(
+    investment,
+    userId,
+  );
+  if (!cashSubAccount) return null;
+  cashSubAccount.balance += amount;
+  await cashSubAccount.save();
+  return cashSubAccount;
+};
+
 // GET todas las inversiones
 router.get("/", async (req, res) => {
   try {
@@ -183,13 +239,6 @@ router.post("/", async (req, res) => {
       user: req.userId,
     });
     const savedInvestment = await investment.save();
-
-    // Si hay subcuenta, SUMAR el monto invertido al balance (no restar)
-    // Esto permite crear inversiones sin estar limitado al dinero existente
-    if (subAccount) {
-      subAccount.balance += investmentAmount;
-      await subAccount.save();
-    }
 
     // Populate según lo que tenga la inversión
     const populatePaths = [];
@@ -427,12 +476,6 @@ router.post("/:id/add", async (req, res) => {
 
     await investment.save();
 
-    // Si hay subcuenta, SUMAR el monto adicional al balance (no restar)
-    if (investment.subAccount) {
-      investment.subAccount.balance += additionalAmount;
-      await investment.subAccount.save();
-    }
-
     // Crear entrada en el historial si se proporciona fecha
     if (date) {
       const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
@@ -548,10 +591,21 @@ router.post("/:id/sell", async (req, res) => {
 
     // Si se retira todo, eliminar la inversión
     if (remainingQuantity <= 0) {
-      // Devolver el dinero a la subcuenta si existe y se solicita
-      if (returnToSubAccount && investment.subAccount) {
-        investment.subAccount.balance += saleAmount;
-        await investment.subAccount.save();
+      // Devolver el dinero al efectivo si se solicita
+      let returnedToSubAccount = false;
+      if (returnToSubAccount) {
+        const cashSubAccount = await applyCashDeltaForInvestment(
+          investment,
+          req.userId,
+          saleAmount,
+        );
+        if (!cashSubAccount) {
+          return res.status(400).json({
+            message:
+              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+          });
+        }
+        returnedToSubAccount = true;
       }
 
       // Crear entrada en el historial antes de eliminar
@@ -613,8 +667,7 @@ router.post("/:id/sell", async (req, res) => {
       return res.json({
         message: "Inversión retirada completamente y eliminada",
         saleAmount,
-        returnedToSubAccount:
-          returnToSubAccount && investment.subAccount ? true : false,
+        returnedToSubAccount,
       });
     }
 
@@ -628,10 +681,21 @@ router.post("/:id/sell", async (req, res) => {
 
     await investment.save();
 
-    // Devolver el dinero a la subcuenta si existe y se solicita
-    if (returnToSubAccount && investment.subAccount) {
-      investment.subAccount.balance += saleAmount;
-      await investment.subAccount.save();
+    // Devolver el dinero al efectivo si se solicita
+    let returnedToSubAccount = false;
+    if (returnToSubAccount) {
+      const cashSubAccount = await applyCashDeltaForInvestment(
+        investment,
+        req.userId,
+        saleAmount,
+      );
+      if (!cashSubAccount) {
+        return res.status(400).json({
+          message:
+            "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+        });
+      }
+      returnedToSubAccount = true;
     }
 
     // Crear entrada en el historial
@@ -694,8 +758,7 @@ router.post("/:id/sell", async (req, res) => {
       investment: populatedInvestment,
       saleAmount,
       remainingQuantity,
-      returnedToSubAccount:
-        returnToSubAccount && investment.subAccount ? true : false,
+      returnedToSubAccount,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -973,7 +1036,7 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Si se solicita devolver el dinero, calcular el monto original invertido
-    if (returnMoney === "true" && investment.subAccount) {
+    if (returnMoney === "true") {
       let originalAmount = 0;
 
       if (investment.isAutomatedPortfolio) {
@@ -986,9 +1049,18 @@ router.delete("/:id", async (req, res) => {
         originalAmount = investment.quantity * avgPrice;
       }
 
-      // Devolver el dinero a la subcuenta
-      investment.subAccount.balance += originalAmount;
-      await investment.subAccount.save();
+      // Devolver el dinero al efectivo de la cuenta principal
+      const cashSubAccount = await applyCashDeltaForInvestment(
+        investment,
+        req.userId,
+        originalAmount,
+      );
+      if (!cashSubAccount) {
+        return res.status(400).json({
+          message:
+            "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+        });
+      }
     }
 
     const investmentId = investment._id;
@@ -1015,7 +1087,7 @@ router.delete("/:id", async (req, res) => {
 
     const message =
       returnMoney === "true"
-        ? "Inversión eliminada y dinero devuelto a la subcuenta"
+        ? "Inversión eliminada y dinero devuelto a Efectivo"
         : "Inversión eliminada";
 
     res.json({ message });
@@ -1144,15 +1216,6 @@ router.post("/execute-dca", async (req, res) => {
         }
 
         await investment.save();
-
-        // Actualizar balance de subcuenta si existe
-        if (investment.subAccount) {
-          const subAccount = await SubAccount.findById(investment.subAccount);
-          if (subAccount) {
-            subAccount.balance += additionalAmount;
-            await subAccount.save();
-          }
-        }
 
         // Crear entrada en el historial
         const InvestmentHistory = (
