@@ -113,6 +113,12 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Subcuenta no encontrada" });
     }
 
+    if (subAccount.type === "cash" && subAccount.name === "Efectivo") {
+      return res
+        .status(400)
+        .json({ message: "No se puede eliminar la subcuenta Efectivo" });
+    }
+
     // Eliminar la subcuenta
     await SubAccount.findByIdAndDelete(req.params.id);
 

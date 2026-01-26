@@ -314,7 +314,7 @@ const Accounts = () => {
       return sum + value;
     }, 0);
 
-    return subAccount.balance + investmentsValue;
+    return investmentsValue;
   };
 
   const getSubAccountsForAccount = (accountId) => {

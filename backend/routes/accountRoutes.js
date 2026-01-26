@@ -1,6 +1,10 @@
 import express from "express";
 import Account from "../models/Account.js";
 import SubAccount from "../models/SubAccount.js";
+import Investment from "../models/Investment.js";
+import Transaction from "../models/Transaction.js";
+import InvestmentHistory from "../models/InvestmentHistory.js";
+import DailyVariation from "../models/DailyVariation.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -55,19 +59,19 @@ router.post("/", async (req, res) => {
     });
     const savedAccount = await account.save();
 
-    // Si hay balance inicial, crear automáticamente una subcuenta de tipo "cash"
-    if (initialBalance && initialBalance > 0) {
-      const subAccount = new SubAccount({
-        user: req.userId,
-        account: savedAccount._id,
-        name: "Cuenta Principal",
-        type: "cash",
-        balance: initialBalance,
-        currency: savedAccount.currency,
-        description: "Balance inicial de la cuenta",
-      });
-      await subAccount.save();
-    }
+    // Crear automáticamente la subcuenta de efectivo "Efectivo"
+    const startingBalance =
+      initialBalance !== undefined ? Number(initialBalance) || 0 : 0;
+    const subAccount = new SubAccount({
+      user: req.userId,
+      account: savedAccount._id,
+      name: "Efectivo",
+      type: "cash",
+      balance: startingBalance,
+      currency: savedAccount.currency,
+      description: "Subcuenta de efectivo de la cuenta",
+    });
+    await subAccount.save();
 
     // Retornar la cuenta con sus subcuentas
     const populatedAccount = await Account.findById(savedAccount._id).populate({
@@ -112,8 +116,45 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Cuenta no encontrada" });
     }
 
-    // Eliminar todas las subcuentas relacionadas del usuario
-    await SubAccount.deleteMany({ account: req.params.id, user: req.userId });
+    const subAccounts = await SubAccount.find({
+      account: req.params.id,
+      user: req.userId,
+    }).select("_id");
+    const subAccountIds = subAccounts.map((sub) => sub._id);
+
+    const investments = await Investment.find({
+      user: req.userId,
+      $or: [
+        { account: req.params.id },
+        ...(subAccountIds.length > 0
+          ? [{ subAccount: { $in: subAccountIds } }]
+          : []),
+      ],
+    }).select("_id");
+    const investmentIds = investments.map((inv) => inv._id);
+
+    if (investmentIds.length > 0) {
+      await InvestmentHistory.deleteMany({
+        user: req.userId,
+        investment: { $in: investmentIds },
+      });
+      await DailyVariation.deleteMany({
+        user: req.userId,
+        investment: { $in: investmentIds },
+      });
+      await Investment.deleteMany({ _id: { $in: investmentIds } });
+    }
+
+    if (subAccountIds.length > 0) {
+      await Transaction.deleteMany({
+        user: req.userId,
+        subAccount: { $in: subAccountIds },
+      });
+      await SubAccount.deleteMany({
+        account: req.params.id,
+        user: req.userId,
+      });
+    }
 
     // Eliminar la cuenta
     await Account.findByIdAndDelete(req.params.id);
