@@ -32,6 +32,14 @@ const investmentSchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+        quantity: {
+          type: Number,
+          min: 0,
+        },
+        averagePurchasePrice: {
+          type: Number,
+          min: 0,
+        },
       },
     ],
     name: {

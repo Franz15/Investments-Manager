@@ -309,6 +309,8 @@ const Accounts = () => {
         accountId: allocation.account?._id || allocation.account,
         subAccountId: allocation.subAccount?._id || allocation.subAccount,
         amount: Number(allocation.amount) || 0,
+        quantity: Number(allocation.quantity) || 0,
+        averagePurchasePrice: Number(allocation.averagePurchasePrice) || 0,
       }));
     }
     return [
@@ -316,6 +318,8 @@ const Accounts = () => {
         accountId: investment.account?._id || investment.account,
         subAccountId: investment.subAccount?._id || investment.subAccount,
         amount: getInvestmentInvestedCapital(investment),
+        quantity: 0,
+        averagePurchasePrice: 0,
       },
     ];
   };
@@ -354,6 +358,49 @@ const Accounts = () => {
     return (investment.quantity || 0) * share;
   };
 
+  const getAllocationMetrics = (investment, predicate) => {
+    const allocations = getInvestmentAllocations(investment);
+    const totalValue = getInvestmentTotalValue(investment);
+    const totalAmount = allocations.reduce(
+      (sum, allocation) => sum + (allocation.amount || 0),
+      0,
+    );
+
+    return allocations.reduce(
+      (acc, allocation) => {
+        if (!predicate(allocation)) return acc;
+
+        if (investment.isAutomatedPortfolio) {
+          const share = totalAmount > 0 ? allocation.amount / totalAmount : 0;
+          return {
+            currentValue: acc.currentValue + totalValue * share,
+            investedCapital: acc.investedCapital + allocation.amount,
+            quantity: null,
+          };
+        }
+
+        if (allocation.quantity > 0 && allocation.averagePurchasePrice > 0) {
+          const currentValue = allocation.quantity * investment.currentPrice;
+          const investedCapital =
+            allocation.quantity * allocation.averagePurchasePrice;
+          return {
+            currentValue: acc.currentValue + currentValue,
+            investedCapital: acc.investedCapital + investedCapital,
+            quantity: acc.quantity + allocation.quantity,
+          };
+        }
+
+        const share = totalAmount > 0 ? allocation.amount / totalAmount : 0;
+        return {
+          currentValue: acc.currentValue + totalValue * share,
+          investedCapital: acc.investedCapital + allocation.amount,
+          quantity: acc.quantity + (investment.quantity || 0) * share,
+        };
+      },
+      { currentValue: 0, investedCapital: 0, quantity: 0 },
+    );
+  };
+
   const getInvestmentsForSubAccount = (subAccountId) => {
     return investments.filter(
       (inv) =>
@@ -385,12 +432,12 @@ const Accounts = () => {
     // Para subcuentas de inversión, sumar el balance + valor de las inversiones
     const subAccountInvestments = getInvestmentsForSubAccount(subAccount._id);
     const investmentsValue = subAccountInvestments.reduce((sum, inv) => {
-      const share = getAllocationShare(
+      const metrics = getAllocationMetrics(
         inv,
         (allocation) =>
           allocation.subAccountId?.toString() === subAccount._id?.toString(),
       );
-      return sum + getAllocatedValue(inv, share);
+      return sum + metrics.currentValue;
     }, 0);
 
     return investmentsValue;
@@ -419,13 +466,13 @@ const Accounts = () => {
     // Agregar inversiones directamente asociadas a la cuenta (sin subcuenta)
     const accountInvestments = getInvestmentsForAccount(accountId);
     const investmentsValue = accountInvestments.reduce((sum, inv) => {
-      const share = getAllocationShare(
+      const metrics = getAllocationMetrics(
         inv,
         (allocation) =>
           allocation.accountId?.toString() === accountId?.toString() &&
           !allocation.subAccountId,
       );
-      return sum + getAllocatedValue(inv, share);
+      return sum + metrics.currentValue;
     }, 0);
 
     return subsBalance + investmentsValue;
@@ -440,13 +487,13 @@ const Accounts = () => {
 
     // Sumar capital invertido de inversiones directas
     accountInvestments.forEach((inv) => {
-      const share = getAllocationShare(
+      const metrics = getAllocationMetrics(
         inv,
         (allocation) =>
           allocation.accountId?.toString() === accountId?.toString() &&
           !allocation.subAccountId,
       );
-      totalInvestedCapital += getAllocatedInvestedCapital(inv, share);
+      totalInvestedCapital += metrics.investedCapital;
     });
 
     // Sumar capital invertido de inversiones en subcuentas
@@ -466,25 +513,25 @@ const Accounts = () => {
 
     // Sumar valor actual de inversiones directas
     accountInvestments.forEach((inv) => {
-      const share = getAllocationShare(
+      const metrics = getAllocationMetrics(
         inv,
         (allocation) =>
           allocation.accountId?.toString() === accountId?.toString() &&
           !allocation.subAccountId,
       );
-      totalValue += getAllocatedValue(inv, share);
+      totalValue += metrics.currentValue;
     });
 
     // Sumar valor actual de inversiones en subcuentas
     subs.forEach((sub) => {
       const subAccountInvestments = getInvestmentsForSubAccount(sub._id);
       subAccountInvestments.forEach((inv) => {
-        const share = getAllocationShare(
+        const metrics = getAllocationMetrics(
           inv,
           (allocation) =>
             allocation.subAccountId?.toString() === sub._id?.toString(),
         );
-        totalValue += getAllocatedValue(inv, share);
+        totalValue += metrics.currentValue;
       });
     });
 
@@ -501,12 +548,14 @@ const Accounts = () => {
     accountInvestments.forEach((inv) => {
       const variation = dailyVariations[inv._id];
       if (variation) {
-        const share = getAllocationShare(
+        const metrics = getAllocationMetrics(
           inv,
           (allocation) =>
             allocation.accountId?.toString() === accountId?.toString() &&
             !allocation.subAccountId,
         );
+        const totalValue = getInvestmentTotalValue(inv);
+        const share = totalValue > 0 ? metrics.currentValue / totalValue : 0;
         totalChangeAmount += (variation.changeAmount || 0) * share;
       }
     });
@@ -517,11 +566,13 @@ const Accounts = () => {
       subAccountInvestments.forEach((inv) => {
         const variation = dailyVariations[inv._id];
         if (variation) {
-          const share = getAllocationShare(
+          const metrics = getAllocationMetrics(
             inv,
             (allocation) =>
               allocation.subAccountId?.toString() === sub._id?.toString(),
           );
+          const totalValue = getInvestmentTotalValue(inv);
+          const share = totalValue > 0 ? metrics.currentValue / totalValue : 0;
           totalChangeAmount += (variation.changeAmount || 0) * share;
         }
       });
@@ -536,12 +587,12 @@ const Accounts = () => {
 
     let totalInvestedCapital = 0;
     subAccountInvestments.forEach((inv) => {
-      const share = getAllocationShare(
+      const metrics = getAllocationMetrics(
         inv,
         (allocation) =>
           allocation.subAccountId?.toString() === subAccountId?.toString(),
       );
-      totalInvestedCapital += getAllocatedInvestedCapital(inv, share);
+      totalInvestedCapital += metrics.investedCapital;
     });
 
     return totalInvestedCapital;
@@ -555,11 +606,13 @@ const Accounts = () => {
     subAccountInvestments.forEach((inv) => {
       const variation = dailyVariations[inv._id];
       if (variation) {
-        const share = getAllocationShare(
+        const metrics = getAllocationMetrics(
           inv,
           (allocation) =>
             allocation.subAccountId?.toString() === subAccountId?.toString(),
         );
+        const totalValue = getInvestmentTotalValue(inv);
+        const share = totalValue > 0 ? metrics.currentValue / totalValue : 0;
         const changeAmount = (variation.changeAmount || 0) * share;
         totalChangeAmount += changeAmount;
 
@@ -978,13 +1031,13 @@ const Accounts = () => {
                           calculateSubAccountTotalValue(subAccount);
                         const investmentsValue = subAccountInvestments.reduce(
                           (sum, inv) => {
-                            const share = getAllocationShare(
+                            const metrics = getAllocationMetrics(
                               inv,
                               (allocation) =>
                                 allocation.subAccountId?.toString() ===
                                 subAccount._id?.toString(),
                             );
-                            return sum + getAllocatedValue(inv, share);
+                            return sum + metrics.currentValue;
                           },
                           0,
                         );
@@ -1121,28 +1174,24 @@ const Accounts = () => {
                                   <div className="mt-2 space-y-2">
                                     {subAccountInvestments.map(
                                       (investment, index) => {
-                                        const allocationShare =
-                                          getAllocationShare(
-                                            investment,
-                                            (allocation) =>
-                                              allocation.subAccountId?.toString() ===
-                                              subAccount._id?.toString(),
-                                          );
+                                        const metrics = getAllocationMetrics(
+                                          investment,
+                                          (allocation) =>
+                                            allocation.subAccountId?.toString() ===
+                                            subAccount._id?.toString(),
+                                        );
                                         const investmentValue =
-                                          getAllocatedValue(
-                                            investment,
-                                            allocationShare,
-                                          );
+                                          metrics.currentValue;
                                         const investedCapital =
-                                          getAllocatedInvestedCapital(
-                                            investment,
-                                            allocationShare,
-                                          );
+                                          metrics.investedCapital;
                                         const allocatedQuantity =
-                                          getAllocatedQuantity(
-                                            investment,
-                                            allocationShare,
-                                          );
+                                          metrics.quantity;
+                                        const allocationAveragePurchasePrice =
+                                          allocatedQuantity &&
+                                          allocatedQuantity > 0
+                                            ? investedCapital /
+                                              allocatedQuantity
+                                            : investment.averagePurchasePrice;
                                         const profitLoss =
                                           investmentValue - investedCapital;
                                         const profitLossPercent =
@@ -1408,7 +1457,7 @@ const Accounts = () => {
                                                             },
                                                           )}
                                                         </p>
-                                                        {investment.averagePurchasePrice && (
+                                                        {allocationAveragePurchasePrice && (
                                                           <p>
                                                             <span className="font-medium">
                                                               {t(
@@ -1416,7 +1465,7 @@ const Accounts = () => {
                                                               )}
                                                             </span>{" "}
                                                             {formatPrice(
-                                                              investment.averagePurchasePrice,
+                                                              allocationAveragePurchasePrice,
                                                               investment.currency,
                                                             )}
                                                           </p>
@@ -1603,25 +1652,20 @@ const Accounts = () => {
                       {/* Mostrar inversiones directas después de las subcuentas */}
                       {getInvestmentsForAccount(account._id).map(
                         (investment) => {
-                          const allocationShare = getAllocationShare(
+                          const metrics = getAllocationMetrics(
                             investment,
                             (allocation) =>
                               allocation.accountId?.toString() ===
                                 account._id?.toString() &&
                               !allocation.subAccountId,
                           );
-                          const investmentValue = getAllocatedValue(
-                            investment,
-                            allocationShare,
-                          );
-                          const investedCapital = getAllocatedInvestedCapital(
-                            investment,
-                            allocationShare,
-                          );
-                          const allocatedQuantity = getAllocatedQuantity(
-                            investment,
-                            allocationShare,
-                          );
+                          const investmentValue = metrics.currentValue;
+                          const investedCapital = metrics.investedCapital;
+                          const allocatedQuantity = metrics.quantity;
+                          const allocationAveragePurchasePrice =
+                            allocatedQuantity && allocatedQuantity > 0
+                              ? investedCapital / allocatedQuantity
+                              : investment.averagePurchasePrice;
                           const profitLoss = investmentValue - investedCapital;
                           const profitLossPercent =
                             investedCapital > 0
@@ -1833,13 +1877,13 @@ const Accounts = () => {
                                                 investment.quantity,
                                             })}
                                           </p>
-                                          {investment.averagePurchasePrice && (
+                                          {allocationAveragePurchasePrice && (
                                             <p>
                                               <span className="font-medium">
                                                 Precio medio:
                                               </span>{" "}
                                               {formatPrice(
-                                                investment.averagePurchasePrice,
+                                                allocationAveragePurchasePrice,
                                                 investment.currency,
                                               )}
                                             </p>

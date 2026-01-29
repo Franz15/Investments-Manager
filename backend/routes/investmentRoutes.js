@@ -515,6 +515,14 @@ router.post("/", async (req, res) => {
       req.body.subAccount = allocations[0].subAccount || undefined;
     }
 
+    if (!req.body.isAutomatedPortfolio && req.body.purchasePrice > 0) {
+      req.body.allocations = allocations.map((allocation) => ({
+        ...allocation,
+        quantity: allocation.amount / req.body.purchasePrice,
+        averagePurchasePrice: req.body.purchasePrice,
+      }));
+    }
+
     // Crear la inversión
     const investment = new Investment({
       ...req.body,
@@ -864,11 +872,30 @@ router.post("/:id/add", async (req, res) => {
         );
         if (existing) {
           existing.amount = (Number(existing.amount) || 0) + additionalAmount;
+          if (!investment.isAutomatedPortfolio && price) {
+            const additionalUnits = quantity || 0;
+            const currentUnits = Number(existing.quantity) || 0;
+            const currentAvg =
+              Number(existing.averagePurchasePrice) ||
+              investment.averagePurchasePrice ||
+              investment.purchasePrice ||
+              price;
+            const newUnits = currentUnits + additionalUnits;
+            existing.quantity = newUnits;
+            existing.averagePurchasePrice =
+              newUnits > 0
+                ? (currentUnits * currentAvg + additionalUnits * price) /
+                  newUnits
+                : currentAvg;
+            existing.amount = newUnits * existing.averagePurchasePrice;
+          }
         } else {
           investment.allocations.push({
             account: targetAllocation.account,
             subAccount: targetAllocation.subAccount || null,
             amount: additionalAmount,
+            quantity: !investment.isAutomatedPortfolio ? quantity || 0 : 0,
+            averagePurchasePrice: !investment.isAutomatedPortfolio ? price : 0,
           });
         }
       } else {
@@ -881,6 +908,23 @@ router.post("/:id/add", async (req, res) => {
             const weight = (Number(allocation.amount) || 0) / totalAllocated;
             allocation.amount =
               (Number(allocation.amount) || 0) + additionalAmount * weight;
+            if (!investment.isAutomatedPortfolio && price) {
+              const additionalUnits = (quantity || 0) * weight;
+              const currentUnits = Number(allocation.quantity) || 0;
+              const currentAvg =
+                Number(allocation.averagePurchasePrice) ||
+                investment.averagePurchasePrice ||
+                investment.purchasePrice ||
+                price;
+              const newUnits = currentUnits + additionalUnits;
+              allocation.quantity = newUnits;
+              allocation.averagePurchasePrice =
+                newUnits > 0
+                  ? (currentUnits * currentAvg + additionalUnits * price) /
+                    newUnits
+                  : currentAvg;
+              allocation.amount = newUnits * allocation.averagePurchasePrice;
+            }
           });
         } else {
           const perAllocation =
@@ -888,6 +932,24 @@ router.post("/:id/add", async (req, res) => {
           investment.allocations.forEach((allocation) => {
             allocation.amount =
               (Number(allocation.amount) || 0) + perAllocation;
+            if (!investment.isAutomatedPortfolio && price) {
+              const additionalUnits =
+                (quantity || 0) / investment.allocations.length;
+              const currentUnits = Number(allocation.quantity) || 0;
+              const currentAvg =
+                Number(allocation.averagePurchasePrice) ||
+                investment.averagePurchasePrice ||
+                investment.purchasePrice ||
+                price;
+              const newUnits = currentUnits + additionalUnits;
+              allocation.quantity = newUnits;
+              allocation.averagePurchasePrice =
+                newUnits > 0
+                  ? (currentUnits * currentAvg + additionalUnits * price) /
+                    newUnits
+                  : currentAvg;
+              allocation.amount = newUnits * allocation.averagePurchasePrice;
+            }
           });
         }
       }
@@ -1179,19 +1241,38 @@ router.post("/:id/sell", async (req, res) => {
             message: "No se puede calcular la asignación a retirar",
           });
         }
-        const withdrawalRatio =
-          investment.quantity + quantity > 0
-            ? quantity / (investment.quantity + quantity)
-            : 0;
-        const investedReduction = totalAllocated * withdrawalRatio;
-        const currentAmount = Number(target.amount) || 0;
-        if (investedReduction > currentAmount + 0.01) {
-          return res.status(400).json({
-            message:
-              "La asignación seleccionada no tiene suficiente capital para retirar",
-          });
+        if (!investment.isAutomatedPortfolio && target.quantity) {
+          const currentUnits = Number(target.quantity) || 0;
+          if (quantity > currentUnits + 0.000001) {
+            return res.status(400).json({
+              message:
+                "La asignación seleccionada no tiene suficientes unidades para retirar",
+            });
+          }
+          target.quantity = Math.max(0, currentUnits - quantity);
+          const avgPrice =
+            Number(target.averagePurchasePrice) ||
+            investment.averagePurchasePrice ||
+            investment.purchasePrice ||
+            price ||
+            0;
+          target.averagePurchasePrice = avgPrice;
+          target.amount = target.quantity * avgPrice;
+        } else {
+          const withdrawalRatio =
+            investment.quantity + quantity > 0
+              ? quantity / (investment.quantity + quantity)
+              : 0;
+          const investedReduction = totalAllocated * withdrawalRatio;
+          const currentAmount = Number(target.amount) || 0;
+          if (investedReduction > currentAmount + 0.01) {
+            return res.status(400).json({
+              message:
+                "La asignación seleccionada no tiene suficiente capital para retirar",
+            });
+          }
+          target.amount = Math.max(0, currentAmount - investedReduction);
         }
-        target.amount = Math.max(0, currentAmount - investedReduction);
       } else {
         const withdrawalRatio =
           investment.quantity + quantity > 0
@@ -1203,6 +1284,21 @@ router.post("/:id/sell", async (req, res) => {
             0,
             currentAmount * (1 - withdrawalRatio),
           );
+          if (!investment.isAutomatedPortfolio && allocation.quantity) {
+            const currentUnits = Number(allocation.quantity) || 0;
+            allocation.quantity = Math.max(
+              0,
+              currentUnits * (1 - withdrawalRatio),
+            );
+            const avgPrice =
+              Number(allocation.averagePurchasePrice) ||
+              investment.averagePurchasePrice ||
+              investment.purchasePrice ||
+              price ||
+              0;
+            allocation.averagePurchasePrice = avgPrice;
+            allocation.amount = allocation.quantity * avgPrice;
+          }
         });
       }
     }
