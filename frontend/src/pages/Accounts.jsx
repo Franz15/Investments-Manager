@@ -285,18 +285,95 @@ const Accounts = () => {
     });
   };
 
+  const getInvestmentTotalValue = (investment) => {
+    return investment.isAutomatedPortfolio
+      ? investment.currentPrice
+      : investment.quantity * investment.currentPrice;
+  };
+
+  const getInvestmentInvestedCapital = (investment) => {
+    if (investment.isAutomatedPortfolio) {
+      return investment.quantity || 0;
+    }
+    const avgPrice =
+      investment.averagePurchasePrice || investment.purchasePrice || 0;
+    return (investment.quantity || 0) * avgPrice;
+  };
+
+  const getInvestmentAllocations = (investment) => {
+    if (
+      Array.isArray(investment.allocations) &&
+      investment.allocations.length
+    ) {
+      return investment.allocations.map((allocation) => ({
+        accountId: allocation.account?._id || allocation.account,
+        subAccountId: allocation.subAccount?._id || allocation.subAccount,
+        amount: Number(allocation.amount) || 0,
+      }));
+    }
+    return [
+      {
+        accountId: investment.account?._id || investment.account,
+        subAccountId: investment.subAccount?._id || investment.subAccount,
+        amount: getInvestmentInvestedCapital(investment),
+      },
+    ];
+  };
+
+  const getAllocationAmount = (investment, predicate) => {
+    const allocations = getInvestmentAllocations(investment);
+    return allocations
+      .filter(predicate)
+      .reduce((sum, alloc) => sum + alloc.amount, 0);
+  };
+
+  const getAllocationShare = (investment, predicate) => {
+    const allocations = getInvestmentAllocations(investment);
+    if (allocations.length === 0) return 0;
+    const total = allocations.reduce((sum, alloc) => sum + alloc.amount, 0);
+    const matchedAmount = allocations
+      .filter(predicate)
+      .reduce((sum, alloc) => sum + alloc.amount, 0);
+    if (total > 0) {
+      return matchedAmount / total;
+    }
+    const matchedCount = allocations.filter(predicate).length;
+    return matchedCount / allocations.length;
+  };
+
+  const getAllocatedValue = (investment, share) =>
+    getInvestmentTotalValue(investment) * share;
+
+  const getAllocatedInvestedCapital = (investment, share) =>
+    getInvestmentInvestedCapital(investment) * share;
+
+  const getAllocatedQuantity = (investment, share) => {
+    if (investment.isAutomatedPortfolio) {
+      return null;
+    }
+    return (investment.quantity || 0) * share;
+  };
+
   const getInvestmentsForSubAccount = (subAccountId) => {
     return investments.filter(
       (inv) =>
-        inv.subAccount?._id === subAccountId || inv.subAccount === subAccountId,
+        getAllocationAmount(
+          inv,
+          (allocation) =>
+            allocation.subAccountId?.toString() === subAccountId?.toString(),
+        ) > 0,
     );
   };
 
   const getInvestmentsForAccount = (accountId) => {
     return investments.filter(
       (inv) =>
-        (inv.account?._id === accountId || inv.account === accountId) &&
-        !inv.subAccount,
+        getAllocationAmount(
+          inv,
+          (allocation) =>
+            allocation.accountId?.toString() === accountId?.toString() &&
+            !allocation.subAccountId,
+        ) > 0,
     );
   };
 
@@ -308,10 +385,12 @@ const Accounts = () => {
     // Para subcuentas de inversión, sumar el balance + valor de las inversiones
     const subAccountInvestments = getInvestmentsForSubAccount(subAccount._id);
     const investmentsValue = subAccountInvestments.reduce((sum, inv) => {
-      const value = inv.isAutomatedPortfolio
-        ? inv.currentPrice
-        : inv.quantity * inv.currentPrice;
-      return sum + value;
+      const share = getAllocationShare(
+        inv,
+        (allocation) =>
+          allocation.subAccountId?.toString() === subAccount._id?.toString(),
+      );
+      return sum + getAllocatedValue(inv, share);
     }, 0);
 
     return investmentsValue;
@@ -340,10 +419,13 @@ const Accounts = () => {
     // Agregar inversiones directamente asociadas a la cuenta (sin subcuenta)
     const accountInvestments = getInvestmentsForAccount(accountId);
     const investmentsValue = accountInvestments.reduce((sum, inv) => {
-      const value = inv.isAutomatedPortfolio
-        ? inv.currentPrice
-        : inv.quantity * inv.currentPrice;
-      return sum + value;
+      const share = getAllocationShare(
+        inv,
+        (allocation) =>
+          allocation.accountId?.toString() === accountId?.toString() &&
+          !allocation.subAccountId,
+      );
+      return sum + getAllocatedValue(inv, share);
     }, 0);
 
     return subsBalance + investmentsValue;
@@ -358,12 +440,13 @@ const Accounts = () => {
 
     // Sumar capital invertido de inversiones directas
     accountInvestments.forEach((inv) => {
-      if (inv.isAutomatedPortfolio) {
-        totalInvestedCapital += inv.quantity || 0;
-      } else {
-        const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
-        totalInvestedCapital += (inv.quantity || 0) * avgPrice;
-      }
+      const share = getAllocationShare(
+        inv,
+        (allocation) =>
+          allocation.accountId?.toString() === accountId?.toString() &&
+          !allocation.subAccountId,
+      );
+      totalInvestedCapital += getAllocatedInvestedCapital(inv, share);
     });
 
     // Sumar capital invertido de inversiones en subcuentas
@@ -383,20 +466,25 @@ const Accounts = () => {
 
     // Sumar valor actual de inversiones directas
     accountInvestments.forEach((inv) => {
-      const value = inv.isAutomatedPortfolio
-        ? inv.currentPrice
-        : inv.quantity * inv.currentPrice;
-      totalValue += value;
+      const share = getAllocationShare(
+        inv,
+        (allocation) =>
+          allocation.accountId?.toString() === accountId?.toString() &&
+          !allocation.subAccountId,
+      );
+      totalValue += getAllocatedValue(inv, share);
     });
 
     // Sumar valor actual de inversiones en subcuentas
     subs.forEach((sub) => {
       const subAccountInvestments = getInvestmentsForSubAccount(sub._id);
       subAccountInvestments.forEach((inv) => {
-        const value = inv.isAutomatedPortfolio
-          ? inv.currentPrice
-          : inv.quantity * inv.currentPrice;
-        totalValue += value;
+        const share = getAllocationShare(
+          inv,
+          (allocation) =>
+            allocation.subAccountId?.toString() === sub._id?.toString(),
+        );
+        totalValue += getAllocatedValue(inv, share);
       });
     });
 
@@ -413,7 +501,13 @@ const Accounts = () => {
     accountInvestments.forEach((inv) => {
       const variation = dailyVariations[inv._id];
       if (variation) {
-        totalChangeAmount += variation.changeAmount || 0;
+        const share = getAllocationShare(
+          inv,
+          (allocation) =>
+            allocation.accountId?.toString() === accountId?.toString() &&
+            !allocation.subAccountId,
+        );
+        totalChangeAmount += (variation.changeAmount || 0) * share;
       }
     });
 
@@ -423,7 +517,12 @@ const Accounts = () => {
       subAccountInvestments.forEach((inv) => {
         const variation = dailyVariations[inv._id];
         if (variation) {
-          totalChangeAmount += variation.changeAmount || 0;
+          const share = getAllocationShare(
+            inv,
+            (allocation) =>
+              allocation.subAccountId?.toString() === sub._id?.toString(),
+          );
+          totalChangeAmount += (variation.changeAmount || 0) * share;
         }
       });
     });
@@ -437,12 +536,12 @@ const Accounts = () => {
 
     let totalInvestedCapital = 0;
     subAccountInvestments.forEach((inv) => {
-      if (inv.isAutomatedPortfolio) {
-        totalInvestedCapital += inv.quantity || 0;
-      } else {
-        const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
-        totalInvestedCapital += (inv.quantity || 0) * avgPrice;
-      }
+      const share = getAllocationShare(
+        inv,
+        (allocation) =>
+          allocation.subAccountId?.toString() === subAccountId?.toString(),
+      );
+      totalInvestedCapital += getAllocatedInvestedCapital(inv, share);
     });
 
     return totalInvestedCapital;
@@ -456,7 +555,12 @@ const Accounts = () => {
     subAccountInvestments.forEach((inv) => {
       const variation = dailyVariations[inv._id];
       if (variation) {
-        const changeAmount = variation.changeAmount || 0;
+        const share = getAllocationShare(
+          inv,
+          (allocation) =>
+            allocation.subAccountId?.toString() === subAccountId?.toString(),
+        );
+        const changeAmount = (variation.changeAmount || 0) * share;
         totalChangeAmount += changeAmount;
 
         // Log para depuración si la variación es muy grande
@@ -874,10 +978,13 @@ const Accounts = () => {
                           calculateSubAccountTotalValue(subAccount);
                         const investmentsValue = subAccountInvestments.reduce(
                           (sum, inv) => {
-                            const value = inv.isAutomatedPortfolio
-                              ? inv.currentPrice
-                              : inv.quantity * inv.currentPrice;
-                            return sum + value;
+                            const share = getAllocationShare(
+                              inv,
+                              (allocation) =>
+                                allocation.subAccountId?.toString() ===
+                                subAccount._id?.toString(),
+                            );
+                            return sum + getAllocatedValue(inv, share);
                           },
                           0,
                         );
@@ -1014,31 +1121,35 @@ const Accounts = () => {
                                   <div className="mt-2 space-y-2">
                                     {subAccountInvestments.map(
                                       (investment, index) => {
+                                        const allocationShare =
+                                          getAllocationShare(
+                                            investment,
+                                            (allocation) =>
+                                              allocation.subAccountId?.toString() ===
+                                              subAccount._id?.toString(),
+                                          );
                                         const investmentValue =
-                                          investment.isAutomatedPortfolio
-                                            ? investment.currentPrice
-                                            : investment.quantity *
-                                              investment.currentPrice;
+                                          getAllocatedValue(
+                                            investment,
+                                            allocationShare,
+                                          );
+                                        const investedCapital =
+                                          getAllocatedInvestedCapital(
+                                            investment,
+                                            allocationShare,
+                                          );
+                                        const allocatedQuantity =
+                                          getAllocatedQuantity(
+                                            investment,
+                                            allocationShare,
+                                          );
                                         const profitLoss =
-                                          investment.isAutomatedPortfolio
-                                            ? investment.currentPrice -
-                                              investment.quantity
-                                            : (investment.currentPrice -
-                                                (investment.averagePurchasePrice ||
-                                                  investment.purchasePrice)) *
-                                              investment.quantity;
+                                          investmentValue - investedCapital;
                                         const profitLossPercent =
-                                          investment.isAutomatedPortfolio
-                                            ? ((investment.currentPrice -
-                                                investment.quantity) /
-                                                investment.quantity) *
+                                          investedCapital > 0
+                                            ? (profitLoss / investedCapital) *
                                               100
-                                            : ((investment.currentPrice -
-                                                (investment.averagePurchasePrice ||
-                                                  investment.purchasePrice)) /
-                                                (investment.averagePurchasePrice ||
-                                                  investment.purchasePrice)) *
-                                              100;
+                                            : 0;
                                         const isInvestmentExpanded =
                                           expandedSubAccounts.has(
                                             `subaccount-investment-${investment._id}`,
@@ -1136,6 +1247,7 @@ const Accounts = () => {
                                                             "accounts.modals.units",
                                                             {
                                                               quantity:
+                                                                allocatedQuantity ??
                                                                 investment.quantity,
                                                             },
                                                           )}
@@ -1291,6 +1403,7 @@ const Accounts = () => {
                                                             "accounts.modals.units",
                                                             {
                                                               quantity:
+                                                                allocatedQuantity ??
                                                                 investment.quantity,
                                                             },
                                                           )}
@@ -1490,28 +1603,30 @@ const Accounts = () => {
                       {/* Mostrar inversiones directas después de las subcuentas */}
                       {getInvestmentsForAccount(account._id).map(
                         (investment) => {
-                          const investmentValue =
-                            investment.isAutomatedPortfolio
-                              ? investment.currentPrice
-                              : investment.quantity * investment.currentPrice;
-                          const profitLoss = investment.isAutomatedPortfolio
-                            ? investment.currentPrice - investment.quantity
-                            : (investment.currentPrice -
-                                (investment.averagePurchasePrice ||
-                                  investment.purchasePrice)) *
-                              investment.quantity;
+                          const allocationShare = getAllocationShare(
+                            investment,
+                            (allocation) =>
+                              allocation.accountId?.toString() ===
+                                account._id?.toString() &&
+                              !allocation.subAccountId,
+                          );
+                          const investmentValue = getAllocatedValue(
+                            investment,
+                            allocationShare,
+                          );
+                          const investedCapital = getAllocatedInvestedCapital(
+                            investment,
+                            allocationShare,
+                          );
+                          const allocatedQuantity = getAllocatedQuantity(
+                            investment,
+                            allocationShare,
+                          );
+                          const profitLoss = investmentValue - investedCapital;
                           const profitLossPercent =
-                            investment.isAutomatedPortfolio
-                              ? ((investment.currentPrice -
-                                  investment.quantity) /
-                                  investment.quantity) *
-                                100
-                              : ((investment.currentPrice -
-                                  (investment.averagePurchasePrice ||
-                                    investment.purchasePrice)) /
-                                  (investment.averagePurchasePrice ||
-                                    investment.purchasePrice)) *
-                                100;
+                            investedCapital > 0
+                              ? (profitLoss / investedCapital) * 100
+                              : 0;
                           const isInvestmentExpanded = expandedSubAccounts.has(
                             `investment-${investment._id}`,
                           );
@@ -1713,7 +1828,9 @@ const Accounts = () => {
                                               )}
                                             </span>{" "}
                                             {t("investments.detail.units", {
-                                              quantity: investment.quantity,
+                                              quantity:
+                                                allocatedQuantity ??
+                                                investment.quantity,
                                             })}
                                           </p>
                                           {investment.averagePurchasePrice && (

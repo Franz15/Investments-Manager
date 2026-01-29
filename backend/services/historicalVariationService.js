@@ -82,6 +82,39 @@ export async function calculateHistoricalVariations(
       user: userId,
     }).sort({ date: 1 });
 
+    const historyByDay = new Map();
+    historyEntries.forEach((entry) => {
+      const day = new Date(entry.date);
+      day.setHours(0, 0, 0, 0);
+      const key = day.getTime();
+      const stamp =
+        entry.createdAt ||
+        entry.updatedAt ||
+        entry.date ||
+        entry._id?.getTimestamp?.() ||
+        null;
+      const existing = historyByDay.get(key) || {
+        entry: null,
+        stamp: null,
+        updateEntry: null,
+        updateStamp: null,
+      };
+
+      if (!existing.stamp || (stamp && stamp > existing.stamp)) {
+        existing.entry = entry;
+        existing.stamp = stamp || entry.date;
+      }
+      if (
+        entry.operation === "update" &&
+        (!existing.updateStamp || (stamp && stamp > existing.updateStamp))
+      ) {
+        existing.updateEntry = entry;
+        existing.updateStamp = stamp || entry.date;
+      }
+
+      historyByDay.set(key, existing);
+    });
+
     // Obtener datos históricos de precios
     const historicalPrices = await getHistoricalPrices(
       investment.symbol,
@@ -158,11 +191,9 @@ export async function calculateHistoricalVariations(
 
       // Verificar si hay un registro en InvestmentHistory para este día con valores reales
       // Si existe, usar esos valores en lugar de calcular desde Yahoo Finance
-      const dayHistoryEntry = historyEntries.find((h) => {
-        const hDate = new Date(h.date);
-        hDate.setHours(0, 0, 0, 0);
-        return hDate.getTime() === dateKey && h.totalValue;
-      });
+      const dayHistoryEntry = historyByDay.get(dateKey)?.updateEntry
+        ? historyByDay.get(dateKey).updateEntry
+        : historyByDay.get(dateKey)?.entry;
 
       let totalValue;
       if (dayHistoryEntry && dayHistoryEntry.totalValue) {

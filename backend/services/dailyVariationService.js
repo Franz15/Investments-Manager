@@ -416,11 +416,33 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
         totalValue: null,
         capitalChange: 0,
         lastEntryDate: null,
+        lastEntryStamp: null,
+        lastEntry: null,
+        lastUpdateStamp: null,
+        lastUpdateEntry: null,
       };
 
-      if (!existing.lastEntryDate || entry.date > existing.lastEntryDate) {
-        existing.totalValue = entry.totalValue;
+      const entryStamp =
+        entry.createdAt ||
+        entry.updatedAt ||
+        entry.date ||
+        entry._id?.getTimestamp?.() ||
+        null;
+      if (
+        !existing.lastEntryStamp ||
+        (entryStamp && entryStamp > existing.lastEntryStamp)
+      ) {
+        existing.lastEntry = entry;
         existing.lastEntryDate = entry.date;
+        existing.lastEntryStamp = entryStamp || entry.date;
+      }
+      if (
+        entry.operation === "update" &&
+        (!existing.lastUpdateStamp ||
+          (entryStamp && entryStamp > existing.lastUpdateStamp))
+      ) {
+        existing.lastUpdateEntry = entry;
+        existing.lastUpdateStamp = entryStamp || entry.date;
       }
 
       if (entry.operation === "creation" || entry.operation === "add") {
@@ -433,6 +455,16 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
     });
 
     const days = Array.from(dayMap.values()).sort((a, b) => a.date - b.date);
+    days.forEach((day) => {
+      const preferredEntry = day.lastUpdateEntry || day.lastEntry;
+      if (
+        preferredEntry &&
+        preferredEntry.totalValue !== null &&
+        preferredEntry.totalValue !== undefined
+      ) {
+        day.totalValue = preferredEntry.totalValue;
+      }
+    });
 
     let updated = 0;
     for (const day of days) {

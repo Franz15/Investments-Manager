@@ -13,6 +13,14 @@ const investmentHistorySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    account: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Account",
+    },
+    subAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SubAccount",
+    },
     date: {
       type: Date,
       required: true,

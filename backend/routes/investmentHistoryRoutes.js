@@ -1,6 +1,8 @@
 import express from "express";
 import InvestmentHistory from "../models/InvestmentHistory.js";
 import Investment from "../models/Investment.js";
+import Account from "../models/Account.js";
+import SubAccount from "../models/SubAccount.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import {
   saveDailyVariation,
@@ -29,6 +31,110 @@ async function calculateDailyChanges(
     date || new Date(),
   );
 }
+
+const resolveOperationAmount = (entry) => {
+  let amount = entry?.operationAmount;
+  if (!amount || amount === 0) {
+    if (entry?.operationPrice && entry?.quantity) {
+      amount = entry.operationPrice * entry.quantity;
+    } else if (entry?.operation === "creation" && entry?.totalValue) {
+      amount = entry.totalValue;
+    }
+  }
+  return amount || 0;
+};
+
+const getSignedOperationAmount = (operation, amount) => {
+  if (!["creation", "add", "withdraw"].includes(operation)) {
+    return 0;
+  }
+  return operation === "withdraw" ? -Math.abs(amount || 0) : amount || 0;
+};
+
+const getAllocationKey = (accountId, subAccountId) =>
+  `${accountId?.toString?.() || accountId}-${subAccountId?.toString?.() || subAccountId || "none"}`;
+
+const ensureInvestmentAllocations = (investment) => {
+  if (Array.isArray(investment.allocations) && investment.allocations.length) {
+    return;
+  }
+  const accountId = investment.account?._id || investment.account;
+  if (!accountId) return;
+  const amount = investment.isAutomatedPortfolio
+    ? investment.quantity || 0
+    : (investment.quantity || 0) *
+      (investment.averagePurchasePrice || investment.purchasePrice || 0);
+  investment.allocations = [
+    {
+      account: accountId,
+      subAccount: investment.subAccount?._id || investment.subAccount || null,
+      amount: Number(amount) || 0,
+    },
+  ];
+};
+
+const adjustAllocationAmount = (investment, accountId, subAccountId, delta) => {
+  if (!accountId || !delta) return;
+  if (!Array.isArray(investment.allocations)) {
+    investment.allocations = [];
+  }
+  const key = getAllocationKey(accountId, subAccountId);
+  const existing = investment.allocations.find(
+    (allocation) =>
+      getAllocationKey(allocation.account, allocation.subAccount) === key,
+  );
+  if (existing) {
+    existing.amount = (Number(existing.amount) || 0) + delta;
+    if (existing.amount <= 0) {
+      investment.allocations = investment.allocations.filter(
+        (allocation) =>
+          getAllocationKey(allocation.account, allocation.subAccount) !== key,
+      );
+    }
+    return;
+  }
+  if (delta > 0) {
+    investment.allocations.push({
+      account: accountId,
+      subAccount: subAccountId || null,
+      amount: delta,
+    });
+  }
+};
+
+const validateHistoryAccountSelection = async (
+  accountId,
+  subAccountId,
+  userId,
+) => {
+  if (!accountId) {
+    return { error: "Debe especificar una cuenta" };
+  }
+  const account = await Account.findOne({ _id: accountId, user: userId });
+  if (!account) {
+    return { error: "Cuenta no encontrada" };
+  }
+
+  if (subAccountId) {
+    const subAccount = await SubAccount.findOne({
+      _id: subAccountId,
+      user: userId,
+    });
+    if (!subAccount) {
+      return { error: "Subcuenta no encontrada" };
+    }
+    if (subAccount.type !== "investment") {
+      return { error: "La subcuenta debe ser de tipo inversión" };
+    }
+    const subAccountAccountId =
+      subAccount.account?._id?.toString() || subAccount.account?.toString();
+    if (subAccountAccountId !== accountId.toString()) {
+      return { error: "La subcuenta no pertenece a la cuenta seleccionada" };
+    }
+  }
+
+  return { account: accountId, subAccount: subAccountId || null };
+};
 
 // Aplicar middleware de autenticación a todas las rutas
 router.use(authenticateToken);
@@ -216,18 +322,17 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       investment: investmentId,
       user: req.userId,
       date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ["add", "sell", "withdraw"] },
+      operation: { $in: ["creation", "add", "sell", "withdraw"] },
     });
 
     // Calcular el capital añadido/retirado hoy
     let capitalChangeToday = 0;
     for (const op of todayOperations) {
-      if (op.operation === "add") {
-        capitalChangeToday +=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
+      const amount = resolveOperationAmount(op);
+      if (op.operation === "creation" || op.operation === "add") {
+        capitalChangeToday += amount;
       } else if (op.operation === "sell" || op.operation === "withdraw") {
-        capitalChangeToday -=
-          op.operationAmount || op.quantity * (op.operationPrice || 0);
+        capitalChangeToday -= amount;
       }
     }
 
@@ -634,6 +739,8 @@ router.put("/:id", async (req, res) => {
       operation,
       operationAmount,
       operationPrice,
+      account,
+      subAccount,
     } = req.body;
 
     const historyEntry = await InvestmentHistory.findOne({
@@ -653,6 +760,34 @@ router.put("/:id", async (req, res) => {
     });
     if (!investment) {
       return res.status(404).json({ message: "Inversión no encontrada" });
+    }
+
+    const previousOperation = historyEntry.operation;
+    const previousAccount = historyEntry.account;
+    const previousSubAccount = historyEntry.subAccount;
+    const previousAmount = resolveOperationAmount(historyEntry);
+
+    const operationToUse = operation ?? historyEntry.operation;
+    const requiresAccount = ["creation", "add", "withdraw"].includes(
+      operationToUse,
+    );
+
+    if (requiresAccount) {
+      const targetAccount = account ?? historyEntry.account;
+      const targetSubAccount = subAccount ?? historyEntry.subAccount;
+      const validation = await validateHistoryAccountSelection(
+        targetAccount,
+        targetSubAccount,
+        req.userId,
+      );
+      if (validation.error) {
+        return res.status(400).json({ message: validation.error });
+      }
+      historyEntry.account = validation.account;
+      historyEntry.subAccount = validation.subAccount;
+    } else {
+      historyEntry.account = null;
+      historyEntry.subAccount = null;
     }
 
     // Actualizar campos
@@ -684,6 +819,39 @@ router.put("/:id", async (req, res) => {
       );
       historyEntry.dailyChangeAmount = dailyChanges.dailyChangeAmount;
       historyEntry.dailyChangePercent = dailyChanges.dailyChangePercent;
+    }
+
+    const nextOperation = historyEntry.operation;
+    const nextAmount = resolveOperationAmount(historyEntry);
+    const previousSigned = getSignedOperationAmount(
+      previousOperation,
+      previousAmount,
+    );
+    const nextSigned = getSignedOperationAmount(nextOperation, nextAmount);
+
+    if (previousSigned !== 0 || nextSigned !== 0) {
+      ensureInvestmentAllocations(investment);
+      adjustAllocationAmount(
+        investment,
+        previousAccount,
+        previousSubAccount,
+        -previousSigned,
+      );
+      adjustAllocationAmount(
+        investment,
+        historyEntry.account,
+        historyEntry.subAccount,
+        nextSigned,
+      );
+      if (
+        Array.isArray(investment.allocations) &&
+        investment.allocations.length
+      ) {
+        investment.account = investment.allocations[0].account;
+        investment.subAccount =
+          investment.allocations[0].subAccount || undefined;
+      }
+      await investment.save();
     }
 
     await historyEntry.save();
