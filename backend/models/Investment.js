@@ -16,6 +16,24 @@ const investmentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubAccount",
     },
+    allocations: [
+      {
+        account: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Account",
+          required: true,
+        },
+        subAccount: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "SubAccount",
+        },
+        amount: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+      },
+    ],
     name: {
       type: String,
       required: true,
@@ -195,8 +213,16 @@ investmentSchema.virtual("profitLossPercentage").get(function () {
 investmentSchema.pre("save", function (next) {
   // Validar que account esté presente (solo para nuevas inversiones o si se está actualizando)
   // Permitir inversiones existentes sin account para migración
-  if (this.isNew && !this.account) {
-    return next(new Error("La inversión debe estar asociada a una cuenta"));
+  if (
+    this.isNew &&
+    !this.account &&
+    (!this.allocations || this.allocations.length === 0)
+  ) {
+    return next(
+      new Error(
+        "La inversión debe estar asociada a una cuenta o a una asignación",
+      ),
+    );
   }
 
   // Si es cartera automatizada, limpiar purchasePrice

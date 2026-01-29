@@ -88,6 +88,8 @@ const Investments = () => {
     operation: "update",
     operationAmount: 0,
     operationPrice: 0,
+    account: "",
+    subAccount: "",
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailInvestment, setDetailInvestment] = useState(null);
@@ -107,6 +109,8 @@ const Investments = () => {
     currentPrice: 0,
     date: new Date().toISOString().split("T")[0],
     notes: "",
+    allocationAccount: "",
+    allocationSubAccount: "",
   });
   const [sellFormData, setSellFormData] = useState({
     quantity: 0,
@@ -114,10 +118,17 @@ const Investments = () => {
     date: new Date().toISOString().split("T")[0],
     notes: "",
     returnToSubAccount: true,
+    allocationAccount: "",
+    allocationSubAccount: "",
   });
   const [formData, setFormData] = useState({
-    account: "",
-    subAccount: "",
+    allocations: [
+      {
+        account: "",
+        subAccount: "",
+        amount: 0,
+      },
+    ],
     name: "",
     type: "stock",
     symbol: "",
@@ -256,17 +267,109 @@ const Investments = () => {
     }
   };
 
+  const getInvestmentAmount = (data) => {
+    const quantity = Number(data.quantity) || 0;
+    if (data.isAutomatedPortfolio) {
+      return quantity;
+    }
+    const price = Number(data.purchasePrice) || 0;
+    return quantity * price;
+  };
+
+  const getAllocationsFromInvestment = (investment) => {
+    if (
+      Array.isArray(investment.allocations) &&
+      investment.allocations.length
+    ) {
+      return investment.allocations.map((allocation) => ({
+        account: allocation.account?._id || allocation.account || "",
+        subAccount: allocation.subAccount?._id || allocation.subAccount || "",
+        amount: Number(allocation.amount) || 0,
+      }));
+    }
+
+    const fallbackPrice =
+      investment.averagePurchasePrice || investment.purchasePrice || 0;
+    const fallbackAmount = investment.isAutomatedPortfolio
+      ? investment.quantity || 0
+      : (investment.quantity || 0) * fallbackPrice;
+
+    return [
+      {
+        account: investment.account?._id || investment.account || "",
+        subAccount: investment.subAccount?._id || investment.subAccount || "",
+        amount: fallbackAmount,
+      },
+    ];
+  };
+
+  const getDefaultAllocationTarget = (investment) => {
+    const allocations = getAllocationsFromInvestment(investment);
+    if (allocations.length > 0) {
+      return {
+        account: allocations[0].account,
+        subAccount: allocations[0].subAccount || "",
+      };
+    }
+    return { account: "", subAccount: "" };
+  };
+
+  const getAccountLabel = (accountId) => {
+    const account = accounts.find((item) => item._id === accountId);
+    if (!account) return t("investments.form.account");
+    return `${account.bankName} - ${account.name}`;
+  };
+
+  const getSubAccountLabel = (subAccountId) => {
+    const subAccount = subAccounts.find((item) => item._id === subAccountId);
+    return subAccount?.name || t("investments.form.subAccount");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Validar que account esté presente (siempre obligatorio)
-      if (!formData.account) {
-        alert(t("investments.modals.errors.selectAccount"));
+      const normalizedAllocations = (formData.allocations || []).map(
+        (allocation) => ({
+          account: allocation.account,
+          subAccount: allocation.subAccount || null,
+          amount: Number(allocation.amount) || 0,
+        }),
+      );
+
+      if (normalizedAllocations.length === 0) {
+        alert(t("investments.modals.errors.allocationsRequired"));
+        return;
+      }
+
+      const invalidAllocation = normalizedAllocations.find(
+        (allocation) => !allocation.account || allocation.amount <= 0,
+      );
+      if (invalidAllocation) {
+        alert(t("investments.modals.errors.allocationsInvalid"));
+        return;
+      }
+
+      const investmentAmount = getInvestmentAmount(formData);
+      const totalAllocated = normalizedAllocations.reduce(
+        (sum, allocation) => sum + (Number(allocation.amount) || 0),
+        0,
+      );
+      if (
+        investmentAmount > 0 &&
+        totalAllocated > 0 &&
+        Math.abs(totalAllocated - investmentAmount) > 0.01
+      ) {
+        alert(t("investments.modals.errors.allocationsMismatch"));
         return;
       }
 
       // Preparar datos para enviar
-      const dataToSend = { ...formData };
+      const dataToSend = {
+        ...formData,
+        allocations: normalizedAllocations,
+        account: normalizedAllocations[0].account,
+        subAccount: normalizedAllocations[0].subAccount || undefined,
+      };
 
       if (dataToSend.assetClass === "alternative") {
         dataToSend.assetClass = "variable_income";
@@ -369,11 +472,51 @@ const Investments = () => {
     }
   };
 
+  const updateAllocation = (index, updates) => {
+    setFormData((prev) => {
+      const allocations = [...(prev.allocations || [])];
+      allocations[index] = { ...allocations[index], ...updates };
+      return { ...prev, allocations };
+    });
+  };
+
+  const handleAddAllocation = () => {
+    setFormData((prev) => ({
+      ...prev,
+      allocations: [
+        ...(prev.allocations || []),
+        { account: "", subAccount: "", amount: 0 },
+      ],
+    }));
+  };
+
+  const handleRemoveAllocation = (index) => {
+    setFormData((prev) => {
+      const allocations = [...(prev.allocations || [])];
+      allocations.splice(index, 1);
+      return {
+        ...prev,
+        allocations: allocations.length
+          ? allocations
+          : [{ account: "", subAccount: "", amount: 0 }],
+      };
+    });
+  };
+
+  const totalAllocatedAmount = (formData.allocations || []).reduce(
+    (sum, allocation) => sum + (Number(allocation.amount) || 0),
+    0,
+  );
+  const investmentAmount = getInvestmentAmount(formData);
+  const allocationsMismatch =
+    investmentAmount > 0 &&
+    totalAllocatedAmount > 0 &&
+    Math.abs(totalAllocatedAmount - investmentAmount) > 0.01;
+
   const handleEdit = (investment) => {
     setEditingInvestment(investment);
     setFormData({
-      account: investment.account?._id || investment.account || "",
-      subAccount: investment.subAccount?._id || investment.subAccount || "",
+      allocations: getAllocationsFromInvestment(investment),
       name: investment.name,
       type: investment.type,
       symbol: investment.symbol || "",
@@ -594,6 +737,7 @@ const Investments = () => {
 
   const handleEditHistoryEntry = (entry) => {
     setEditingHistoryEntry(entry);
+    const defaultAllocation = getDefaultAllocationTarget(selectedInvestment);
     setEditHistoryFormData({
       date: new Date(entry.date).toISOString().split("T")[0],
       currentPrice: entry.currentPrice,
@@ -602,6 +746,13 @@ const Investments = () => {
       operation: entry.operation || "update",
       operationAmount: entry.operationAmount || 0,
       operationPrice: entry.operationPrice || 0,
+      account:
+        entry.account?._id || entry.account || defaultAllocation.account || "",
+      subAccount:
+        entry.subAccount?._id ||
+        entry.subAccount ||
+        defaultAllocation.subAccount ||
+        "",
     });
     setShowEditHistoryModal(true);
   };
@@ -609,10 +760,17 @@ const Investments = () => {
   const handleSubmitEditHistory = async (e) => {
     e.preventDefault();
     try {
-      await api.put(
-        `/investment-history/${editingHistoryEntry._id}`,
-        editHistoryFormData,
+      const requiresAccount = ["creation", "add", "withdraw"].includes(
+        editHistoryFormData.operation,
       );
+      const payload = {
+        ...editHistoryFormData,
+        account: requiresAccount ? editHistoryFormData.account : undefined,
+        subAccount: requiresAccount
+          ? editHistoryFormData.subAccount || null
+          : undefined,
+      };
+      await api.put(`/investment-history/${editingHistoryEntry._id}`, payload);
       // Recargar el historial
       const response = await api.get(
         `/investment-history/investment/${selectedInvestment._id}`,
@@ -653,24 +811,30 @@ const Investments = () => {
 
   const handleAddToInvestment = (investment) => {
     setSelectedInvestment(investment);
+    const defaultAllocation = getDefaultAllocationTarget(investment);
     setAddFormData({
       quantity: 0,
       price: investment.isAutomatedPortfolio ? 0 : investment.currentPrice,
       currentPrice: investment.currentPrice,
       date: new Date().toISOString().split("T")[0],
       notes: "",
+      allocationAccount: defaultAllocation.account,
+      allocationSubAccount: defaultAllocation.subAccount,
     });
     setShowAddModal(true);
   };
 
   const handleSellInvestment = (investment) => {
     setSelectedInvestment(investment);
+    const defaultAllocation = getDefaultAllocationTarget(investment);
     setSellFormData({
       quantity: investment.isAutomatedPortfolio ? investment.quantity : 0,
       price: investment.currentPrice,
       date: new Date().toISOString().split("T")[0],
       notes: "",
       returnToSubAccount: true,
+      allocationAccount: defaultAllocation.account,
+      allocationSubAccount: defaultAllocation.subAccount,
     });
     setShowSellModal(true);
   };
@@ -692,6 +856,13 @@ const Investments = () => {
         }
       }
 
+      if (addFormData.allocationAccount) {
+        payload.allocation = {
+          account: addFormData.allocationAccount,
+          subAccount: addFormData.allocationSubAccount || null,
+        };
+      }
+
       await api.post(`/investments/${selectedInvestment._id}/add`, payload);
       fetchData();
       setShowAddModal(false);
@@ -701,6 +872,8 @@ const Investments = () => {
         currentPrice: 0,
         date: new Date().toISOString().split("T")[0],
         notes: "",
+        allocationAccount: "",
+        allocationSubAccount: "",
       });
     } catch (error) {
       const errorMessage =
@@ -722,6 +895,12 @@ const Investments = () => {
           date: sellFormData.date,
           notes: sellFormData.notes,
           returnToSubAccount: sellFormData.returnToSubAccount,
+          allocation: sellFormData.allocationAccount
+            ? {
+                account: sellFormData.allocationAccount,
+                subAccount: sellFormData.allocationSubAccount || null,
+              }
+            : undefined,
         },
       );
 
@@ -733,6 +912,8 @@ const Investments = () => {
         date: new Date().toISOString().split("T")[0],
         notes: "",
         returnToSubAccount: true,
+        allocationAccount: "",
+        allocationSubAccount: "",
       });
 
       if (
@@ -759,8 +940,13 @@ const Investments = () => {
 
   const resetForm = () => {
     setFormData({
-      account: "",
-      subAccount: "",
+      allocations: [
+        {
+          account: "",
+          subAccount: "",
+          amount: 0,
+        },
+      ],
       name: "",
       type: "stock",
       symbol: "",
@@ -1415,96 +1601,189 @@ const Investments = () => {
                   <CreditCard className="h-4 w-4" />
                   {t("investments.form.location")}
                 </h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("investments.form.accountRequired")}{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    className="input-field"
-                    value={formData.account}
-                    onChange={(e) => {
-                      const newAccount = e.target.value;
-                      setFormData({
-                        ...formData,
-                        account: newAccount,
-                        subAccount: "", // Limpiar subcuenta al cambiar de cuenta
-                        currency: newAccount
-                          ? accounts.find((a) => a._id === newAccount)
-                              ?.currency || "EUR"
-                          : formData.currency,
-                      });
-                    }}
-                    required
-                  >
-                    <option value="">
-                      {t("investments.modals.addCapital.selectAccount")}
-                    </option>
-                    {accounts.map((account) => (
-                      <option key={account._id} value={account._id}>
-                        {account.bankName} - {account.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("investments.form.subAccountInvestment")}
-                  </label>
-                  {!formData.account ? (
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t("investments.form.selectAccountFirst")}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t("investments.form.allocationsTitle")}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t("investments.form.allocationsHelp")}
                       </p>
                     </div>
-                  ) : (
-                    (() => {
-                      const accountSubAccounts = subAccounts.filter(
-                        (sa) =>
-                          sa.account?._id === formData.account ||
-                          sa.account === formData.account,
-                      );
+                    <button
+                      type="button"
+                      onClick={handleAddAllocation}
+                      className="btn-secondary text-xs"
+                    >
+                      {t("investments.form.addAllocation")}
+                    </button>
+                  </div>
 
-                      if (accountSubAccounts.length === 0) {
-                        return (
-                          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                              {t("investments.form.noInvestmentSubAccounts")}
-                            </p>
+                  {(formData.allocations || []).map((allocation, index) => {
+                    const accountSubAccounts = subAccounts.filter(
+                      (sa) =>
+                        sa.account?._id === allocation.account ||
+                        sa.account === allocation.account,
+                    );
+
+                    return (
+                      <div
+                        key={`allocation-${index}`}
+                        className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg space-y-3"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {t("investments.form.allocationAccount")}{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              className="input-field"
+                              value={allocation.account}
+                              onChange={(e) => {
+                                const newAccount = e.target.value;
+                                updateAllocation(index, {
+                                  account: newAccount,
+                                  subAccount: "",
+                                });
+                                if (index === 0) {
+                                  const newCurrency = newAccount
+                                    ? accounts.find((a) => a._id === newAccount)
+                                        ?.currency || "EUR"
+                                    : formData.currency;
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    currency: newCurrency,
+                                  }));
+                                }
+                              }}
+                              required
+                            >
+                              <option value="">
+                                {t("investments.form.allocationSelectAccount")}
+                              </option>
+                              {accounts.map((account) => (
+                                <option key={account._id} value={account._id}>
+                                  {account.bankName} - {account.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                        );
-                      }
 
-                      return (
-                        <select
-                          className="input-field"
-                          value={formData.subAccount}
-                          onChange={(e) => {
-                            const newSubAccount = e.target.value;
-                            setFormData({
-                              ...formData,
-                              subAccount: newSubAccount,
-                              currency: newSubAccount
-                                ? subAccounts.find(
-                                    (sa) => sa._id === newSubAccount,
-                                  )?.currency || formData.currency
-                                : formData.currency,
-                            });
-                          }}
-                        >
-                          <option value="">
-                            {t("investments.form.noneDirectInvestment")}
-                          </option>
-                          {accountSubAccounts.map((subAccount) => (
-                            <option key={subAccount._id} value={subAccount._id}>
-                              {subAccount.name}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()
-                  )}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {t("investments.form.allocationSubAccount")}
+                            </label>
+                            {!allocation.account ? (
+                              <div className="p-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {t("investments.form.selectAccountFirst")}
+                                </p>
+                              </div>
+                            ) : accountSubAccounts.length === 0 ? (
+                              <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                                  {t(
+                                    "investments.form.noInvestmentSubAccounts",
+                                  )}
+                                </p>
+                              </div>
+                            ) : (
+                              <select
+                                className="input-field"
+                                value={allocation.subAccount}
+                                onChange={(e) => {
+                                  const newSubAccount = e.target.value;
+                                  updateAllocation(index, {
+                                    subAccount: newSubAccount,
+                                  });
+                                  if (index === 0 && newSubAccount) {
+                                    const newCurrency =
+                                      subAccounts.find(
+                                        (sa) => sa._id === newSubAccount,
+                                      )?.currency || formData.currency;
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      currency: newCurrency,
+                                    }));
+                                  }
+                                }}
+                              >
+                                <option value="">
+                                  {t(
+                                    "investments.form.allocationSelectSubAccount",
+                                  )}
+                                </option>
+                                {accountSubAccounts.map((subAccount) => (
+                                  <option
+                                    key={subAccount._id}
+                                    value={subAccount._id}
+                                  >
+                                    {subAccount.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {t("investments.form.allocationAmount")}{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="input-field"
+                              value={allocation.amount}
+                              onChange={(e) =>
+                                updateAllocation(index, {
+                                  amount: Number(e.target.value),
+                                })
+                              }
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {(formData.allocations || []).length > 1 && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAllocation(index)}
+                              className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                            >
+                              {t("investments.form.removeAllocation")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>
+                      {t("investments.form.allocationsTotal")}:{" "}
+                      {new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: formData.currency || "EUR",
+                      }).format(totalAllocatedAmount || 0)}
+                    </span>
+                    <span>
+                      {t("investments.form.summary.investedAmount")}{" "}
+                      {new Intl.NumberFormat("es-ES", {
+                        style: "currency",
+                        currency: formData.currency || "EUR",
+                      }).format(investmentAmount || 0)}
+                    </span>
+                    {allocationsMismatch && (
+                      <span className="text-red-600 dark:text-red-400">
+                        {t("investments.form.allocationsMismatch")}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -2915,6 +3194,83 @@ const Investments = () => {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("investments.form.allocationAccount")}{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="input-field"
+                  value={addFormData.allocationAccount}
+                  onChange={(e) =>
+                    setAddFormData({
+                      ...addFormData,
+                      allocationAccount: e.target.value,
+                      allocationSubAccount: "",
+                    })
+                  }
+                  required
+                >
+                  <option value="">
+                    {t("investments.form.allocationSelectAccount")}
+                  </option>
+                  {accounts.map((account) => (
+                    <option key={account._id} value={account._id}>
+                      {account.bankName} - {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t("investments.form.allocationSubAccount")}
+                </label>
+                {!addFormData.allocationAccount ? (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {t("investments.form.selectAccountFirst")}
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    const accountSubAccounts = subAccounts.filter(
+                      (sa) =>
+                        sa.account?._id === addFormData.allocationAccount ||
+                        sa.account === addFormData.allocationAccount,
+                    );
+                    if (accountSubAccounts.length === 0) {
+                      return (
+                        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                            {t("investments.form.noInvestmentSubAccounts")}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <select
+                        className="input-field"
+                        value={addFormData.allocationSubAccount}
+                        onChange={(e) =>
+                          setAddFormData({
+                            ...addFormData,
+                            allocationSubAccount: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">
+                          {t("investments.form.allocationSelectSubAccount")}
+                        </option>
+                        {accountSubAccounts.map((subAccount) => (
+                          <option key={subAccount._id} value={subAccount._id}>
+                            {subAccount.name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()
+                )}
+              </div>
               {selectedInvestment.isAutomatedPortfolio ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -3152,6 +3508,92 @@ const Investments = () => {
                   required
                 />
               </div>
+              {(() => {
+                const allocationOptions =
+                  getAllocationsFromInvestment(selectedInvestment);
+                const accountIds = [
+                  ...new Set(
+                    allocationOptions
+                      .map((allocation) => allocation.account)
+                      .filter(Boolean),
+                  ),
+                ];
+                const getSubAccountOptions = (accountId) => [
+                  ...new Set(
+                    allocationOptions
+                      .filter((allocation) => allocation.account === accountId)
+                      .map((allocation) => allocation.subAccount || ""),
+                  ),
+                ];
+
+                if (accountIds.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t("investments.form.allocationAccount")}{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        className="input-field"
+                        value={sellFormData.allocationAccount}
+                        onChange={(e) =>
+                          setSellFormData((prev) => {
+                            const nextAccount = e.target.value;
+                            const nextSubAccounts =
+                              getSubAccountOptions(nextAccount);
+                            return {
+                              ...prev,
+                              allocationAccount: nextAccount,
+                              allocationSubAccount: nextSubAccounts[0] || "",
+                            };
+                          })
+                        }
+                        required
+                      >
+                        {accountIds.map((accountId) => (
+                          <option key={accountId} value={accountId}>
+                            {getAccountLabel(accountId)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t("investments.form.allocationSubAccount")}
+                      </label>
+                      <select
+                        className="input-field"
+                        value={sellFormData.allocationSubAccount}
+                        onChange={(e) =>
+                          setSellFormData({
+                            ...sellFormData,
+                            allocationSubAccount: e.target.value,
+                          })
+                        }
+                      >
+                        {getSubAccountOptions(
+                          sellFormData.allocationAccount,
+                        ).map((subAccountId) => (
+                          <option
+                            key={subAccountId || "none"}
+                            value={subAccountId}
+                          >
+                            {subAccountId
+                              ? getSubAccountLabel(subAccountId)
+                              : t(
+                                  "investments.form.allocationSelectSubAccount",
+                                )}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                );
+              })()}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {selectedInvestment.isAutomatedPortfolio
@@ -3205,7 +3647,10 @@ const Investments = () => {
                   </p>
                 </div>
               )}
-              {selectedInvestment.subAccount && (
+              {(selectedInvestment.subAccount ||
+                selectedInvestment.account ||
+                (selectedInvestment.allocations &&
+                  selectedInvestment.allocations.length > 0)) && (
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -3223,7 +3668,14 @@ const Investments = () => {
                     htmlFor="returnToSubAccount"
                     className="ml-2 text-sm text-gray-700 dark:text-gray-300"
                   >
-                    Devolver dinero a la subcuenta
+                    {selectedInvestment.allocations &&
+                    selectedInvestment.allocations.length > 1
+                      ? t(
+                          "investments.modals.sellInvestment.returnToCashMultiple",
+                        )
+                      : t(
+                          "investments.modals.sellInvestment.returnToCashSingle",
+                        )}
                   </label>
                 </div>
               )}
@@ -3427,6 +3879,92 @@ const Investments = () => {
                   </option>
                 </select>
               </div>
+              {["creation", "add", "withdraw"].includes(
+                editHistoryFormData.operation,
+              ) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("investments.form.allocationAccount")}{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="input-field"
+                      value={editHistoryFormData.account}
+                      onChange={(e) =>
+                        setEditHistoryFormData({
+                          ...editHistoryFormData,
+                          account: e.target.value,
+                          subAccount: "",
+                        })
+                      }
+                      required
+                    >
+                      <option value="">
+                        {t("investments.form.allocationSelectAccount")}
+                      </option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account._id}>
+                          {account.bankName} - {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("investments.form.allocationSubAccount")}
+                    </label>
+                    {!editHistoryFormData.account ? (
+                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {t("investments.form.selectAccountFirst")}
+                        </p>
+                      </div>
+                    ) : (
+                      (() => {
+                        const accountSubAccounts = subAccounts.filter(
+                          (sa) =>
+                            sa.account?._id === editHistoryFormData.account ||
+                            sa.account === editHistoryFormData.account,
+                        );
+                        if (accountSubAccounts.length === 0) {
+                          return (
+                            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                {t("investments.form.noInvestmentSubAccounts")}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <select
+                            className="input-field"
+                            value={editHistoryFormData.subAccount}
+                            onChange={(e) =>
+                              setEditHistoryFormData({
+                                ...editHistoryFormData,
+                                subAccount: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">
+                              {t("investments.form.allocationSelectSubAccount")}
+                            </option>
+                            {accountSubAccounts.map((subAccount) => (
+                              <option
+                                key={subAccount._id}
+                                value={subAccount._id}
+                              >
+                                {subAccount.name}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()
+                    )}
+                  </div>
+                </>
+              )}
               {!selectedInvestment.isAutomatedPortfolio && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -3619,28 +4157,88 @@ const Investments = () => {
                         {detailInvestment.currency}
                       </span>
                     </div>
-                    {(detailInvestment.account ||
-                      detailInvestment.subAccount) && (
+                    {(detailInvestment.allocations &&
+                      detailInvestment.allocations.length > 0) ||
+                    detailInvestment.account ||
+                    detailInvestment.subAccount ? (
                       <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <span className="text-gray-600 dark:text-gray-400">
-                          {t("investments.detail.accountLabel")}
+                          {t("investments.detail.allocationsLabel")}
                         </span>
-                        <div className="mt-1">
-                          {detailInvestment.account && (
-                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                              {detailInvestment.account.name ||
-                                detailInvestment.account.bankName ||
-                                "N/A"}
-                            </span>
-                          )}
-                          {detailInvestment.subAccount && (
-                            <span className="ml-2 text-gray-600 dark:text-gray-400">
-                              → {detailInvestment.subAccount.name}
-                            </span>
+                        <div className="mt-2 space-y-1 text-sm">
+                          {detailInvestment.allocations &&
+                          detailInvestment.allocations.length > 0 ? (
+                            (() => {
+                              const totalAllocated =
+                                detailInvestment.allocations.reduce(
+                                  (sum, allocation) =>
+                                    sum + (Number(allocation.amount) || 0),
+                                  0,
+                                );
+                              return detailInvestment.allocations.map(
+                                (allocation, index) => {
+                                  const accountName =
+                                    allocation.account?.name ||
+                                    allocation.account?.bankName ||
+                                    "N/A";
+                                  const subAccountName =
+                                    allocation.subAccount?.name || "";
+                                  const percentage =
+                                    totalAllocated > 0
+                                      ? ((allocation.amount || 0) /
+                                          totalAllocated) *
+                                        100
+                                      : 0;
+                                  return (
+                                    <div
+                                      key={`allocation-detail-${index}`}
+                                      className="flex flex-wrap items-center gap-2"
+                                    >
+                                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                                        {accountName}
+                                      </span>
+                                      {subAccountName && (
+                                        <span className="text-gray-500 dark:text-gray-400">
+                                          → {subAccountName}
+                                        </span>
+                                      )}
+                                      <span className="text-gray-500 dark:text-gray-400">
+                                        •{" "}
+                                        {new Intl.NumberFormat("es-ES", {
+                                          style: "currency",
+                                          currency:
+                                            detailInvestment.currency || "EUR",
+                                        }).format(allocation.amount || 0)}
+                                        {totalAllocated > 0 && (
+                                          <span className="ml-1">
+                                            ({percentage.toFixed(1)}%)
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  );
+                                },
+                              );
+                            })()
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              {detailInvestment.account && (
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  {detailInvestment.account.name ||
+                                    detailInvestment.account.bankName ||
+                                    "N/A"}
+                                </span>
+                              )}
+                              {detailInvestment.subAccount && (
+                                <span className="text-gray-500 dark:text-gray-400">
+                                  → {detailInvestment.subAccount.name}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                     {detailInvestment.assetClass && (
                       <div className="col-span-2">
                         <span className="text-gray-600 dark:text-gray-400">
