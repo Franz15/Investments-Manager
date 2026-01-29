@@ -2,6 +2,7 @@ import express from "express";
 import Investment from "../models/Investment.js";
 import SubAccount from "../models/SubAccount.js";
 import Account from "../models/Account.js";
+import InvestmentHistory from "../models/InvestmentHistory.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { updateMultipleQuotes, getQuote } from "../services/quoteService.js";
 import {
@@ -46,15 +47,176 @@ const normalizeInvestmentClassification = (payload) => {
   }
 };
 
-const getCashSubAccountForInvestment = async (investment, userId) => {
-  const subAccountId = investment.subAccount?._id || investment.subAccount;
-  const sourceSubAccount = subAccountId
-    ? await SubAccount.findOne({ _id: subAccountId, user: userId })
-    : null;
-  const accountId =
-    sourceSubAccount?.account || investment.account?._id || investment.account;
-  if (!accountId) return null;
+const getInvestmentAmountFromPayload = (payload) => {
+  if (!payload) return 0;
+  const quantity = Number(payload.quantity) || 0;
+  if (payload.isAutomatedPortfolio) {
+    return quantity;
+  }
+  const price = Number(payload.purchasePrice) || 0;
+  return quantity * price;
+};
 
+const validateAllocationEntry = async (entry, userId) => {
+  if (!entry || typeof entry !== "object") {
+    return { error: "Asignación inválida" };
+  }
+  const accountId = entry.account;
+  if (!accountId) {
+    return { error: "Debe especificar una cuenta en cada asignación" };
+  }
+  const account = await Account.findOne({ _id: accountId, user: userId });
+  if (!account) {
+    return { error: "Cuenta no encontrada para una asignación" };
+  }
+
+  let subAccount = null;
+  if (entry.subAccount) {
+    subAccount = await SubAccount.findOne({
+      _id: entry.subAccount,
+      user: userId,
+    });
+    if (!subAccount) {
+      return { error: "Subcuenta no encontrada para una asignación" };
+    }
+    if (subAccount.type !== "investment") {
+      return { error: "La subcuenta debe ser de tipo inversión" };
+    }
+    const subAccountAccountId =
+      subAccount.account?._id?.toString() || subAccount.account?.toString();
+    if (subAccountAccountId !== accountId.toString()) {
+      return {
+        error: "La subcuenta no pertenece a la cuenta seleccionada",
+      };
+    }
+  }
+
+  const amount = Number(entry.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { error: "La cantidad de la asignación debe ser válida" };
+  }
+
+  return {
+    allocation: {
+      account: accountId,
+      subAccount: entry.subAccount || null,
+      amount,
+    },
+  };
+};
+
+const normalizeAllocations = async (allocations, userId) => {
+  if (!Array.isArray(allocations)) {
+    return { allocations: [] };
+  }
+  const merged = new Map();
+  for (const entry of allocations) {
+    const { allocation, error } = await validateAllocationEntry(entry, userId);
+    if (error) {
+      return { error };
+    }
+    const key = `${allocation.account.toString()}-${allocation.subAccount || "none"}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.amount += allocation.amount;
+    } else {
+      merged.set(key, { ...allocation });
+    }
+  }
+  return { allocations: Array.from(merged.values()) };
+};
+
+const getAllocationKey = (allocation) =>
+  `${allocation.account?.toString?.() || allocation.account}-${allocation.subAccount?.toString?.() || allocation.subAccount || "none"}`;
+
+const resolveHistoryOperationAmount = (entry) => {
+  let amount = entry?.operationAmount;
+  if (!amount || amount === 0) {
+    if (entry?.operationPrice && entry?.quantity) {
+      amount = entry.operationPrice * entry.quantity;
+    } else if (entry?.operation === "creation" && entry?.totalValue) {
+      amount = entry.totalValue;
+    }
+  }
+  return amount || 0;
+};
+
+const buildAllocationsFromHistory = async (investment, userId) => {
+  const historyEntries = await InvestmentHistory.find({
+    investment: investment._id,
+    user: userId,
+    operation: { $in: ["creation", "add", "withdraw"] },
+    account: { $exists: true, $ne: null },
+  }).sort({ date: 1 });
+
+  if (!historyEntries.length) {
+    return null;
+  }
+
+  const totals = new Map();
+  for (const entry of historyEntries) {
+    const amount = resolveHistoryOperationAmount(entry);
+    if (!amount) continue;
+    const key = getAllocationKey(entry);
+    const signed = entry.operation === "withdraw" ? -Math.abs(amount) : amount;
+    totals.set(key, (totals.get(key) || 0) + signed);
+  }
+
+  const allocations = [];
+  for (const [key, amount] of totals.entries()) {
+    if (amount <= 0) continue;
+    const [accountId, subAccountId] = key.split("-");
+    allocations.push({
+      account: accountId,
+      subAccount: subAccountId === "none" ? null : subAccountId,
+      amount,
+    });
+  }
+
+  return allocations.length ? allocations : null;
+};
+
+const ensureInvestmentAllocations = (investment) => {
+  if (Array.isArray(investment.allocations) && investment.allocations.length) {
+    return;
+  }
+  const accountId = investment.account?._id || investment.account;
+  if (!accountId) return;
+  const amount = investment.isAutomatedPortfolio
+    ? investment.quantity || 0
+    : (investment.quantity || 0) *
+      (investment.averagePurchasePrice || investment.purchasePrice || 0);
+  investment.allocations = [
+    {
+      account: accountId,
+      subAccount: investment.subAccount?._id || investment.subAccount || null,
+      amount: Number(amount) || 0,
+    },
+  ];
+};
+
+const getHistoryAllocation = (investment, allocationOverride) => {
+  if (allocationOverride?.account) {
+    return {
+      account: allocationOverride.account,
+      subAccount: allocationOverride.subAccount || null,
+    };
+  }
+  if (Array.isArray(investment.allocations) && investment.allocations.length) {
+    const primary = investment.allocations[0];
+    return {
+      account: primary.account?._id || primary.account || null,
+      subAccount: primary.subAccount?._id || primary.subAccount || null,
+    };
+  }
+  return {
+    account: investment.account?._id || investment.account || null,
+    subAccount: investment.subAccount?._id || investment.subAccount || null,
+  };
+};
+
+const getCashSubAccountForAccount = async (accountId, userId) => {
+  if (!accountId) return null;
   let cashSubAccount = await SubAccount.findOne({
     account: accountId,
     user: userId,
@@ -82,7 +244,7 @@ const getCashSubAccountForInvestment = async (investment, userId) => {
       name: "Efectivo",
       type: "cash",
       balance: 0,
-      currency: account?.currency || sourceSubAccount?.currency || "EUR",
+      currency: account?.currency || "EUR",
       description: "Efectivo creado automáticamente para devoluciones",
     });
     await cashSubAccount.save();
@@ -91,15 +253,46 @@ const getCashSubAccountForInvestment = async (investment, userId) => {
   return cashSubAccount;
 };
 
+const getInvestmentCashTargets = (investment) => {
+  const allocations = Array.isArray(investment.allocations)
+    ? investment.allocations
+    : [];
+  if (allocations.length > 0) {
+    return allocations
+      .map((allocation) => ({
+        accountId: allocation.account?._id || allocation.account,
+        weight: Number(allocation.amount) || 0,
+      }))
+      .filter((target) => target.accountId);
+  }
+
+  const accountId = investment.account?._id || investment.account;
+  if (!accountId) return [];
+  return [{ accountId, weight: 1 }];
+};
+
 const applyCashDeltaForInvestment = async (investment, userId, amount) => {
-  const cashSubAccount = await getCashSubAccountForInvestment(
-    investment,
-    userId,
-  );
-  if (!cashSubAccount) return null;
-  cashSubAccount.balance += amount;
-  await cashSubAccount.save();
-  return cashSubAccount;
+  const targets = getInvestmentCashTargets(investment);
+  if (targets.length === 0) return null;
+
+  const totalWeight = targets.reduce((sum, t) => sum + t.weight, 0);
+  const fallbackAmount = amount / targets.length;
+  const updatedSubAccounts = [];
+
+  for (const target of targets) {
+    const cashSubAccount = await getCashSubAccountForAccount(
+      target.accountId,
+      userId,
+    );
+    if (!cashSubAccount) return null;
+    const delta =
+      totalWeight > 0 ? (amount * target.weight) / totalWeight : fallbackAmount;
+    cashSubAccount.balance += delta;
+    await cashSubAccount.save();
+    updatedSubAccounts.push(cashSubAccount);
+  }
+
+  return updatedSubAccounts;
 };
 
 // GET todas las inversiones
@@ -109,7 +302,10 @@ router.get("/", async (req, res) => {
     const query = { user: req.userId };
 
     if (subAccountId) {
-      query.subAccount = subAccountId;
+      query.$or = [
+        { subAccount: subAccountId },
+        { "allocations.subAccount": subAccountId },
+      ];
     } else if (accountId) {
       // Si se busca por accountId, buscar inversiones directamente asociadas a la cuenta
       // o a través de subcuentas de inversión de esa cuenta
@@ -122,10 +318,27 @@ router.get("/", async (req, res) => {
       query.$or = [
         { account: accountId },
         { subAccount: { $in: subAccountIds } },
+        { "allocations.account": accountId },
+        { "allocations.subAccount": { $in: subAccountIds } },
       ];
     }
 
     const investments = await Investment.find(query)
+      .populate({
+        path: "allocations.subAccount",
+        select: "name type balance currency",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          select: "name bankName",
+          match: { user: req.userId },
+        },
+      })
+      .populate({
+        path: "allocations.account",
+        select: "name bankName",
+        match: { user: req.userId },
+      })
       .populate({
         path: "subAccount",
         select: "name type balance currency",
@@ -142,7 +355,49 @@ router.get("/", async (req, res) => {
         match: { user: req.userId },
       })
       .sort({ createdAt: -1 });
-    res.json(investments);
+    const normalizedInvestments = await Promise.all(
+      investments.map(async (investment) => {
+        const allocationTotal = Array.isArray(investment.allocations)
+          ? investment.allocations.reduce(
+              (sum, allocation) => sum + (Number(allocation.amount) || 0),
+              0,
+            )
+          : 0;
+        if (!investment.allocations?.length || allocationTotal <= 0) {
+          const rebuilt = await buildAllocationsFromHistory(
+            investment,
+            req.userId,
+          );
+          if (rebuilt) {
+            investment.allocations = rebuilt;
+            if (rebuilt.length > 0) {
+              investment.account = rebuilt[0].account;
+              investment.subAccount = rebuilt[0].subAccount || undefined;
+            }
+            await investment.save();
+            await Investment.populate(investment, [
+              {
+                path: "allocations.subAccount",
+                select: "name type balance currency",
+                match: { user: req.userId },
+                populate: {
+                  path: "account",
+                  select: "name bankName",
+                  match: { user: req.userId },
+                },
+              },
+              {
+                path: "allocations.account",
+                select: "name bankName",
+                match: { user: req.userId },
+              },
+            ]);
+          }
+        }
+        return investment;
+      }),
+    );
+    res.json(normalizedInvestments);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -155,6 +410,18 @@ router.get("/:id", async (req, res) => {
       _id: req.params.id,
       user: req.userId,
     })
+      .populate({
+        path: "allocations.subAccount",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          match: { user: req.userId },
+        },
+      })
+      .populate({
+        path: "allocations.account",
+        match: { user: req.userId },
+      })
       .populate({
         path: "subAccount",
         match: { user: req.userId },
@@ -179,58 +446,81 @@ router.get("/:id", async (req, res) => {
 // POST crear nueva inversión
 router.post("/", async (req, res) => {
   try {
-    // Validar que account esté presente (siempre obligatorio)
-    if (!req.body.account) {
-      return res.status(400).json({ message: "Debe especificar una cuenta" });
+    const hasAllocations =
+      Array.isArray(req.body.allocations) && req.body.allocations.length > 0;
+
+    // Validar que hay cuenta o asignaciones
+    if (!hasAllocations && !req.body.account) {
+      return res.status(400).json({
+        message: "Debe especificar una cuenta o al menos una asignación",
+      });
     }
 
     normalizeInvestmentClassification(req.body);
 
-    let subAccount = null;
-    let account = null;
+    let allocations = [];
 
-    // Validar que la cuenta existe
-    account = await Account.findOne({
-      _id: req.body.account,
-      user: req.userId,
-    });
-    if (!account) {
-      return res.status(404).json({ message: "Cuenta no encontrada" });
-    }
-
-    // Si se especifica subcuenta, validar que existe, es de tipo investment y pertenece a la cuenta
-    if (req.body.subAccount) {
-      subAccount = await SubAccount.findOne({
-        _id: req.body.subAccount,
-        user: req.userId,
-      });
-      if (!subAccount) {
-        return res.status(404).json({ message: "Subcuenta no encontrada" });
+    if (hasAllocations) {
+      const normalized = await normalizeAllocations(
+        req.body.allocations,
+        req.userId,
+      );
+      if (normalized.error) {
+        return res.status(400).json({ message: normalized.error });
       }
-      if (subAccount.type !== "investment") {
-        return res
-          .status(400)
-          .json({ message: "La subcuenta debe ser de tipo inversión" });
+      allocations = normalized.allocations;
+    } else {
+      const investmentAmount = getInvestmentAmountFromPayload(req.body);
+      const validation = await validateAllocationEntry(
+        {
+          account: req.body.account,
+          subAccount: req.body.subAccount,
+          amount: investmentAmount,
+        },
+        req.userId,
+      );
+      if (validation.error) {
+        return res.status(400).json({ message: validation.error });
       }
-      // Validar que la subcuenta pertenece a la cuenta seleccionada
-      const subAccountAccountId =
-        subAccount.account?._id?.toString() || subAccount.account?.toString();
-      if (subAccountAccountId !== req.body.account.toString()) {
-        return res.status(400).json({
-          message: "La subcuenta no pertenece a la cuenta seleccionada",
-        });
-      }
+      allocations = [
+        {
+          account: req.body.account,
+          subAccount: req.body.subAccount || null,
+          amount: investmentAmount,
+        },
+      ];
     }
 
     // Calcular el monto total de la inversión
-    let investmentAmount = 0;
-    if (req.body.isAutomatedPortfolio) {
-      // Para carteras automatizadas, quantity es el monto total invertido
-      investmentAmount = req.body.quantity || 0;
-    } else {
-      // Para inversiones tradicionales, quantity * purchasePrice
-      investmentAmount =
-        (req.body.quantity || 0) * (req.body.purchasePrice || 0);
+    const investmentAmount = getInvestmentAmountFromPayload(req.body);
+
+    const totalAllocationAmount = allocations.reduce(
+      (sum, allocation) => sum + (Number(allocation.amount) || 0),
+      0,
+    );
+    if (
+      investmentAmount > 0 &&
+      totalAllocationAmount > 0 &&
+      Math.abs(totalAllocationAmount - investmentAmount) > 0.01
+    ) {
+      return res.status(400).json({
+        message:
+          "La suma de las asignaciones debe coincidir con el monto total invertido",
+      });
+    }
+
+    req.body.allocations = allocations;
+    if (allocations.length > 0) {
+      req.body.account = allocations[0].account;
+      req.body.subAccount = allocations[0].subAccount || undefined;
+    }
+
+    if (!req.body.isAutomatedPortfolio && req.body.purchasePrice > 0) {
+      req.body.allocations = allocations.map((allocation) => ({
+        ...allocation,
+        quantity: allocation.amount / req.body.purchasePrice,
+        averagePurchasePrice: req.body.purchasePrice,
+      }));
     }
 
     // Crear la inversión
@@ -242,6 +532,20 @@ router.post("/", async (req, res) => {
 
     // Populate según lo que tenga la inversión
     const populatePaths = [];
+    populatePaths.push(
+      {
+        path: "allocations.subAccount",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          match: { user: req.userId },
+        },
+      },
+      {
+        path: "allocations.account",
+        match: { user: req.userId },
+      },
+    );
     if (savedInvestment.subAccount) {
       populatePaths.push({
         path: "subAccount",
@@ -297,6 +601,7 @@ router.post("/", async (req, res) => {
         user: req.userId,
         investment: savedInvestment._id,
         date: historyDate,
+        ...getHistoryAllocation(savedInvestment),
         currentPrice: currentPrice,
         quantity: savedInvestment.quantity,
         totalValue: totalValue,
@@ -346,6 +651,56 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Inversión no encontrada" });
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, "allocations")) {
+      if (!Array.isArray(req.body.allocations)) {
+        return res.status(400).json({
+          message: "Las asignaciones deben ser un listado válido",
+        });
+      }
+      if (req.body.allocations.length === 0 && !req.body.account) {
+        return res.status(400).json({
+          message: "Debe especificar una cuenta o al menos una asignación",
+        });
+      }
+      if (req.body.allocations.length > 0) {
+        const normalized = await normalizeAllocations(
+          req.body.allocations,
+          req.userId,
+        );
+        if (normalized.error) {
+          return res.status(400).json({ message: normalized.error });
+        }
+        req.body.allocations = normalized.allocations;
+        if (normalized.allocations.length > 0) {
+          req.body.account = normalized.allocations[0].account;
+          req.body.subAccount =
+            normalized.allocations[0].subAccount || undefined;
+        }
+
+        const amountPayload = {
+          isAutomatedPortfolio:
+            req.body.isAutomatedPortfolio ?? oldInvestment.isAutomatedPortfolio,
+          quantity: req.body.quantity ?? oldInvestment.quantity,
+          purchasePrice: req.body.purchasePrice ?? oldInvestment.purchasePrice,
+        };
+        const investmentAmount = getInvestmentAmountFromPayload(amountPayload);
+        const totalAllocationAmount = req.body.allocations.reduce(
+          (sum, allocation) => sum + (Number(allocation.amount) || 0),
+          0,
+        );
+        if (
+          investmentAmount > 0 &&
+          totalAllocationAmount > 0 &&
+          Math.abs(totalAllocationAmount - investmentAmount) > 0.01
+        ) {
+          return res.status(400).json({
+            message:
+              "La suma de las asignaciones debe coincidir con el monto total invertido",
+          });
+        }
+      }
+    }
+
     // Detectar si se están editando valores críticos que invalidarían el historial
     const criticalFieldsChanged =
       (req.body.purchaseDate &&
@@ -392,6 +747,20 @@ router.put("/:id", async (req, res) => {
 
     // Populate según lo que tenga la inversión
     const populatePaths = [];
+    populatePaths.push(
+      {
+        path: "allocations.subAccount",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          match: { user: req.userId },
+        },
+      },
+      {
+        path: "allocations.account",
+        match: { user: req.userId },
+      },
+    );
     if (investment.subAccount) {
       populatePaths.push({
         path: "subAccount",
@@ -474,6 +843,118 @@ router.post("/:id/add", async (req, res) => {
       }
     }
 
+    ensureInvestmentAllocations(investment);
+
+    if (
+      Array.isArray(investment.allocations) &&
+      investment.allocations.length
+    ) {
+      let targetAllocation = null;
+      if (req.body.allocation?.account) {
+        const validation = await validateAllocationEntry(
+          {
+            account: req.body.allocation.account,
+            subAccount: req.body.allocation.subAccount || null,
+            amount: 0,
+          },
+          req.userId,
+        );
+        if (validation.error) {
+          return res.status(400).json({ message: validation.error });
+        }
+        targetAllocation = validation.allocation;
+      }
+
+      if (targetAllocation) {
+        const targetKey = getAllocationKey(targetAllocation);
+        const existing = investment.allocations.find(
+          (allocation) => getAllocationKey(allocation) === targetKey,
+        );
+        if (existing) {
+          existing.amount = (Number(existing.amount) || 0) + additionalAmount;
+          if (!investment.isAutomatedPortfolio && price) {
+            const additionalUnits = quantity || 0;
+            const currentUnits = Number(existing.quantity) || 0;
+            const currentAvg =
+              Number(existing.averagePurchasePrice) ||
+              investment.averagePurchasePrice ||
+              investment.purchasePrice ||
+              price;
+            const newUnits = currentUnits + additionalUnits;
+            existing.quantity = newUnits;
+            existing.averagePurchasePrice =
+              newUnits > 0
+                ? (currentUnits * currentAvg + additionalUnits * price) /
+                  newUnits
+                : currentAvg;
+            existing.amount = newUnits * existing.averagePurchasePrice;
+          }
+        } else {
+          investment.allocations.push({
+            account: targetAllocation.account,
+            subAccount: targetAllocation.subAccount || null,
+            amount: additionalAmount,
+            quantity: !investment.isAutomatedPortfolio ? quantity || 0 : 0,
+            averagePurchasePrice: !investment.isAutomatedPortfolio ? price : 0,
+          });
+        }
+      } else {
+        const totalAllocated = investment.allocations.reduce(
+          (sum, allocation) => sum + (Number(allocation.amount) || 0),
+          0,
+        );
+        if (totalAllocated > 0) {
+          investment.allocations.forEach((allocation) => {
+            const weight = (Number(allocation.amount) || 0) / totalAllocated;
+            allocation.amount =
+              (Number(allocation.amount) || 0) + additionalAmount * weight;
+            if (!investment.isAutomatedPortfolio && price) {
+              const additionalUnits = (quantity || 0) * weight;
+              const currentUnits = Number(allocation.quantity) || 0;
+              const currentAvg =
+                Number(allocation.averagePurchasePrice) ||
+                investment.averagePurchasePrice ||
+                investment.purchasePrice ||
+                price;
+              const newUnits = currentUnits + additionalUnits;
+              allocation.quantity = newUnits;
+              allocation.averagePurchasePrice =
+                newUnits > 0
+                  ? (currentUnits * currentAvg + additionalUnits * price) /
+                    newUnits
+                  : currentAvg;
+              allocation.amount = newUnits * allocation.averagePurchasePrice;
+            }
+          });
+        } else {
+          const perAllocation =
+            additionalAmount / investment.allocations.length;
+          investment.allocations.forEach((allocation) => {
+            allocation.amount =
+              (Number(allocation.amount) || 0) + perAllocation;
+            if (!investment.isAutomatedPortfolio && price) {
+              const additionalUnits =
+                (quantity || 0) / investment.allocations.length;
+              const currentUnits = Number(allocation.quantity) || 0;
+              const currentAvg =
+                Number(allocation.averagePurchasePrice) ||
+                investment.averagePurchasePrice ||
+                investment.purchasePrice ||
+                price;
+              const newUnits = currentUnits + additionalUnits;
+              allocation.quantity = newUnits;
+              allocation.averagePurchasePrice =
+                newUnits > 0
+                  ? (currentUnits * currentAvg + additionalUnits * price) /
+                    newUnits
+                  : currentAvg;
+              allocation.amount = newUnits * allocation.averagePurchasePrice;
+            }
+          });
+        }
+      }
+    }
+
     await investment.save();
 
     // Crear entrada en el historial si se proporciona fecha
@@ -496,6 +977,7 @@ router.post("/:id/add", async (req, res) => {
         user: req.userId,
         investment: investment._id,
         date: date || new Date(),
+        ...getHistoryAllocation(investment, req.body.allocation),
         currentPrice: investment.currentPrice,
         quantity: investment.quantity,
         totalValue: totalValue,
@@ -516,14 +998,22 @@ router.post("/:id/add", async (req, res) => {
       );
     }
 
-    const populatedInvestment = await Investment.findById(
-      investment._id,
-    ).populate({
-      path: "subAccount",
-      populate: {
-        path: "account",
-      },
-    });
+    const populatedInvestment = await Investment.findById(investment._id)
+      .populate({
+        path: "allocations.subAccount",
+        populate: {
+          path: "account",
+        },
+      })
+      .populate({
+        path: "allocations.account",
+      })
+      .populate({
+        path: "subAccount",
+        populate: {
+          path: "account",
+        },
+      });
 
     res.json(populatedInvestment);
   } catch (error) {
@@ -589,21 +1079,63 @@ router.post("/:id/sell", async (req, res) => {
     // Reducir la cantidad
     const remainingQuantity = investment.quantity - quantity;
 
+    ensureInvestmentAllocations(investment);
+
     // Si se retira todo, eliminar la inversión
     if (remainingQuantity <= 0) {
+      let allocationTarget = null;
+      if (req.body.allocation?.account) {
+        ensureInvestmentAllocations(investment);
+        const validation = await validateAllocationEntry(
+          {
+            account: req.body.allocation.account,
+            subAccount: req.body.allocation.subAccount || null,
+            amount: 0,
+          },
+          req.userId,
+        );
+        if (validation.error) {
+          return res.status(400).json({ message: validation.error });
+        }
+        const targetKey = getAllocationKey(validation.allocation);
+        const target = investment.allocations?.find(
+          (allocation) => getAllocationKey(allocation) === targetKey,
+        );
+        if (!target) {
+          return res.status(400).json({
+            message: "La asignación seleccionada no existe en esta inversión",
+          });
+        }
+        allocationTarget = validation.allocation;
+      }
       // Devolver el dinero al efectivo si se solicita
       let returnedToSubAccount = false;
       if (returnToSubAccount) {
-        const cashSubAccount = await applyCashDeltaForInvestment(
-          investment,
-          req.userId,
-          saleAmount,
-        );
-        if (!cashSubAccount) {
-          return res.status(400).json({
-            message:
-              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
-          });
+        if (allocationTarget) {
+          const cashSubAccount = await getCashSubAccountForAccount(
+            allocationTarget.account,
+            req.userId,
+          );
+          if (!cashSubAccount) {
+            return res.status(400).json({
+              message:
+                "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+            });
+          }
+          cashSubAccount.balance += saleAmount;
+          await cashSubAccount.save();
+        } else {
+          const cashSubAccounts = await applyCashDeltaForInvestment(
+            investment,
+            req.userId,
+            saleAmount,
+          );
+          if (!cashSubAccounts || cashSubAccounts.length === 0) {
+            return res.status(400).json({
+              message:
+                "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+            });
+          }
         }
         returnedToSubAccount = true;
       }
@@ -627,6 +1159,7 @@ router.post("/:id/sell", async (req, res) => {
           user: req.userId,
           investment: investment._id,
           date: date || new Date(),
+          ...getHistoryAllocation(investment, req.body.allocation),
           currentPrice: investment.isAutomatedPortfolio ? saleAmount : price,
           quantity: 0, // Se vendió todo
           totalValue: totalValue,
@@ -674,6 +1207,102 @@ router.post("/:id/sell", async (req, res) => {
     // Si queda cantidad, actualizar la inversión
     investment.quantity = remainingQuantity;
 
+    if (
+      Array.isArray(investment.allocations) &&
+      investment.allocations.length
+    ) {
+      const totalAllocated = investment.allocations.reduce(
+        (sum, allocation) => sum + (Number(allocation.amount) || 0),
+        0,
+      );
+      if (req.body.allocation?.account) {
+        const validation = await validateAllocationEntry(
+          {
+            account: req.body.allocation.account,
+            subAccount: req.body.allocation.subAccount || null,
+            amount: 0,
+          },
+          req.userId,
+        );
+        if (validation.error) {
+          return res.status(400).json({ message: validation.error });
+        }
+        const targetKey = getAllocationKey(validation.allocation);
+        const target = investment.allocations.find(
+          (allocation) => getAllocationKey(allocation) === targetKey,
+        );
+        if (!target) {
+          return res.status(400).json({
+            message: "La asignación seleccionada no existe en esta inversión",
+          });
+        }
+        if (totalAllocated <= 0) {
+          return res.status(400).json({
+            message: "No se puede calcular la asignación a retirar",
+          });
+        }
+        if (!investment.isAutomatedPortfolio && target.quantity) {
+          const currentUnits = Number(target.quantity) || 0;
+          if (quantity > currentUnits + 0.000001) {
+            return res.status(400).json({
+              message:
+                "La asignación seleccionada no tiene suficientes unidades para retirar",
+            });
+          }
+          target.quantity = Math.max(0, currentUnits - quantity);
+          const avgPrice =
+            Number(target.averagePurchasePrice) ||
+            investment.averagePurchasePrice ||
+            investment.purchasePrice ||
+            price ||
+            0;
+          target.averagePurchasePrice = avgPrice;
+          target.amount = target.quantity * avgPrice;
+        } else {
+          const withdrawalRatio =
+            investment.quantity + quantity > 0
+              ? quantity / (investment.quantity + quantity)
+              : 0;
+          const investedReduction = totalAllocated * withdrawalRatio;
+          const currentAmount = Number(target.amount) || 0;
+          if (investedReduction > currentAmount + 0.01) {
+            return res.status(400).json({
+              message:
+                "La asignación seleccionada no tiene suficiente capital para retirar",
+            });
+          }
+          target.amount = Math.max(0, currentAmount - investedReduction);
+        }
+      } else {
+        const withdrawalRatio =
+          investment.quantity + quantity > 0
+            ? quantity / (investment.quantity + quantity)
+            : 0;
+        investment.allocations.forEach((allocation) => {
+          const currentAmount = Number(allocation.amount) || 0;
+          allocation.amount = Math.max(
+            0,
+            currentAmount * (1 - withdrawalRatio),
+          );
+          if (!investment.isAutomatedPortfolio && allocation.quantity) {
+            const currentUnits = Number(allocation.quantity) || 0;
+            allocation.quantity = Math.max(
+              0,
+              currentUnits * (1 - withdrawalRatio),
+            );
+            const avgPrice =
+              Number(allocation.averagePurchasePrice) ||
+              investment.averagePurchasePrice ||
+              investment.purchasePrice ||
+              price ||
+              0;
+            allocation.averagePurchasePrice = avgPrice;
+            allocation.amount = allocation.quantity * avgPrice;
+          }
+        });
+      }
+    }
+
     // Para inversiones tradicionales, actualizar el precio actual si se proporciona
     if (!investment.isAutomatedPortfolio && price) {
       investment.currentPrice = price;
@@ -684,16 +1313,42 @@ router.post("/:id/sell", async (req, res) => {
     // Devolver el dinero al efectivo si se solicita
     let returnedToSubAccount = false;
     if (returnToSubAccount) {
-      const cashSubAccount = await applyCashDeltaForInvestment(
-        investment,
-        req.userId,
-        saleAmount,
-      );
-      if (!cashSubAccount) {
-        return res.status(400).json({
-          message:
-            "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
-        });
+      if (req.body.allocation?.account) {
+        const validation = await validateAllocationEntry(
+          {
+            account: req.body.allocation.account,
+            subAccount: req.body.allocation.subAccount || null,
+            amount: 0,
+          },
+          req.userId,
+        );
+        if (validation.error) {
+          return res.status(400).json({ message: validation.error });
+        }
+        const cashSubAccount = await getCashSubAccountForAccount(
+          validation.allocation.account,
+          req.userId,
+        );
+        if (!cashSubAccount) {
+          return res.status(400).json({
+            message:
+              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+          });
+        }
+        cashSubAccount.balance += saleAmount;
+        await cashSubAccount.save();
+      } else {
+        const cashSubAccounts = await applyCashDeltaForInvestment(
+          investment,
+          req.userId,
+          saleAmount,
+        );
+        if (!cashSubAccounts || cashSubAccounts.length === 0) {
+          return res.status(400).json({
+            message:
+              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+          });
+        }
       }
       returnedToSubAccount = true;
     }
@@ -718,6 +1373,7 @@ router.post("/:id/sell", async (req, res) => {
         user: req.userId,
         investment: investment._id,
         date: date || new Date(),
+        ...getHistoryAllocation(investment, req.body.allocation),
         currentPrice: investment.isAutomatedPortfolio
           ? investment.currentPrice
           : price,
@@ -741,6 +1397,18 @@ router.post("/:id/sell", async (req, res) => {
     }
 
     const populatedInvestment = await Investment.findById(investment._id)
+      .populate({
+        path: "allocations.subAccount",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          match: { user: req.userId },
+        },
+      })
+      .populate({
+        path: "allocations.account",
+        match: { user: req.userId },
+      })
       .populate({
         path: "subAccount",
         match: { user: req.userId },
@@ -780,7 +1448,10 @@ router.post("/update-prices", async (req, res) => {
           ],
         },
         {
-          account: { $exists: true, $ne: null },
+          $or: [
+            { account: { $exists: true, $ne: null } },
+            { "allocations.0": { $exists: true } },
+          ],
         },
         {
           $or: [
@@ -911,7 +1582,6 @@ router.post("/:id/update-price", async (req, res) => {
     const investment = await Investment.findOne({
       _id: req.params.id,
       user: req.userId,
-      account: { $exists: true, $ne: null },
     });
 
     if (!investment) {
@@ -967,6 +1637,18 @@ router.post("/:id/update-price", async (req, res) => {
 
     // Populate para devolver la inversión completa
     const populatedInvestment = await Investment.findById(investment._id)
+      .populate({
+        path: "allocations.subAccount",
+        match: { user: req.userId },
+        populate: {
+          path: "account",
+          match: { user: req.userId },
+        },
+      })
+      .populate({
+        path: "allocations.account",
+        match: { user: req.userId },
+      })
       .populate({
         path: "subAccount",
         match: { user: req.userId },
@@ -1055,7 +1737,7 @@ router.delete("/:id", async (req, res) => {
         req.userId,
         originalAmount,
       );
-      if (!cashSubAccount) {
+      if (!cashSubAccount || cashSubAccount.length === 0) {
         return res.status(400).json({
           message:
             "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
@@ -1236,6 +1918,7 @@ router.post("/execute-dca", async (req, res) => {
           user: req.userId,
           investment: investment._id,
           date: today,
+          ...getHistoryAllocation(investment),
           currentPrice: investment.currentPrice,
           quantity: investment.quantity,
           totalValue: totalValue,
