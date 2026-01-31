@@ -362,6 +362,37 @@ const Dashboard = () => {
     return <LoadingSpinner />;
   }
 
+  // Capital aportado INCLUYE EFECTIVO: neto invertido (historial) + efectivo (subcuentas cash/savings/inversión)
+  const contributedCapital =
+    stats && typeof stats.capitalAportadoIncluyeEfectivo === "number"
+      ? Math.max(0, stats.capitalAportadoIncluyeEfectivo)
+      : stats &&
+          typeof stats.netInvestedCapital === "number" &&
+          typeof stats.totalCashSavings === "number"
+        ? Math.max(0, stats.netInvestedCapital + stats.totalCashSavings)
+        : stats && typeof stats.netInvestedCapital === "number"
+          ? Math.max(0, stats.netInvestedCapital)
+          : stats && performance
+            ? Math.max(
+                0,
+                (stats.totalBalance || 0) -
+                  (performance.accumulatedReturn || 0),
+              )
+            : null;
+  // Rendimiento acumulado = solo inversiones (valor actual - capital neto invertido), no incluye efectivo
+  const accumulatedReturn =
+    stats && typeof stats.accumulatedReturn === "number"
+      ? stats.accumulatedReturn
+      : (performance?.accumulatedReturn ?? null);
+  const accumulatedReturnPercent =
+    contributedCapital != null &&
+    contributedCapital > 0 &&
+    accumulatedReturn != null
+      ? Number(((accumulatedReturn / contributedCapital) * 100).toFixed(2))
+      : ((typeof stats?.accumulatedReturnPercent === "number"
+          ? stats.accumulatedReturnPercent
+          : performance?.accumulatedReturnPercent) ?? 0);
+
   // Función para renderizar el contenido del Treemap
   const renderTreemapContent = ({
     x,
@@ -566,7 +597,7 @@ const Dashboard = () => {
               </p>
               {performance &&
                 performance.annualizedReturn !== null &&
-                performance.additionalCapital !== null && (
+                contributedCapital !== null && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
                     {t("dashboard.contributedCapital")}:{" "}
                     {new Intl.NumberFormat("es-ES", {
@@ -574,7 +605,7 @@ const Dashboard = () => {
                       currency: "EUR",
                       notation: "compact",
                       maximumFractionDigits: 1,
-                    }).format(performance.additionalCapital || 0)}
+                    }).format(contributedCapital || 0)}
                   </p>
                 )}
             </div>
@@ -742,12 +773,10 @@ const Dashboard = () => {
                     {t("dashboard.accumulatedReturn")}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.accumulatedReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${accumulatedReturnPercent >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                   >
-                    {(performance.accumulatedReturnPercent || 0) >= 0
-                      ? "+"
-                      : ""}
-                    {(performance.accumulatedReturnPercent || 0).toFixed(2)}%
+                    {accumulatedReturnPercent >= 0 ? "+" : ""}
+                    {accumulatedReturnPercent.toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     {new Intl.NumberFormat("es-ES", {
@@ -755,11 +784,11 @@ const Dashboard = () => {
                       currency: "EUR",
                       notation: "compact",
                       maximumFractionDigits: 1,
-                    }).format(performance.accumulatedReturn || 0)}
+                    }).format(accumulatedReturn ?? 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${(performance.accumulatedReturnPercent || 0) >= 0 ? "bg-green-500 dark:bg-green-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${accumulatedReturnPercent >= 0 ? "bg-green-500 dark:bg-green-600" : "bg-red-500 dark:bg-red-600"}`}
                 >
                   <CgDollar className="h-4 w-4 text-white" />
                 </div>
@@ -1246,7 +1275,7 @@ const Dashboard = () => {
                     }).format(stats.totalBalance)}
                   </span>
                 </div>
-                {performance && performance.additionalCapital !== null && (
+                {performance && contributedCapital !== null && (
                   <>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                       <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -1257,18 +1286,15 @@ const Dashboard = () => {
                           style: "currency",
                           currency: "EUR",
                           maximumFractionDigits: 0,
-                        }).format(performance.additionalCapital || 0)}
+                        }).format(contributedCapital || 0)}
                       </span>
                     </div>
                     {(() => {
                       const totalReturn =
-                        stats.totalBalance -
-                        (performance.additionalCapital || 0);
+                        stats.totalBalance - (contributedCapital || 0);
                       const totalReturnPercent =
-                        (performance.additionalCapital || 0) > 0
-                          ? (totalReturn /
-                              (performance.additionalCapital || 0)) *
-                            100
+                        (contributedCapital || 0) > 0
+                          ? (totalReturn / (contributedCapital || 0)) * 100
                           : 0;
                       return (
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -1427,22 +1453,17 @@ const Dashboard = () => {
                     Rendimientos
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {performance.accumulatedReturn !== null &&
-                      performance.accumulatedReturnPercent !== null && (
+                    {accumulatedReturn !== null &&
+                      accumulatedReturnPercent !== null && (
                         <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                             Acumulado
                           </div>
                           <div
-                            className={`text-sm font-bold ${(performance.accumulatedReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`text-sm font-bold ${(accumulatedReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                           >
-                            {(performance.accumulatedReturnPercent || 0) >= 0
-                              ? "+"
-                              : ""}
-                            {(
-                              performance.accumulatedReturnPercent || 0
-                            ).toFixed(2)}
-                            %
+                            {(accumulatedReturnPercent || 0) >= 0 ? "+" : ""}
+                            {(accumulatedReturnPercent || 0).toFixed(2)}%
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                             {new Intl.NumberFormat("es-ES", {
@@ -1450,7 +1471,7 @@ const Dashboard = () => {
                               currency: "EUR",
                               notation: "compact",
                               maximumFractionDigits: 1,
-                            }).format(performance.accumulatedReturn || 0)}
+                            }).format(accumulatedReturn || 0)}
                           </div>
                         </div>
                       )}

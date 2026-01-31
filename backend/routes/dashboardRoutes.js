@@ -8,9 +8,51 @@ import InvestmentHistory from "../models/InvestmentHistory.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { getQuote } from "../services/quoteService.js";
 import { getLatestDailyVariation } from "../services/dailyVariationService.js";
+import {
+  getPortfolioDailyReturn,
+  getPortfolioPeriodReturn,
+  getPortfolioAccumulatedReturn,
+  getCapitalChangeForPeriod,
+  getCapitalFlowsForPeriod,
+} from "../services/portfolioReturnService.js";
+import { getSignedOperationAmount } from "../services/variationEngine.js";
 import YahooFinance from "yahoo-finance2";
 
 const router = express.Router();
+
+// Para capital aportado: importe por operación. En "add", quantity es total acumulado (no delta) → solo usar operationAmount.
+function getOperationAmountForStats(entry) {
+  const op = entry?.operation;
+  if (op === "add") {
+    return entry?.operationAmount ?? 0;
+  }
+  if (op === "creation") {
+    return (
+      entry?.operationAmount ??
+      (entry?.operationPrice != null && entry?.quantity != null
+        ? entry.operationPrice * entry.quantity
+        : (entry?.totalValue ?? 0))
+    );
+  }
+  if (op === "sell" || op === "withdraw") {
+    const amount =
+      entry?.operationAmount ??
+      (entry?.operationPrice != null && entry?.quantity != null
+        ? entry.operationPrice * entry.quantity
+        : 0);
+    return amount || 0;
+  }
+  return 0;
+}
+function getSignedOperationAmountForStats(entry) {
+  if (!["creation", "add", "withdraw", "sell"].includes(entry?.operation))
+    return 0;
+  const amount = getOperationAmountForStats(entry);
+  if (entry.operation === "withdraw" || entry.operation === "sell") {
+    return -Math.abs(amount);
+  }
+  return amount;
+}
 
 // Aplicar middleware de autenticación a todas las rutas
 router.use(authenticateToken);
@@ -26,10 +68,13 @@ router.get("/stats", async (req, res) => {
       user: req.userId,
       type: { $in: ["cash", "savings"] },
     });
-    const totalCashSavings = cashSavingsSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
+    const investmentSubAccounts = await SubAccount.find({
+      user: req.userId,
+      type: "investment",
+    });
+    const totalCashSavings =
+      cashSavingsSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0) +
+      investmentSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
 
     // Total de inversiones del usuario (valor actual de las inversiones)
     // Solo obtener inversiones que tienen account (requerido)
@@ -199,6 +244,58 @@ router.get("/stats", async (req, res) => {
     const monthlyBalance =
       monthlyIncome - monthlyExpenses + monthlyInvestmentReturn;
 
+    // Capital aportado real: TODAS las operaciones del usuario (no solo inversiones activas)
+    const allHistoryForStats = await InvestmentHistory.find({
+      user: req.userId,
+      operation: { $in: ["creation", "add", "sell", "withdraw"] },
+    });
+    const contributedByInvId = new Map();
+    allHistoryForStats.forEach((entry) => {
+      const invId = entry.investment?.toString();
+      if (!invId) return;
+      const signed = getSignedOperationAmountForStats(entry);
+      if (signed >= 0)
+        contributedByInvId.set(
+          invId,
+          (contributedByInvId.get(invId) || 0) + signed,
+        );
+    });
+    let statsTotalContributed = Array.from(contributedByInvId.values()).reduce(
+      (s, v) => s + v,
+      0,
+    );
+    let statsTotalWithdrawn = 0;
+    allHistoryForStats.forEach((entry) => {
+      const signed = getSignedOperationAmountForStats(entry);
+      if (signed < 0) statsTotalWithdrawn += Math.abs(signed);
+    });
+    // Inversiones sin historial de aportes: sumar coste (quantity*avgPrice) para no “perder” capital
+    for (const inv of investments) {
+      const invId = inv._id.toString();
+      if ((contributedByInvId.get(invId) || 0) > 0) continue;
+      const implied = inv.isAutomatedPortfolio
+        ? inv.quantity || 0
+        : (inv.quantity || 0) *
+          (inv.averagePurchasePrice || inv.purchasePrice || 0);
+      if (implied > 0) {
+        statsTotalContributed += implied;
+        contributedByInvId.set(invId, implied);
+      }
+    }
+    const statsNetInvestedCapital = Math.max(
+      0,
+      statsTotalContributed - statsTotalWithdrawn,
+    );
+    const statsAccumulatedReturn = totalInvestments - statsNetInvestedCapital;
+    const statsAccumulatedReturnPercent =
+      statsNetInvestedCapital > 0
+        ? (statsAccumulatedReturn / statsNetInvestedCapital) * 100
+        : 0;
+
+    // Capital aportado CON EFECTIVO = neto invertido (historial) + efectivo actual (subcuentas)
+    const capitalAportadoIncluyeEfectivo =
+      statsNetInvestedCapital + totalCashSavings;
+
     res.json({
       totalAccounts,
       totalBalance: netWorth, // Mostrar patrimonio neto como balance total
@@ -211,8 +308,19 @@ router.get("/stats", async (req, res) => {
       monthlyInvestmentReturn: parseFloat(monthlyInvestmentReturn.toFixed(2)),
       monthlyBalance: parseFloat(monthlyBalance.toFixed(2)),
       totalCashSavings: parseFloat(totalCashSavings.toFixed(2)),
+      totalContributedCapital: parseFloat(statsTotalContributed.toFixed(2)),
+      totalWithdrawnCapital: parseFloat(statsTotalWithdrawn.toFixed(2)),
+      netInvestedCapital: parseFloat(statsNetInvestedCapital.toFixed(2)),
+      capitalAportadoIncluyeEfectivo: parseFloat(
+        capitalAportadoIncluyeEfectivo.toFixed(2),
+      ),
+      accumulatedReturn: parseFloat(statsAccumulatedReturn.toFixed(2)),
+      accumulatedReturnPercent: parseFloat(
+        statsAccumulatedReturnPercent.toFixed(2),
+      ),
     });
   } catch (error) {
+    console.error("[dashboard/stats] Error:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -233,17 +341,17 @@ router.get("/balance-chart", async (req, res) => {
     const Debt = (await import("../models/Debt.js")).default;
 
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
-    const investments = await Investment.find({
+    const perfInvestments = await Investment.find({
       user: req.userId,
       account: { $exists: true, $ne: null },
     });
 
-    if (investments.length === 0) {
+    if (perfInvestments.length === 0) {
       return res.json([]);
     }
 
     // IMPORTANTE: Solo considerar operaciones de inversiones ACTIVAS
-    const activeInvestmentIds = investments.map((inv) => inv._id);
+    const activeInvestmentIds = perfInvestments.map((inv) => inv._id);
 
     // Obtener operaciones de capital SOLO de inversiones activas (solo las que tienen operationAmount)
     const allCapitalOperations = await InvestmentHistory.find({
@@ -278,12 +386,19 @@ router.get("/balance-chart", async (req, res) => {
       user: req.userId,
       type: { $in: ["cash", "savings"] },
     });
+    const investmentSubAccounts = await SubAccount.find({
+      user: req.userId,
+      type: "investment",
+    });
     const currentCashBalance = cashSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
       0,
     );
 
-    const currentInvestmentSubAccountBalance = 0;
+    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
+      (sum, subAcc) => sum + subAcc.balance,
+      0,
+    );
 
     // Obtener deudas actuales
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
@@ -561,17 +676,17 @@ router.get("/balance-daily", async (req, res) => {
     const Debt = (await import("../models/Debt.js")).default;
 
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
-    const investments = await Investment.find({
+    const perfInvestments = await Investment.find({
       user: req.userId,
       account: { $exists: true, $ne: null },
     });
 
-    if (investments.length === 0) {
+    if (perfInvestments.length === 0) {
       return res.json([]);
     }
 
     // IMPORTANTE: Solo considerar operaciones de inversiones ACTIVAS (que aún existen)
-    const activeInvestmentIds = investments.map((inv) => inv._id);
+    const activeInvestmentIds = perfInvestments.map((inv) => inv._id);
 
     // Obtener operaciones de capital SOLO de inversiones activas
     const [allCapitalOperations, allTransactions] = await Promise.all([
@@ -607,7 +722,15 @@ router.get("/balance-daily", async (req, res) => {
       user: req.userId,
       type: { $in: ["cash", "savings"] },
     });
+    const investmentSubAccounts = await SubAccount.find({
+      user: req.userId,
+      type: "investment",
+    });
     const currentCashBalance = cashSubAccounts.reduce(
+      (sum, subAcc) => sum + subAcc.balance,
+      0,
+    );
+    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
       0,
     );
@@ -763,8 +886,6 @@ router.get("/balance-daily", async (req, res) => {
     } else {
     }
 
-    const currentInvestmentSubAccountBalance = 0;
-
     // Obtener deudas actuales (no tenemos histórico de deudas)
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
     const currentTotalDebts = activeDebts.reduce(
@@ -900,10 +1021,11 @@ router.get("/balance-daily", async (req, res) => {
       // Calcular valor de inversiones hasta esta fecha
       let investmentsValue = 0;
 
-      for (const inv of investments) {
+      for (const inv of perfInvestments) {
         // Buscar la fecha de creación de esta inversión
         const creationOp = allHistoryEntries.find(
           (h) =>
+            h.investment &&
             h.investment.toString() === inv._id.toString() &&
             h.operation === "creation" &&
             h.operationAmount,
@@ -940,7 +1062,8 @@ router.get("/balance-daily", async (req, res) => {
             // Para días pasados, buscar en InvestmentHistory o DailyVariation
             // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
             const historyForThisInv = allHistoryEntries.filter(
-              (h) => h.investment.toString() === inv._id.toString(),
+              (h) =>
+                h.investment && h.investment.toString() === inv._id.toString(),
             );
 
             const lastHistory = historyForThisInv
@@ -962,7 +1085,9 @@ router.get("/balance-daily", async (req, res) => {
             } else {
               // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
               const variationsForThisInv = allDailyVariations.filter(
-                (v) => v.investment.toString() === inv._id.toString(),
+                (v) =>
+                  v.investment &&
+                  v.investment.toString() === inv._id.toString(),
               );
 
               const lastVariation = variationsForThisInv
@@ -1113,7 +1238,7 @@ router.get("/balance-daily", async (req, res) => {
       let lastDayInvestments = 0;
       if (isToday) {
         // Para hoy, usar el modelo Investment directamente (igual que /stats)
-        lastDayInvestments = investments.reduce((sum, inv) => {
+        lastDayInvestments = perfInvestments.reduce((sum, inv) => {
           const value = inv.isAutomatedPortfolio
             ? inv.currentPrice || 0
             : (inv.quantity || 0) * (inv.currentPrice || 0);
@@ -1124,9 +1249,10 @@ router.get("/balance-daily", async (req, res) => {
         const lastDateEnd = new Date(lastDateKey);
         lastDateEnd.setHours(23, 59, 59, 999);
 
-        for (const inv of investments) {
+        for (const inv of perfInvestments) {
           const creationOp = allHistoryEntries.find(
             (h) =>
+              h.investment &&
               h.investment.toString() === inv._id.toString() &&
               h.operation === "creation" &&
               h.operationAmount,
@@ -1151,7 +1277,7 @@ router.get("/balance-daily", async (req, res) => {
         (sum, sa) => sum + sa.balance,
         0,
       );
-      const totalInvestmentsStats = investments.reduce((sum, inv) => {
+      const totalInvestmentsStats = perfInvestments.reduce((sum, inv) => {
         const value = inv.isAutomatedPortfolio
           ? inv.currentPrice || 0
           : (inv.quantity || 0) * (inv.currentPrice || 0);
@@ -1487,9 +1613,416 @@ router.get("/distribution-by-bank", async (req, res) => {
   }
 });
 
+// GET resumen por cuentas/subcuentas: capital aportado real (desde historial) y valor actual
+// ?byPrimaryAccount=1 atribuye cada inversión 100% a su cuenta principal (inv.account/subAccount), útil si las allocations están mal
+router.get("/accounts-summary", async (req, res) => {
+  try {
+    const byPrimaryAccount =
+      req.query.byPrimaryAccount === "1" ||
+      req.query.byPrimaryAccount === "true";
+    const accounts = await Account.find({ user: req.userId }).lean();
+    const subAccounts = await SubAccount.find({ user: req.userId }).lean();
+    const investments = await Investment.find({
+      user: req.userId,
+      account: { $exists: true, $ne: null },
+    })
+      .populate({ path: "allocations.account", select: "_id" })
+      .populate({ path: "allocations.subAccount", select: "_id" })
+      .lean();
+
+    const investmentIds = investments.map((inv) => inv._id);
+    const historyEntries = await InvestmentHistory.find({
+      user: req.userId,
+      investment: { $in: investmentIds },
+      operation: { $in: ["creation", "add", "sell", "withdraw"] },
+    }).lean();
+
+    const netContributedByInvestment = new Map();
+    investmentIds.forEach((id) =>
+      netContributedByInvestment.set(id.toString(), 0),
+    );
+    historyEntries.forEach((entry) => {
+      const invId = (
+        entry.investment && entry.investment._id
+          ? entry.investment._id
+          : entry.investment
+      ).toString();
+      const amount = getSignedOperationAmount(entry);
+      netContributedByInvestment.set(
+        invId,
+        (netContributedByInvestment.get(invId) || 0) + amount,
+      );
+    });
+
+    const keyFn = (accountId, subAccountId) =>
+      `${accountId || ""}-${subAccountId || "none"}`;
+    const contributedByKey = new Map();
+    const valueByKey = new Map();
+
+    investments.forEach((inv) => {
+      const netContributed =
+        netContributedByInvestment.get(inv._id.toString()) || 0;
+      const currentValue = inv.isAutomatedPortfolio
+        ? inv.currentPrice || 0
+        : (inv.quantity || 0) * (inv.currentPrice || 0);
+
+      if (byPrimaryAccount) {
+        const accId = inv.account ? String(inv.account._id || inv.account) : "";
+        const subId = inv.subAccount
+          ? String(inv.subAccount._id || inv.subAccount)
+          : null;
+        const k = keyFn(accId, subId);
+        contributedByKey.set(
+          k,
+          (contributedByKey.get(k) || 0) + netContributed,
+        );
+        valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
+        return;
+      }
+
+      const allocations = Array.isArray(inv.allocations) ? inv.allocations : [];
+      const totalAmount = allocations.reduce(
+        (sum, a) => sum + (Number(a.amount) || 0),
+        0,
+      );
+      const shareDenom = totalAmount > 0 ? totalAmount : 1;
+
+      if (totalAmount === 0 && allocations.length > 0) {
+        const first = allocations[0];
+        const accId =
+          (
+            first.account &&
+            (first.account._id || first.account)
+          )?.toString?.() ||
+          first.account?.toString?.() ||
+          "";
+        const subId = first.subAccount
+          ? (first.subAccount._id || first.subAccount)?.toString?.() ||
+            first.subAccount?.toString?.() ||
+            ""
+          : null;
+        const k = keyFn(accId, subId);
+        contributedByKey.set(
+          k,
+          (contributedByKey.get(k) || 0) + netContributed,
+        );
+        valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
+      }
+
+      allocations.forEach((alloc) => {
+        const accId =
+          (
+            alloc.account &&
+            (alloc.account._id || alloc.account)
+          )?.toString?.() ||
+          alloc.account?.toString?.() ||
+          "";
+        const subId = alloc.subAccount
+          ? (alloc.subAccount._id || alloc.subAccount)?.toString?.() ||
+            alloc.subAccount?.toString?.() ||
+            ""
+          : null;
+        const k = keyFn(accId, subId);
+        const share = (Number(alloc.amount) || 0) / shareDenom;
+        contributedByKey.set(
+          k,
+          (contributedByKey.get(k) || 0) + netContributed * share,
+        );
+        valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue * share);
+      });
+
+      if (allocations.length === 0) {
+        const accId =
+          (inv.account && (inv.account._id || inv.account))?.toString?.() ||
+          inv.account?.toString?.() ||
+          "";
+        const subId = inv.subAccount
+          ? (inv.subAccount._id || inv.subAccount)?.toString?.() ||
+            inv.subAccount?.toString?.() ||
+            ""
+          : null;
+        const k = keyFn(accId, subId);
+        contributedByKey.set(
+          k,
+          (contributedByKey.get(k) || 0) + netContributed,
+        );
+        valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
+      }
+    });
+
+    const result = accounts.map((account) => {
+      const accountId = String(account._id);
+      const subs = subAccounts.filter((s) => {
+        const sAcc = s.account && (s.account._id || s.account);
+        return sAcc && String(sAcc) === accountId;
+      });
+      const subAccountsList = subs.map((sub) => {
+        const subId = sub._id.toString();
+        const k = keyFn(accountId, subId);
+        const investmentsValue = valueByKey.get(k) || 0;
+        const contributedCapital = contributedByKey.get(k) || 0;
+        return {
+          _id: sub._id,
+          name: sub.name,
+          type: sub.type,
+          balance: sub.balance ?? 0,
+          investmentsValue: Number(investmentsValue.toFixed(2)),
+          contributedCapital: Number(contributedCapital.toFixed(2)),
+        };
+      });
+      const directKey = keyFn(accountId, null);
+      const directInvestmentsValue = valueByKey.get(directKey) || 0;
+      const directContributedCapital = contributedByKey.get(directKey) || 0;
+      return {
+        _id: account._id,
+        name: account.name,
+        bankName: account.bankName,
+        color: account.color,
+        subAccounts: subAccountsList,
+        directInvestmentsValue: Number(directInvestmentsValue.toFixed(2)),
+        directContributedCapital: Number(directContributedCapital.toFixed(2)),
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("[dashboard/accounts-summary] Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET rendimiento anualizado (CAGR) y comparación con S&P 500
 router.get("/performance", async (req, res) => {
   try {
+    // Nueva lógica unificada basada en DailyVariation
+    const perfInvestments = await Investment.find({
+      user: req.userId,
+      account: { $exists: true, $ne: null },
+    });
+
+    if (perfInvestments.length === 0) {
+      return res.json({
+        annualizedReturn: null,
+        totalReturn: null,
+        sp500Comparison: null,
+        period: null,
+        message: "No hay inversiones para calcular el rendimiento",
+      });
+    }
+
+    const perfInvestmentIds = perfInvestments.map((inv) => inv._id);
+    const perfToday = new Date();
+    perfToday.setHours(0, 0, 0, 0);
+
+    let perfCurrentValue = 0;
+    let perfInvestedCapital = 0;
+    perfInvestments.forEach((inv) => {
+      perfCurrentValue += inv.isAutomatedPortfolio
+        ? inv.currentPrice || 0
+        : (inv.quantity || 0) * (inv.currentPrice || 0);
+      if (inv.isAutomatedPortfolio) {
+        perfInvestedCapital += inv.quantity || 0;
+      } else {
+        const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
+        perfInvestedCapital += (inv.quantity || 0) * avgPrice;
+      }
+    });
+
+    const perfDailyReturnData = await getPortfolioDailyReturn(
+      req.userId,
+      perfInvestments,
+      perfToday,
+    );
+
+    const perfMonthStart = new Date(
+      perfToday.getFullYear(),
+      perfToday.getMonth(),
+      1,
+    );
+    perfMonthStart.setHours(0, 0, 0, 0);
+    const perfQuarter = Math.floor(perfToday.getMonth() / 3);
+    const perfQuarterStart = new Date(
+      perfToday.getFullYear(),
+      perfQuarter * 3,
+      1,
+    );
+    perfQuarterStart.setHours(0, 0, 0, 0);
+    const perfYearStart = new Date(perfToday.getFullYear(), 0, 1);
+    perfYearStart.setHours(0, 0, 0, 0);
+
+    const perfMonthlyData = await getPortfolioPeriodReturn(
+      req.userId,
+      perfInvestmentIds,
+      perfMonthStart,
+      perfToday,
+    );
+    const perfQuarterlyData = await getPortfolioPeriodReturn(
+      req.userId,
+      perfInvestmentIds,
+      perfQuarterStart,
+      perfToday,
+    );
+    const perfAnnualData = await getPortfolioPeriodReturn(
+      req.userId,
+      perfInvestmentIds,
+      perfYearStart,
+      perfToday,
+    );
+    const perfAccumulatedData = await getPortfolioAccumulatedReturn(
+      req.userId,
+      perfInvestmentIds,
+    );
+
+    const perfStartDate = perfAccumulatedData.startDate || perfToday;
+    const perfEndDate = perfToday;
+    const perfYears =
+      (perfEndDate - perfStartDate) / (1000 * 60 * 60 * 24 * 365);
+
+    // Flujos de capital desde el inicio (todas las operaciones), no solo desde primera DailyVariation
+    const perfCapitalFlows = await getCapitalFlowsForPeriod(
+      req.userId,
+      perfInvestmentIds,
+      new Date(0),
+      perfEndDate,
+    );
+
+    const perfTotalContributedCapital = perfCapitalFlows.contributed;
+    const perfTotalWithdrawnCapital = perfCapitalFlows.withdrawn;
+    const perfNetInvestedCapital = perfCapitalFlows.net;
+
+    // Usar capital neto real (flujos de historial) cuando exista; si no, quantity*precio
+    const hasRealCapitalFlows =
+      perfTotalContributedCapital > 0 || perfTotalWithdrawnCapital > 0;
+    const effectiveInvestedCapital = hasRealCapitalFlows
+      ? perfNetInvestedCapital
+      : perfInvestedCapital;
+
+    const perfAccumulatedReturn = perfCurrentValue - effectiveInvestedCapital;
+    const perfTotalReturn = perfAccumulatedReturn;
+    const perfAccumulatedReturnPercent =
+      effectiveInvestedCapital > 0
+        ? (perfAccumulatedReturn / effectiveInvestedCapital) * 100
+        : 0;
+    const perfTotalReturnPercent = perfAccumulatedReturnPercent;
+
+    const perfAnnualReturn = perfAnnualData.totalChange;
+    const perfAnnualReturnPercent = perfAnnualData.percent;
+    const perfQuarterlyReturn = perfQuarterlyData.totalChange;
+    const perfQuarterlyReturnPercent = perfQuarterlyData.percent;
+    const perfMonthlyReturn = perfMonthlyData.totalChange;
+    const perfMonthlyReturnPercent = perfMonthlyData.percent;
+
+    const perfDailyReturn = perfDailyReturnData.totalChange;
+    const perfDailyReturnPercent = perfDailyReturnData.percent;
+
+    const perfInitialValue = effectiveInvestedCapital || 0;
+    const perfInitialCapital = effectiveInvestedCapital || 0;
+
+    let perfAnnualizedReturn = null;
+    if (perfInitialValue > 0 && perfYears > 0) {
+      perfAnnualizedReturn =
+        (Math.pow(1 + perfAccumulatedReturnPercent / 100, 1 / perfYears) - 1) *
+        100;
+    }
+
+    const perfSp500HistoricalReturn = 10.5;
+    const perfSp500ProjectedReturn =
+      perfYears > 0
+        ? (Math.pow(1 + perfSp500HistoricalReturn / 100, perfYears) - 1) * 100
+        : 0;
+
+    let perfSp500Comparison = {
+      historicalAnnualReturn: perfSp500HistoricalReturn,
+      projectedReturn: parseFloat(perfSp500ProjectedReturn.toFixed(2)),
+      outperformance:
+        perfAnnualizedReturn !== null
+          ? parseFloat(
+              (perfAnnualizedReturn - perfSp500HistoricalReturn).toFixed(2),
+            )
+          : null,
+      outperformancePercent:
+        perfAnnualizedReturn !== null && perfSp500HistoricalReturn !== 0
+          ? parseFloat(
+              (
+                (perfAnnualizedReturn / perfSp500HistoricalReturn - 1) *
+                100
+              ).toFixed(2),
+            )
+          : null,
+    };
+
+    try {
+      const yahooFinance = new YahooFinance();
+      try {
+        const sp500Quote = await yahooFinance.quote("^GSPC");
+        if (sp500Quote && sp500Quote.regularMarketPrice) {
+          perfSp500Comparison.currentPrice = sp500Quote.regularMarketPrice;
+        }
+      } catch (gspcError) {
+        try {
+          const spyQuote = await yahooFinance.quote("SPY");
+          if (spyQuote && spyQuote.regularMarketPrice) {
+            perfSp500Comparison.currentPrice = spyQuote.regularMarketPrice;
+          }
+        } catch (spyError) {
+          // ignore
+        }
+      }
+    } catch (sp500Error) {
+      // ignore
+    }
+
+    return res.json({
+      annualizedReturn: perfAnnualizedReturn,
+      totalReturn: perfTotalReturn,
+      totalReturnPercent: parseFloat(perfTotalReturnPercent.toFixed(2)),
+      accumulatedReturn: parseFloat(perfAccumulatedReturn.toFixed(2)),
+      accumulatedReturnPercent: parseFloat(
+        perfAccumulatedReturnPercent.toFixed(2),
+      ),
+      accumulatedReturnCapital: parseFloat(perfAccumulatedReturn.toFixed(2)),
+      accumulatedReturnCapitalPercent: parseFloat(
+        perfAccumulatedReturnPercent.toFixed(2),
+      ),
+      accumulatedReturnVariations: parseFloat(perfAccumulatedReturn.toFixed(2)),
+      accumulatedReturnVariationsPercent: parseFloat(
+        perfAccumulatedReturnPercent.toFixed(2),
+      ),
+      accumulatedReturnSource: "daily",
+      accumulatedReturnDiff: 0,
+      accumulatedReturnThreshold: 0,
+      accumulatedReturnThresholdValue: 0,
+      accumulatedReturnThresholdReturn: 0,
+      totalContributedCapital: parseFloat(
+        perfTotalContributedCapital.toFixed(2),
+      ),
+      totalWithdrawnCapital: parseFloat(perfTotalWithdrawnCapital.toFixed(2)),
+      netInvestedCapital: parseFloat(perfNetInvestedCapital.toFixed(2)),
+      actualYearStartValue: parseFloat(perfAnnualData.startValue.toFixed(2)),
+      netInvestedBeforeYear: parseFloat(perfNetInvestedCapital.toFixed(2)),
+      returnBeforeYear: 0,
+      accumulatedReturnCheck: parseFloat(perfAccumulatedReturn.toFixed(2)),
+      accumulatedReturnCheckDiff: 0,
+      annualReturn: parseFloat(perfAnnualReturn.toFixed(2)),
+      annualReturnPercent: parseFloat(perfAnnualReturnPercent.toFixed(2)),
+      annualReturnCapital: parseFloat(perfAnnualReturn.toFixed(2)),
+      dailyReturn: parseFloat(perfDailyReturn.toFixed(2)),
+      dailyReturnPercent: parseFloat(perfDailyReturnPercent.toFixed(2)),
+      quarterlyReturn: parseFloat(perfQuarterlyReturn.toFixed(2)),
+      quarterlyReturnPercent: parseFloat(perfQuarterlyReturnPercent.toFixed(2)),
+      monthlyReturn: parseFloat(perfMonthlyReturn.toFixed(2)),
+      monthlyReturnPercent: parseFloat(perfMonthlyReturnPercent.toFixed(2)),
+      initialValue: parseFloat(perfInitialValue.toFixed(2)),
+      initialCapital: parseFloat(perfInitialCapital.toFixed(2)),
+      additionalCapital: parseFloat(perfTotalContributedCapital.toFixed(2)),
+      currentValue: parseFloat(perfCurrentValue.toFixed(2)),
+      yearStartValue: parseFloat(perfAnnualData.startValue.toFixed(2)),
+      startDate: perfStartDate.toISOString(),
+      endDate: perfEndDate.toISOString(),
+      years: parseFloat(perfYears.toFixed(2)),
+      sp500Comparison: perfSp500Comparison,
+    });
+
     // Obtener todas las inversiones del usuario
     const allInvestments = await Investment.find({
       user: req.userId,

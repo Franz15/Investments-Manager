@@ -57,6 +57,7 @@ const Accounts = () => {
   const [subAccounts, setSubAccounts] = useState([]);
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [accountsSummary, setAccountsSummary] = useState(null); // capital aportado real por cuenta/subcuenta desde backend
   const [dailyVariations, setDailyVariations] = useState({}); // { investmentId: { changeAmount, changePercent } }
   const [loading, setLoading] = useState(true);
   const [expandedAccounts, setExpandedAccounts] = useState(new Set());
@@ -109,17 +110,26 @@ const Accounts = () => {
 
   const fetchData = async () => {
     try {
-      const [accountsRes, subAccountsRes, investmentsRes, transactionsRes] =
-        await Promise.all([
-          api.get("/accounts"),
-          api.get("/subaccounts"),
-          api.get("/investments"),
-          api.get("/transactions"),
-        ]);
+      const [
+        accountsRes,
+        subAccountsRes,
+        investmentsRes,
+        transactionsRes,
+        summaryRes,
+      ] = await Promise.all([
+        api.get("/accounts"),
+        api.get("/subaccounts"),
+        api.get("/investments"),
+        api.get("/transactions"),
+        api
+          .get("/dashboard/accounts-summary?byPrimaryAccount=1")
+          .catch(() => ({ data: null })),
+      ]);
       setAccounts(accountsRes.data);
       setSubAccounts(subAccountsRes.data);
       setInvestments(investmentsRes.data);
       setTransactions(transactionsRes.data);
+      setAccountsSummary(summaryRes?.data ?? null);
 
       // Obtener variaciones diarias de todas las inversiones
       const variationsMap = {};
@@ -425,11 +435,13 @@ const Accounts = () => {
   };
 
   const calculateSubAccountTotalValue = (subAccount) => {
-    if (subAccount.type !== "investment") {
-      return subAccount.balance;
-    }
-
-    // Para subcuentas de inversión, sumar el balance + valor de las inversiones
+    const subEntry = getSubAccountFromSummary(subAccount._id);
+    if (subEntry)
+      return (
+        (Number(subEntry.balance) || 0) +
+        (Number(subEntry.investmentsValue) || 0)
+      );
+    if (subAccount.type !== "investment") return subAccount.balance ?? 0;
     const subAccountInvestments = getInvestmentsForSubAccount(subAccount._id);
     const investmentsValue = subAccountInvestments.reduce((sum, inv) => {
       const metrics = getAllocationMetrics(
@@ -439,8 +451,7 @@ const Accounts = () => {
       );
       return sum + metrics.currentValue;
     }, 0);
-
-    return investmentsValue;
+    return (subAccount.balance || 0) + investmentsValue;
   };
 
   const getSubAccountsForAccount = (accountId) => {
@@ -456,14 +467,39 @@ const Accounts = () => {
     });
   };
 
+  const toId = (v) => (v == null ? "" : String(v._id ?? v));
+
+  const getAccountSummaryEntry = (accountId) => {
+    if (!accountsSummary || accountId == null) return null;
+    const id = toId(accountId);
+    return accountsSummary.find((a) => toId(a._id) === id) ?? null;
+  };
+
+  const getSubAccountFromSummary = (subAccountId) => {
+    if (!accountsSummary || subAccountId == null) return null;
+    const id = toId(subAccountId);
+    for (const acc of accountsSummary) {
+      const sub = (acc.subAccounts || []).find((s) => toId(s._id) === id);
+      if (sub) return sub;
+    }
+    return null;
+  };
+
   const calculateTotalBalance = (accountId) => {
+    const entry = getAccountSummaryEntry(accountId);
+    if (entry) {
+      const subsTotal = (entry.subAccounts || []).reduce(
+        (s, sub) =>
+          s + (Number(sub.balance) || 0) + (Number(sub.investmentsValue) || 0),
+        0,
+      );
+      return subsTotal + (Number(entry.directInvestmentsValue) || 0);
+    }
     const subs = getSubAccountsForAccount(accountId);
     const subsBalance = subs.reduce(
       (sum, sub) => sum + calculateSubAccountTotalValue(sub),
       0,
     );
-
-    // Agregar inversiones directamente asociadas a la cuenta (sin subcuenta)
     const accountInvestments = getInvestmentsForAccount(accountId);
     const investmentsValue = accountInvestments.reduce((sum, inv) => {
       const metrics = getAllocationMetrics(
@@ -474,18 +510,21 @@ const Accounts = () => {
       );
       return sum + metrics.currentValue;
     }, 0);
-
     return subsBalance + investmentsValue;
   };
 
-  // Calcular capital invertido total de una cuenta (inversiones directas + inversiones en subcuentas)
   const calculateAccountInvestedCapital = (accountId) => {
+    const entry = getAccountSummaryEntry(accountId);
+    if (entry) {
+      const subsTotal = (entry.subAccounts || []).reduce(
+        (s, sub) => s + (Number(sub.contributedCapital) || 0),
+        0,
+      );
+      return subsTotal + (Number(entry.directContributedCapital) || 0);
+    }
     const accountInvestments = getInvestmentsForAccount(accountId);
     const subs = getSubAccountsForAccount(accountId);
-
     let totalInvestedCapital = 0;
-
-    // Sumar capital invertido de inversiones directas
     accountInvestments.forEach((inv) => {
       const metrics = getAllocationMetrics(
         inv,
@@ -495,23 +534,24 @@ const Accounts = () => {
       );
       totalInvestedCapital += metrics.investedCapital;
     });
-
-    // Sumar capital invertido de inversiones en subcuentas
     subs.forEach((sub) => {
       totalInvestedCapital += calculateSubAccountInvestedCapital(sub._id);
     });
-
     return totalInvestedCapital;
   };
 
-  // Calcular valor actual total de inversiones de una cuenta
   const calculateAccountInvestmentsValue = (accountId) => {
+    const entry = getAccountSummaryEntry(accountId);
+    if (entry) {
+      const subsTotal = (entry.subAccounts || []).reduce(
+        (s, sub) => s + (Number(sub.investmentsValue) || 0),
+        0,
+      );
+      return subsTotal + (Number(entry.directInvestmentsValue) || 0);
+    }
     const accountInvestments = getInvestmentsForAccount(accountId);
     const subs = getSubAccountsForAccount(accountId);
-
     let totalValue = 0;
-
-    // Sumar valor actual de inversiones directas
     accountInvestments.forEach((inv) => {
       const metrics = getAllocationMetrics(
         inv,
@@ -581,10 +621,10 @@ const Accounts = () => {
     return totalChangeAmount;
   };
 
-  // Calcular capital invertido total de una subcuenta
   const calculateSubAccountInvestedCapital = (subAccountId) => {
+    const subEntry = getSubAccountFromSummary(subAccountId);
+    if (subEntry) return Number(subEntry.contributedCapital) || 0;
     const subAccountInvestments = getInvestmentsForSubAccount(subAccountId);
-
     let totalInvestedCapital = 0;
     subAccountInvestments.forEach((inv) => {
       const metrics = getAllocationMetrics(
@@ -594,7 +634,6 @@ const Accounts = () => {
       );
       totalInvestedCapital += metrics.investedCapital;
     });
-
     return totalInvestedCapital;
   };
 
