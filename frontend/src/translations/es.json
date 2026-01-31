@@ -81,6 +81,12 @@
     "updatingPrices": "Actualizando...",
     "updatePricesTooltip": "Actualizar precios desde APIs en tiempo real (también se actualizan automáticamente cada 5 minutos)",
     "automaticUpdate": "Actualización automática",
+    "automaticUpdateOn": "Auto-actualización activa",
+    "automaticUpdateOff": "Activar auto-actualización",
+    "automaticUpdateActivateAll": "Activar auto-actualización",
+    "automaticUpdateDeactivateAll": "Desactivar auto-actualización",
+    "automaticUpdateActivateAllTooltip": "Activar la actualización automática de precios en todas las inversiones (con símbolo o ISIN)",
+    "automaticUpdateDeactivateAllTooltip": "Desactivar la actualización automática de precios en todas las inversiones",
     "noInvestments": "No hay inversiones registradas",
     "investmentTypes": {
       "stock": "Acción",

@@ -272,6 +272,26 @@
       0 10px 15px -3px rgba(0, 0, 0, 0.3),
       0 4px 6px -4px rgba(0, 0, 0, 0.3);
   }
+
+  /* Color de acento del perfil para auto-actualización */
+  .text-user-accent {
+    color: var(--user-color-600);
+  }
+  .hover\:text-user-accent:hover {
+    color: var(--user-color-700);
+  }
+  .border-user-accent {
+    border-color: var(--user-color-200);
+  }
+  .hover\:border-user-accent:hover {
+    border-color: var(--user-color-300);
+  }
+  .dark .border-user-accent {
+    border-color: var(--user-color-800);
+  }
+  .dark .hover\:border-user-accent:hover {
+    border-color: var(--user-color-700);
+  }
 }
 
 /* Estilos para tooltips de Recharts */
