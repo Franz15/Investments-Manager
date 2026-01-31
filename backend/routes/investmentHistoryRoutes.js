@@ -1,6 +1,7 @@
 import express from "express";
 import InvestmentHistory from "../models/InvestmentHistory.js";
 import Investment from "../models/Investment.js";
+import DailyVariation from "../models/DailyVariation.js";
 import Account from "../models/Account.js";
 import SubAccount from "../models/SubAccount.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
@@ -14,6 +15,11 @@ import {
   migrateExistingDailyVariations,
   calculateHistoricalVariations,
 } from "../services/historicalVariationService.js";
+import {
+  normalizeDay,
+  resolveOperationAmount,
+  getSignedOperationAmount,
+} from "../services/variationEngine.js";
 
 const router = express.Router();
 
@@ -31,25 +37,6 @@ async function calculateDailyChanges(
     date || new Date(),
   );
 }
-
-const resolveOperationAmount = (entry) => {
-  let amount = entry?.operationAmount;
-  if (!amount || amount === 0) {
-    if (entry?.operationPrice && entry?.quantity) {
-      amount = entry.operationPrice * entry.quantity;
-    } else if (entry?.operation === "creation" && entry?.totalValue) {
-      amount = entry.totalValue;
-    }
-  }
-  return amount || 0;
-};
-
-const getSignedOperationAmount = (operation, amount) => {
-  if (!["creation", "add", "withdraw"].includes(operation)) {
-    return 0;
-  }
-  return operation === "withdraw" ? -Math.abs(amount || 0) : amount || 0;
-};
 
 const getAllocationKey = (accountId, subAccountId) =>
   `${accountId?.toString?.() || accountId}-${subAccountId?.toString?.() || subAccountId || "none"}`;
@@ -228,8 +215,7 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       : investment.quantity * investment.currentPrice;
 
     // Verificar si hay variación para hoy
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = normalizeDay(new Date());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -239,71 +225,22 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       return vDate.getTime() === today.getTime();
     });
 
-    // Buscar el valor del día anterior (ayer) usando la misma lógica que saveDailyVariation
-    const DailyVariation = (await import("../models/DailyVariation.js"))
-      .default;
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
-
-    // Buscar específicamente el día anterior (ayer)
+    // Buscar el valor del día anterior usando DailyVariation
     let previousEntry = await DailyVariation.findOne({
       investment: investmentId,
       user: req.userId,
-      date: { $gte: yesterday, $lt: yesterdayEnd },
-    });
-
-    // Si no hay variación para ayer, intentar calcularla desde Yahoo Finance
-    if (
-      !previousEntry &&
-      investment.symbol &&
-      !investment.isAutomatedPortfolio
-    ) {
-      try {
-        const { getHistoricalPrices } =
-          await import("../services/historicalVariationService.js");
-        const yesterdayPrices = await getHistoricalPrices(
-          investment.symbol,
-          yesterday,
-          yesterday,
-        );
-
-        if (yesterdayPrices.length > 0 && yesterdayPrices[0].close) {
-          const yesterdayPrice = yesterdayPrices[0].close;
-          const yesterdayTotalValue = investment.quantity * yesterdayPrice;
-
-          // Usar el valor calculado de ayer
-          previousEntry = {
-            totalValue: yesterdayTotalValue,
-            date: yesterday,
-          };
-        }
-      } catch (error) {
-        // Si falla, buscar el más reciente anterior a hoy
-      }
-    }
-
-    // Si aún no hay, buscar el más reciente anterior a hoy
-    if (!previousEntry) {
-      previousEntry = await DailyVariation.findOne({
-        investment: investmentId,
-        user: req.userId,
-        date: { $lt: today },
-      })
-        .sort({ date: -1 })
-        .limit(1);
-    }
+      date: { $lt: today },
+    })
+      .sort({ date: -1 })
+      .limit(1);
 
     // Si no hay en DailyVariation, buscar en InvestmentHistory como fallback
     if (!previousEntry) {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
       const historyEntry = await InvestmentHistory.findOne({
         investment: investmentId,
         user: req.userId,
         date: { $lt: today },
+        totalValue: { $exists: true, $ne: null },
       })
         .sort({ date: -1 })
         .limit(1);
@@ -311,45 +248,44 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       if (historyEntry && historyEntry.totalValue) {
         previousEntry = {
           totalValue: historyEntry.totalValue,
+          date: historyEntry.date,
         };
       }
     }
 
-    // Verificar si hay operaciones (add/sell) hoy que puedan afectar el cálculo
-    const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-      .default;
+    // Verificar operaciones de capital hoy
     const todayOperations = await InvestmentHistory.find({
       investment: investmentId,
       user: req.userId,
       date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ["creation", "add", "sell", "withdraw"] },
     });
 
-    // Calcular el capital añadido/retirado hoy
     let capitalChangeToday = 0;
     for (const op of todayOperations) {
-      const amount = resolveOperationAmount(op);
-      if (op.operation === "creation" || op.operation === "add") {
-        capitalChangeToday += amount;
-      } else if (op.operation === "sell" || op.operation === "withdraw") {
-        capitalChangeToday -= amount;
-      }
+      capitalChangeToday += getSignedOperationAmount(op);
     }
 
-    // Calcular variación de hoy en tiempo real
-    // La variación debe ser el cambio de valor menos el capital añadido/retirado
     let todayChangeAmount = 0;
     let todayChangePercent = 0;
 
-    if (previousEntry && previousEntry.totalValue) {
-      // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
-      // Esto da la variación pura del precio, sin contar el capital añadido
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    let canComputeDailyChange = false;
+    if (previousEntry && previousEntry.totalValue && previousEntry.date) {
+      const prevDate = normalizeDay(previousEntry.date);
+      canComputeDailyChange = prevDate.getTime() === yesterday.getTime();
+    }
+
+    if (canComputeDailyChange) {
       const valueChange = currentTotalValue - previousEntry.totalValue;
       todayChangeAmount = valueChange - capitalChangeToday;
       todayChangePercent =
         previousEntry.totalValue !== 0
           ? (todayChangeAmount / previousEntry.totalValue) * 100
           : 0;
+    } else {
+      todayChangeAmount = 0;
+      todayChangePercent = 0;
     }
 
     // Si ya existe una variación para hoy, actualizarla con los valores en tiempo real
@@ -823,11 +759,14 @@ router.put("/:id", async (req, res) => {
 
     const nextOperation = historyEntry.operation;
     const nextAmount = resolveOperationAmount(historyEntry);
-    const previousSigned = getSignedOperationAmount(
-      previousOperation,
-      previousAmount,
-    );
-    const nextSigned = getSignedOperationAmount(nextOperation, nextAmount);
+    const previousSigned = getSignedOperationAmount({
+      operation: previousOperation,
+      operationAmount: previousAmount,
+    });
+    const nextSigned = getSignedOperationAmount({
+      operation: nextOperation,
+      operationAmount: nextAmount,
+    });
 
     if (previousSigned !== 0 || nextSigned !== 0) {
       ensureInvestmentAllocations(investment);
