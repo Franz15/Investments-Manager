@@ -1,6 +1,11 @@
 import DailyVariation from "../models/DailyVariation.js";
 import InvestmentHistory from "../models/InvestmentHistory.js";
 import Investment from "../models/Investment.js";
+import {
+  normalizeDay,
+  getSignedOperationAmount,
+  buildDailyVariationsFromHistory,
+} from "./variationEngine.js";
 
 /**
  * Calcula y guarda la variación diaria de una inversión
@@ -15,13 +20,6 @@ export async function saveDailyVariation(
     const today = normalizeDay(new Date());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Verificar si ya existe una entrada para hoy (puede ser una corrección manual)
-    const existingTodayEntry = await DailyVariation.findOne({
-      investment: investmentId,
-      user: userId,
-      date: { $gte: today, $lt: tomorrow },
-    });
 
     // Buscar el registro más reciente anterior a hoy
     // Primero intentamos en DailyVariation (más eficiente)
@@ -48,74 +46,45 @@ export async function saveDailyVariation(
       if (historyEntry && historyEntry.totalValue) {
         previousEntry = {
           totalValue: historyEntry.totalValue,
+          date: historyEntry.date,
         };
       }
     }
 
-    // Verificar si hay operaciones (add/sell/withdraw) hoy que puedan afectar el cálculo
+    // Verificar si hay operaciones de capital hoy
     const todayOperations = await InvestmentHistory.find({
       investment: investmentId,
       user: userId,
       date: { $gte: today, $lt: tomorrow },
-      operation: { $in: ["creation", "add", "sell", "withdraw"] },
     });
 
-    // Calcular el capital añadido/retirado hoy
     let capitalChangeToday = 0;
     for (const op of todayOperations) {
-      if (op.operation === "creation" || op.operation === "add") {
-        capitalChangeToday += getOperationAmount(op);
-      } else if (op.operation === "sell" || op.operation === "withdraw") {
-        capitalChangeToday -= Math.abs(getOperationAmount(op));
-      }
+      capitalChangeToday += getSignedOperationAmount(op);
     }
 
-    // Verificar si hay una operación 'update' hoy (corrección manual)
-    const todayUpdateOperations = await InvestmentHistory.find({
-      investment: investmentId,
-      user: userId,
-      date: { $gte: today, $lt: tomorrow },
-      operation: "update",
-    });
-
     // Calcular variación
-    // Si ya existe una entrada para hoy Y hay una operación 'update', es una corrección manual
-    // En ese caso, recalcular la variación basándose en el día anterior (ignorando valores previos del mismo día)
-    // Esto evita que las correcciones manuales se cuenten como pérdidas/ganancias
     let changeAmount = 0;
     let changePercent = 0;
 
-    if (
-      existingTodayEntry &&
-      todayUpdateOperations.length > 0 &&
-      previousEntry &&
-      previousEntry.totalValue
-    ) {
-      // Corrección manual: recalcular variación basándose en el día anterior
-      // Esto preserva la variación real del día, ignorando la diferencia de la corrección
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    let canComputeDailyChange = false;
+    if (previousEntry && previousEntry.totalValue && previousEntry.date) {
+      const prevDate = normalizeDay(previousEntry.date);
+      canComputeDailyChange = prevDate.getTime() === yesterday.getTime();
+    }
+
+    if (canComputeDailyChange) {
       const valueChange = currentTotalValue - previousEntry.totalValue;
       changeAmount = valueChange - capitalChangeToday;
       changePercent =
         previousEntry.totalValue !== 0
           ? (changeAmount / previousEntry.totalValue) * 100
           : 0;
-    } else if (previousEntry && previousEntry.totalValue) {
-      // Recalcular la variación con el valor más reciente para reflejar el precio actual
-      // Variación = (Valor actual - Capital añadido hoy) - Valor ayer
-      const valueChange = currentTotalValue - previousEntry.totalValue;
-      changeAmount = valueChange - capitalChangeToday;
-      changePercent =
-        previousEntry.totalValue !== 0
-          ? (changeAmount / previousEntry.totalValue) * 100
-          : 0;
-    } else if (
-      existingTodayEntry &&
-      existingTodayEntry.changeAmount !== null &&
-      existingTodayEntry.changeAmount !== undefined
-    ) {
-      // Si no hay entrada previa, preservar la variación original del día
-      changeAmount = existingTodayEntry.changeAmount;
-      changePercent = existingTodayEntry.changePercent;
+    } else {
+      changeAmount = 0;
+      changePercent = 0;
     }
 
     // Guardar o actualizar en DailyVariation
@@ -205,24 +174,6 @@ export async function getLatestDailyVariation(investmentId, userId) {
     return null;
   }
 }
-
-const normalizeDay = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const getOperationAmount = (entry) => {
-  let amount = entry.operationAmount;
-  if (!amount || amount === 0) {
-    if (entry.operationPrice && entry.quantity) {
-      amount = entry.operationPrice * entry.quantity;
-    } else if (entry.operation === "creation" && entry.totalValue) {
-      amount = entry.totalValue;
-    }
-  }
-  return amount || 0;
-};
 
 const upsertDailyHistoryEntry = async (
   investmentId,
@@ -316,35 +267,35 @@ export async function calculateDailyChangeFromHistory(
       investment: investmentId,
       user: userId,
       date: { $gte: dayStart, $lt: dayEnd },
-      operation: { $in: ["creation", "add", "sell", "withdraw"] },
     });
 
     let capitalChangeToday = 0;
     for (const op of dayOperations) {
-      if (op.operation === "creation" || op.operation === "add") {
-        capitalChangeToday += getOperationAmount(op);
-      } else if (op.operation === "sell" || op.operation === "withdraw") {
-        capitalChangeToday -= Math.abs(getOperationAmount(op));
-      }
+      capitalChangeToday += getSignedOperationAmount(op);
     }
 
     if (previousEntry && previousEntry.totalValue) {
-      const valueChange = totalValue - previousEntry.totalValue;
-      const changeAmount = valueChange - capitalChangeToday;
-      const changePercent =
-        previousEntry.totalValue !== 0
-          ? (changeAmount / previousEntry.totalValue) * 100
-          : 0;
+      const yesterday = new Date(dayStart);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const prevDate = normalizeDay(previousEntry.date);
+      if (prevDate.getTime() === yesterday.getTime()) {
+        const valueChange = totalValue - previousEntry.totalValue;
+        const changeAmount = valueChange - capitalChangeToday;
+        const changePercent =
+          previousEntry.totalValue !== 0
+            ? (changeAmount / previousEntry.totalValue) * 100
+            : 0;
 
-      return {
-        dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
-        dailyChangePercent: parseFloat(changePercent.toFixed(2)),
-      };
+        return {
+          dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
+          dailyChangePercent: parseFloat(changePercent.toFixed(2)),
+        };
+      }
     }
 
     return {
-      dailyChangeAmount: null,
-      dailyChangePercent: null,
+      dailyChangeAmount: 0,
+      dailyChangePercent: 0,
     };
   } catch (error) {
     return {
@@ -372,8 +323,11 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
     const historyEntries = await InvestmentHistory.find({
       investment: investmentId,
       user: userId,
-      totalValue: { $exists: true, $ne: null },
       date: { $gte: start },
+      $or: [
+        { totalValue: { $exists: true, $ne: null } },
+        { operation: { $in: ["creation", "add", "withdraw", "sell"] } },
+      ],
     }).sort({ date: 1 });
 
     if (historyEntries.length === 0) {
@@ -407,83 +361,13 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
       }
     }
 
-    const dayMap = new Map();
-    historyEntries.forEach((entry) => {
-      const day = normalizeDay(entry.date);
-      const key = day.getTime();
-      const existing = dayMap.get(key) || {
-        date: day,
-        totalValue: null,
-        capitalChange: 0,
-        lastEntryDate: null,
-        lastEntryStamp: null,
-        lastEntry: null,
-        lastUpdateStamp: null,
-        lastUpdateEntry: null,
-      };
-
-      const entryStamp =
-        entry.createdAt ||
-        entry.updatedAt ||
-        entry.date ||
-        entry._id?.getTimestamp?.() ||
-        null;
-      if (
-        !existing.lastEntryStamp ||
-        (entryStamp && entryStamp > existing.lastEntryStamp)
-      ) {
-        existing.lastEntry = entry;
-        existing.lastEntryDate = entry.date;
-        existing.lastEntryStamp = entryStamp || entry.date;
-      }
-      if (
-        entry.operation === "update" &&
-        (!existing.lastUpdateStamp ||
-          (entryStamp && entryStamp > existing.lastUpdateStamp))
-      ) {
-        existing.lastUpdateEntry = entry;
-        existing.lastUpdateStamp = entryStamp || entry.date;
-      }
-
-      if (entry.operation === "creation" || entry.operation === "add") {
-        existing.capitalChange += getOperationAmount(entry);
-      } else if (entry.operation === "sell" || entry.operation === "withdraw") {
-        existing.capitalChange -= Math.abs(getOperationAmount(entry));
-      }
-
-      dayMap.set(key, existing);
-    });
-
-    const days = Array.from(dayMap.values()).sort((a, b) => a.date - b.date);
-    days.forEach((day) => {
-      const preferredEntry = day.lastUpdateEntry || day.lastEntry;
-      if (
-        preferredEntry &&
-        preferredEntry.totalValue !== null &&
-        preferredEntry.totalValue !== undefined
-      ) {
-        day.totalValue = preferredEntry.totalValue;
-      }
-    });
+    const dailyVariations = buildDailyVariationsFromHistory(
+      historyEntries,
+      previousTotalValue,
+    );
 
     let updated = 0;
-    for (const day of days) {
-      let changeAmount = 0;
-      let changePercent = 0;
-
-      if (
-        previousTotalValue !== null &&
-        previousTotalValue !== undefined &&
-        previousTotalValue > 0
-      ) {
-        const valueChange = day.totalValue - previousTotalValue;
-        changeAmount = valueChange - day.capitalChange;
-        changePercent =
-          previousTotalValue !== 0
-            ? (changeAmount / previousTotalValue) * 100
-            : 0;
-      }
-
+    for (const day of dailyVariations) {
       const dayEnd = new Date(day.date);
       dayEnd.setDate(dayEnd.getDate() + 1);
 
@@ -498,8 +382,8 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
           user: userId,
           date: day.date,
           totalValue: day.totalValue,
-          changeAmount: parseFloat(changeAmount.toFixed(2)),
-          changePercent: parseFloat(changePercent.toFixed(2)),
+          changeAmount: parseFloat(day.changeAmount.toFixed(2)),
+          changePercent: parseFloat(day.changePercent.toFixed(2)),
         },
         { upsert: true, new: true },
       );
@@ -511,12 +395,11 @@ export async function recalculateDailyVariationsForInvestmentFromDate(
           date: { $gte: day.date, $lt: dayEnd },
         },
         {
-          dailyChangeAmount: parseFloat(changeAmount.toFixed(2)),
-          dailyChangePercent: parseFloat(changePercent.toFixed(2)),
+          dailyChangeAmount: parseFloat(day.changeAmount.toFixed(2)),
+          dailyChangePercent: parseFloat(day.changePercent.toFixed(2)),
         },
       );
 
-      previousTotalValue = day.totalValue;
       updated++;
     }
 

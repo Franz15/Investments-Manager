@@ -45,7 +45,7 @@ const investmentHistorySchema = new mongoose.Schema(
     },
     operation: {
       type: String,
-      enum: ["creation", "add", "withdraw", "update"],
+      enum: ["creation", "add", "withdraw", "sell", "update"],
       default: "update",
     },
     // Campos adicionales para operaciones específicas

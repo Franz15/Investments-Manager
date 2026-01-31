@@ -156,19 +156,19 @@ export async function calculateHistoricalVariations(
         return hDate.getTime() === dateKey;
       });
 
-      // Calcular el capital añadido/retirado en este día
+      // Calcular el capital añadido/retirado en este día y la cantidad resultante
+      // IMPORTANTE: En InvestmentHistory, entry.quantity es la cantidad TOTAL después de la operación
+      // (no el delta). creation/add guardan el total acumulado; sell/withdraw guardan el restante.
       let capitalChange = 0;
       for (const op of dayOperations) {
         if (op.operation === "creation" || op.operation === "add") {
-          currentQuantity += op.quantity || 0;
-          // El capital añadido es el operationAmount o quantity * operationPrice
+          currentQuantity = op.quantity ?? currentQuantity;
           capitalChange +=
-            op.operationAmount || op.quantity * (op.operationPrice || 0);
+            (op.operationAmount ?? op.quantity * (op.operationPrice || 0)) || 0;
         } else if (op.operation === "sell" || op.operation === "withdraw") {
-          currentQuantity -= op.quantity || 0;
-          // El capital retirado es negativo
+          currentQuantity = op.quantity ?? Math.max(0, currentQuantity);
           capitalChange -=
-            op.operationAmount || op.quantity * (op.operationPrice || 0);
+            (op.operationAmount ?? op.quantity * (op.operationPrice || 0)) || 0;
         }
       }
 
