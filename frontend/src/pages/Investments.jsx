@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   Plus,
+  X,
   TrendingUp,
   TrendingDown,
   Edit,
@@ -96,6 +97,7 @@ const Investments = () => {
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
   const [updatingPrices, setUpdatingPrices] = useState(false);
+  const [updatingAutoUpdateAll, setUpdatingAutoUpdateAll] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState(null);
   const [updateFormData, setUpdateFormData] = useState({
     currentPrice: 0,
@@ -579,6 +581,43 @@ const Investments = () => {
         error.message ||
         t("investments.modals.errors.deleteInvestment");
       alert(errorMessage);
+    }
+  };
+
+  const investmentsWithAutoUpdateSupport = investments.filter(
+    (inv) => (inv.symbol || inv.isin) && !inv.isAutomatedPortfolio,
+  );
+  const countAutoUpdateOn = investmentsWithAutoUpdateSupport.filter(
+    (inv) => inv.autoUpdate !== false,
+  ).length;
+
+  const allAutoUpdateOn =
+    investmentsWithAutoUpdateSupport.length > 0 &&
+    countAutoUpdateOn === investmentsWithAutoUpdateSupport.length;
+
+  const handleToggleAllAutoUpdate = async () => {
+    if (investmentsWithAutoUpdateSupport.length === 0) return;
+    const newValue = !allAutoUpdateOn;
+    setUpdatingAutoUpdateAll(true);
+    try {
+      await Promise.all(
+        investmentsWithAutoUpdateSupport.map((inv) =>
+          api.patch(`/investments/${inv._id}/auto-update`, {
+            autoUpdate: newValue,
+          }),
+        ),
+      );
+      setInvestments((prev) =>
+        prev.map((inv) => {
+          const supports =
+            (inv.symbol || inv.isin) && !inv.isAutomatedPortfolio;
+          return supports ? { ...inv, autoUpdate: newValue } : inv;
+        }),
+      );
+    } catch (error) {
+      alert(t("investments.modals.errors.updateAutoUpdate"));
+    } finally {
+      setUpdatingAutoUpdateAll(false);
     }
   };
 
@@ -1116,7 +1155,7 @@ const Investments = () => {
             {t("investments.subtitle")}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => handleUpdateAllPrices(false)}
             disabled={updatingPrices}
@@ -1130,6 +1169,31 @@ const Investments = () => {
               ? t("investments.updatingPrices")
               : t("investments.updatePrices")}
           </button>
+          {investmentsWithAutoUpdateSupport.length > 0 && (
+            <button
+              onClick={handleToggleAllAutoUpdate}
+              disabled={updatingAutoUpdateAll}
+              className={`btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed ${
+                allAutoUpdateOn
+                  ? "text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  : "text-user-accent hover:text-user-accent border-user-accent hover:border-user-accent"
+              }`}
+              title={
+                allAutoUpdateOn
+                  ? t("investments.automaticUpdateDeactivateAllTooltip")
+                  : t("investments.automaticUpdateActivateAllTooltip")
+              }
+            >
+              <RefreshCw
+                className={`h-5 w-5 mr-2 shrink-0 ${updatingAutoUpdateAll ? "animate-spin" : ""}`}
+              />
+              {updatingAutoUpdateAll
+                ? t("investments.updatingPrices")
+                : allAutoUpdateOn
+                  ? t("investments.automaticUpdateDeactivateAll")
+                  : t("investments.automaticUpdateActivateAll")}
+            </button>
+          )}
           <button
             onClick={() => {
               resetForm();
@@ -1150,13 +1214,16 @@ const Investments = () => {
           const totalValue = investment.isAutomatedPortfolio
             ? investment.currentPrice
             : investment.quantity * investment.currentPrice;
+          const hasAllocations =
+            Array.isArray(investment.allocations) &&
+            investment.allocations.length > 0;
+          const hasSingleAccount = investment.account || investment.subAccount;
 
           return (
             <div
               key={investment._id}
-              className="card cursor-pointer hover:shadow-lg transition-shadow flex flex-col h-[405px] p-6"
+              className="card cursor-pointer hover:shadow-lg transition-shadow flex flex-col"
               onClick={async (e) => {
-                // Evitar que se active cuando se hace clic en botones o inputs
                 if (
                   e.target.tagName === "BUTTON" ||
                   e.target.tagName === "INPUT" ||
@@ -1167,7 +1234,6 @@ const Investments = () => {
                 }
                 setDetailInvestment(investment);
                 setShowDetailModal(true);
-                // Cargar historial y variaciones diarias para las gráficas
                 try {
                   const [historyRes, variationsRes] = await Promise.all([
                     api.get(`/investment-history/investment/${investment._id}`),
@@ -1183,141 +1249,87 @@ const Investments = () => {
                 }
               }}
             >
-              <div className="flex items-start justify-between mb-3 flex-shrink-0">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">
-                      {investment.name}
-                    </h3>
-                    {investment.isAutomatedPortfolio && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                        {t("investments.investmentTypes.automatedPortfolio")}
+              {/* Cabecera: nombre + línea secundaria (símbolo · tipo · DCA) + badges */}
+              <div className="flex-shrink-0 mb-4">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg leading-tight">
+                  {investment.name}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    {(investment.symbol ||
+                      (investment.isin && !investment.symbol)) && (
+                      <span>
+                        {investment.symbol || `ISIN ${investment.isin}`}
                       </span>
                     )}
-                    {investment.dcaEnabled && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                        {t("investments.dca.enabled")}
+                    {(investment.symbol || investment.isin) && (
+                      <span className="text-gray-400 dark:text-gray-500">
+                        ·
                       </span>
                     )}
-                  </div>
-                  {investment.symbol && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {investment.symbol}
-                    </p>
-                  )}
-                  {investment.isin && !investment.symbol && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      ISIN: {investment.isin}
-                    </p>
-                  )}
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {getTypeLabel(
-                      investment.type,
-                      investment.isAutomatedPortfolio,
-                    )}
-                  </p>
-                  {investment.assetClass && (
-                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                      {investment.assetClass === "fixed_income" && (
-                        <>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                            {t("investments.assetClassLabels.fixedIncome")}
-                          </span>
-                          {getFixedIncomeSubtypeLabel(
-                            investment.fixedIncomeSubtype,
-                          ) && (
-                            <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
-                                investment.fixedIncomeSubtype,
-                              )}`}
-                            >
-                              {getFixedIncomeSubtypeLabel(
-                                investment.fixedIncomeSubtype,
-                              )}
-                            </span>
-                          )}
-                        </>
+                    <span>
+                      {getTypeLabel(
+                        investment.type,
+                        investment.isAutomatedPortfolio,
                       )}
-                      {investment.assetClass === "variable_income" && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                          {t("investments.assetClassLabels.variableIncome")}
-                        </span>
-                      )}
-                      {investment.assetClass === "mixed" && (
-                        <>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                            {t("investments.assetClassLabels.mixed")}
-                          </span>
-                          <span className="text-[10px] text-gray-600 dark:text-gray-400">
-                            {t("investments.assetClassLabels.fixedIncomeShort")}
-                            : {investment.fixedIncomePercentage || 0}% |{" "}
-                            {t(
-                              "investments.assetClassLabels.variableIncomeShort",
-                            )}
-                            : {investment.variableIncomePercentage || 0}%
-                          </span>
-                        </>
-                      )}
-                      {investment.isAlternative && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                          {t("investments.assetClassLabels.alternative")}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Checkbox para actualización automática y DCA */}
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-2 mb-2">
-                {/* Checkbox para actualización automática - solo si tiene símbolo o ISIN */}
-                {(investment.symbol || investment.isin) &&
-                  !investment.isAutomatedPortfolio && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`auto-update-${investment._id}`}
-                        checked={investment.autoUpdate !== false}
-                        onChange={async (e) => {
-                          const newValue = e.target.checked;
-                          try {
-                            await api.patch(
-                              `/investments/${investment._id}/auto-update`,
-                              {
-                                autoUpdate: newValue,
-                              },
-                            );
-                            // Actualizar el estado local
-                            setInvestments((prev) =>
-                              prev.map((inv) =>
-                                inv._id === investment._id
-                                  ? { ...inv, autoUpdate: newValue }
-                                  : inv,
-                              ),
-                            );
-                          } catch (error) {
-                            alert(
-                              t("investments.modals.errors.updateAutoUpdate"),
-                            );
-                            // Revertir el cambio en caso de error
-                            e.target.checked = !newValue;
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3 shrink-0 text-xs">
+                    {(investment.symbol || investment.isin) &&
+                      !investment.isAutomatedPortfolio && (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const newValue = investment.autoUpdate === false;
+                            try {
+                              await api.patch(
+                                `/investments/${investment._id}/auto-update`,
+                                { autoUpdate: newValue },
+                              );
+                              setInvestments((prev) =>
+                                prev.map((inv) =>
+                                  inv._id === investment._id
+                                    ? { ...inv, autoUpdate: newValue }
+                                    : inv,
+                                ),
+                              );
+                            } catch (error) {
+                              alert(
+                                t("investments.modals.errors.updateAutoUpdate"),
+                              );
+                            }
+                          }}
+                          className={`py-1 px-1 -my-1 -mx-1 rounded font-medium transition-colors text-left ${
+                            investment.autoUpdate !== false
+                              ? "text-user-accent hover:text-user-accent"
+                              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                          }`}
+                          title={
+                            investment.autoUpdate !== false
+                              ? t("investments.automaticUpdateOn") +
+                                " (clic para desactivar)"
+                              : t("investments.automaticUpdateOff") +
+                                " (clic para activar)"
                           }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                      />
-                      <label
-                        htmlFor={`auto-update-${investment._id}`}
-                        className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer"
-                      >
-                        {t("investments.automaticUpdate")}
-                      </label>
-                    </div>
-                  )}
-                {/* Información de DCA */}
-                {investment.dcaEnabled && (
-                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">
-                    <div className="flex items-center gap-1.5 justify-between">
-                      <div className="flex items-center gap-1.5 flex-1">
+                        >
+                          {investment.autoUpdate !== false
+                            ? t("investments.automaticUpdateOn")
+                            : t("investments.automaticUpdateOff")}
+                        </button>
+                      )}
+                    {(investment.symbol || investment.isin) &&
+                      !investment.isAutomatedPortfolio && (
+                        <span
+                          className="text-gray-300 dark:text-gray-600"
+                          aria-hidden
+                        >
+                          ·
+                        </span>
+                      )}
+                    {investment.dcaEnabled ? (
+                      <span className="flex items-center gap-1.5">
                         <span className="text-green-600 dark:text-green-400 font-medium">
                           DCA:
                         </span>
@@ -1329,118 +1341,213 @@ const Investments = () => {
                             maximumFractionDigits: 0,
                           }).format(investment.dcaAmount || 0)}
                         </span>
-                        <span className="text-gray-400 dark:text-gray-500">
-                          ·
-                        </span>
                         <span>
                           {t(
                             `investments.dca.frequencies.${investment.dcaFrequency}`,
                           )}
                         </span>
                         {investment.dcaNextDate && (
-                          <>
-                            <span className="text-gray-400 dark:text-gray-500">
-                              ·
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-500">
-                              {t("investments.dca.nextPurchase")}:{" "}
-                              {new Date(
-                                investment.dcaNextDate,
-                              ).toLocaleDateString("es-ES", {
-                                day: "2-digit",
-                                month: "2-digit",
-                              })}
-                            </span>
-                          </>
+                          <span className="text-gray-400 dark:text-gray-500">
+                            ·{" "}
+                            {new Date(
+                              investment.dcaNextDate,
+                            ).toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "2-digit",
+                            })}
+                          </span>
                         )}
-                      </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingDCAInvestment(investment);
+                            setDcaFormData({
+                              dcaEnabled: investment.dcaEnabled || false,
+                              dcaAmount: investment.dcaAmount || 0,
+                              dcaFrequency:
+                                investment.dcaFrequency || "monthly",
+                              dcaStartDate: investment.dcaStartDate
+                                ? new Date(investment.dcaStartDate)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : new Date().toISOString().split("T")[0],
+                              dcaEndDate: investment.dcaEndDate
+                                ? new Date(investment.dcaEndDate)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : "",
+                            });
+                            setShowDCAModal(true);
+                          }}
+                          className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
+                          title={t("investments.dca.edit")}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ) : (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingDCAInvestment(investment);
                           setDcaFormData({
-                            dcaEnabled: investment.dcaEnabled || false,
-                            dcaAmount: investment.dcaAmount || 0,
-                            dcaFrequency: investment.dcaFrequency || "monthly",
-                            dcaStartDate: investment.dcaStartDate
-                              ? new Date(investment.dcaStartDate)
-                                  .toISOString()
-                                  .split("T")[0]
-                              : new Date().toISOString().split("T")[0],
-                            dcaEndDate: investment.dcaEndDate
-                              ? new Date(investment.dcaEndDate)
-                                  .toISOString()
-                                  .split("T")[0]
-                              : "",
+                            dcaEnabled: false,
+                            dcaAmount: 0,
+                            dcaFrequency: "monthly",
+                            dcaStartDate: new Date()
+                              .toISOString()
+                              .split("T")[0],
+                            dcaEndDate: "",
                           });
                           setShowDCAModal(true);
                         }}
-                        className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                        title={t("investments.dca.edit")}
+                        className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1"
+                        title={t("investments.dca.activate")}
                       >
-                        <Edit className="h-3 w-3" />
+                        <Plus className="h-3 w-3 shrink-0" />
+                        {t("investments.dca.activate")}
                       </button>
-                    </div>
-                  </div>
-                )}
-                {/* Botón para activar DCA si no está activado */}
-                {!investment.dcaEnabled && (
-                  <div className="text-xs">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingDCAInvestment(investment);
-                        setDcaFormData({
-                          dcaEnabled: false,
-                          dcaAmount: 0,
-                          dcaFrequency: "monthly",
-                          dcaStartDate: new Date().toISOString().split("T")[0],
-                          dcaEndDate: "",
-                        });
-                        setShowDCAModal(true);
-                      }}
-                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium flex items-center gap-1 transition-colors"
-                      title={t("investments.dca.activate")}
-                    >
-                      <Plus className="h-3 w-3" />
-                      {t("investments.dca.activate")}
-                    </button>
-                  </div>
-                )}
+                    )}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {investment.isAutomatedPortfolio && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                      {t("investments.investmentTypes.automatedPortfolio")}
+                    </span>
+                  )}
+                  {investment.dcaEnabled && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                      {t("investments.dca.enabled")}
+                    </span>
+                  )}
+                  {investment.assetClass === "fixed_income" && (
+                    <>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                        {t("investments.assetClassLabels.fixedIncome")}
+                      </span>
+                      {getFixedIncomeSubtypeLabel(
+                        investment.fixedIncomeSubtype,
+                      ) && (
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                            investment.fixedIncomeSubtype,
+                          )}`}
+                        >
+                          {getFixedIncomeSubtypeLabel(
+                            investment.fixedIncomeSubtype,
+                          )}
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {investment.assetClass === "variable_income" && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                      {t("investments.assetClassLabels.variableIncome")}
+                    </span>
+                  )}
+                  {investment.assetClass === "mixed" && (
+                    <>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                        {t("investments.assetClassLabels.mixed")}
+                      </span>
+                      <span className="text-[10px] text-gray-600 dark:text-gray-400 self-center">
+                        {t("investments.assetClassLabels.fixedIncomeShort")}{" "}
+                        {investment.fixedIncomePercentage || 0}% ·{" "}
+                        {t("investments.assetClassLabels.variableIncomeShort")}{" "}
+                        {investment.variableIncomePercentage || 0}%
+                      </span>
+                    </>
+                  )}
+                  {investment.isAlternative && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                      {t("investments.assetClassLabels.alternative")}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-2 flex-1 min-h-0">
+              {/* Resumen destacado: valor total + P&L */}
+              <div className="flex justify-between items-baseline gap-3 mb-3 px-1">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                    {t("investments.cardLabels.totalValue")}
+                  </p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                    {new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: investment.currency,
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(totalValue)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                    {t("investments.cardLabels.profitLoss")}
+                  </p>
+                  <p
+                    className={`text-lg font-bold tabular-nums flex items-center justify-end gap-1 ${
+                      profitLoss >= 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {profitLoss >= 0 ? (
+                      <TrendingUp className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 shrink-0" />
+                    )}
+                    {new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: investment.currency,
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(profitLoss)}
+                    <span className="text-sm font-semibold opacity-90">
+                      ({profitLossPercent >= 0 ? "+" : ""}
+                      {profitLossPercent.toFixed(2)}%)
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Bloque datos financieros (detalle) */}
+              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-lg p-4 flex-shrink-0">
                 {investment.isAutomatedPortfolio ? (
                   <>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {t("investments.form.investedAmount")}:
-                      </span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: investment.currency,
-                        }).format(investment.quantity)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {t("investments.detail.currentValue")}:
-                      </span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {formatPrice(
-                          investment.currentPrice,
-                          investment.currency,
-                        )}
-                      </span>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {t("investments.form.investedAmount")}:
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                          {new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: investment.currency,
+                          }).format(investment.quantity)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {t("investments.detail.currentValue")}:
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                          {formatPrice(
+                            investment.currentPrice,
+                            investment.currency,
+                          )}
+                        </span>
+                      </div>
                     </div>
                     {investment.platformUrl && (
-                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <div className="mt-3">
                         <a
                           href={investment.platformUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {t("investments.actions.viewPlatform")} ↗
                         </a>
@@ -1448,21 +1555,21 @@ const Investments = () => {
                     )}
                   </>
                 ) : (
-                  <>
+                  <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600 dark:text-gray-400">
                         {t("investments.cardLabels.quantity")}:
                       </span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
                         {investment.quantity}
                       </span>
                     </div>
-                    {investment.averagePurchasePrice && (
+                    {investment.averagePurchasePrice != null && (
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-gray-600 dark:text-gray-400">
                           {t("investments.cardLabels.averagePurchasePrice")}:
                         </span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
                           {formatPrice(
                             investment.averagePurchasePrice,
                             investment.currency,
@@ -1471,71 +1578,120 @@ const Investments = () => {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600 dark:text-gray-400">
                         {t("investments.cardLabels.currentPrice")}:
                       </span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
                         {formatPrice(
                           investment.currentPrice,
                           investment.currency,
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {t("investments.cardLabels.totalValue")}:
-                      </span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: investment.currency,
-                        }).format(totalValue)}
-                      </span>
-                    </div>
-                  </>
+                  </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {t("investments.cardLabels.profitLoss")}:
-                  </span>
-                  <span
-                    className={`text-sm font-bold flex items-center ${
-                      profitLoss >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {profitLoss >= 0 ? (
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 mr-1" />
-                    )}
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: investment.currency,
-                    }).format(profitLoss)}
-                    <span className="ml-2">
-                      ({profitLossPercent.toFixed(2)}%)
-                    </span>
-                  </span>
-                </div>
               </div>
 
+              {/* Distribución por cuentas (multicuenta o cuenta única) */}
+              {(hasAllocations || hasSingleAccount) && (
+                <div className="mt-3 flex-shrink-0">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    {t("investments.detail.allocationsLabel")}
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    {hasAllocations ? (
+                      (() => {
+                        const totalAllocated = investment.allocations.reduce(
+                          (sum, a) => sum + (Number(a.amount) || 0),
+                          0,
+                        );
+                        return investment.allocations.map((allocation, idx) => {
+                          const accountName =
+                            allocation.account?.name ||
+                            allocation.account?.bankName ||
+                            "—";
+                          const subAccountName =
+                            allocation.subAccount?.name || "";
+                          const percentage =
+                            totalAllocated > 0
+                              ? ((allocation.amount || 0) / totalAllocated) *
+                                100
+                              : 0;
+                          const amountStr = new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: investment.currency || "EUR",
+                            maximumFractionDigits: 0,
+                            minimumFractionDigits: 0,
+                          }).format(allocation.amount || 0);
+                          return (
+                            <div
+                              key={`alloc-${investment._id}-${idx}`}
+                              className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300"
+                            >
+                              <span className="font-medium text-gray-900 dark:text-gray-100 truncate min-w-0 flex-1">
+                                {accountName}
+                                {subAccountName ? ` → ${subAccountName}` : ""}
+                              </span>
+                              <span className="shrink-0 text-gray-500 dark:text-gray-400 tabular-nums">
+                                {amountStr}
+                                {investment.allocations.length > 1 &&
+                                  totalAllocated > 0 && (
+                                    <span className="ml-1 text-xs">
+                                      ({percentage.toFixed(0)}%)
+                                    </span>
+                                  )}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()
+                    ) : (
+                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                        {investment.account && (
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {investment.account.name ||
+                              investment.account.bankName ||
+                              "—"}
+                          </span>
+                        )}
+                        {investment.subAccount && (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            → {investment.subAccount.name}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Acciones */}
               <div className="flex gap-1.5 mt-auto pt-4 flex-shrink-0 flex-wrap">
                 <button
-                  onClick={() => handleAddToInvestment(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToInvestment(investment);
+                  }}
                   className="px-2.5 py-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded-lg hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
                   title={t("investments.actions.addCapitalTooltip")}
                 >
                   <PlusCircle className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleSellInvestment(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSellInvestment(investment);
+                  }}
                   className="px-2.5 py-2 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
                   title={t("investments.actions.sellTooltip")}
                 >
                   <MinusCircle className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleUpdateValue(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUpdateValue(investment);
+                  }}
                   className={`flex-1 min-w-[100px] btn-secondary flex items-center justify-center text-xs px-2 ${investment.isAutomatedPortfolio ? "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50" : ""}`}
                   title={
                     investment.isAutomatedPortfolio
@@ -1551,21 +1707,30 @@ const Investments = () => {
                   </span>
                 </button>
                 <button
-                  onClick={() => handleViewHistory(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewHistory(investment);
+                  }}
                   className="px-2.5 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                   title={t("investments.actions.viewHistory")}
                 >
                   <History className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleEdit(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(investment);
+                  }}
                   className="px-2.5 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   title={t("investments.actions.edit")}
                 >
                   <Edit className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleDeleteClick(investment)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(investment);
+                  }}
                   className="px-2.5 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                   title={t("investments.actions.delete")}
                 >
@@ -5115,176 +5280,197 @@ const Investments = () => {
       {/* Modal de DCA */}
       {showDCAModal && editingDCAInvestment && (
         <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center p-4"
           onClick={() => setShowDCAModal(false)}
         >
           <div
-            className="modal-content max-w-md w-full"
+            className="modal-content max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  {dcaFormData.dcaEnabled
-                    ? t("investments.dca.edit")
-                    : t("investments.dca.activate")}
+                  {t("investments.dca.title")}
                 </h2>
-                <button
-                  onClick={() => setShowDCAModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <span className="text-2xl">&times;</span>
-                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  {editingDCAInvestment.name}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDCAModal(false);
+                  setEditingDCAInvestment(null);
+                }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors shrink-0"
+                aria-label={t("common.close")}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="dcaEnabledModal"
-                    checked={dcaFormData.dcaEnabled}
-                    onChange={(e) =>
-                      setDcaFormData({
-                        ...dcaFormData,
-                        dcaEnabled: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                  />
-                  <label
-                    htmlFor="dcaEnabledModal"
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-                  >
-                    {t("investments.dca.enable")}
-                  </label>
-                </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {t("investments.dca.description")}
+            </p>
 
-                {dcaFormData.dcaEnabled && (
-                  <div className="space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t("investments.dca.amountPerPeriod")}{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="input-field"
-                          value={dcaFormData.dcaAmount}
-                          onChange={(e) =>
-                            setDcaFormData({
-                              ...dcaFormData,
-                              dcaAmount: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          required={dcaFormData.dcaEnabled}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t("investments.dca.frequency")}{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          className="input-field"
-                          value={dcaFormData.dcaFrequency}
-                          onChange={(e) =>
-                            setDcaFormData({
-                              ...dcaFormData,
-                              dcaFrequency: e.target.value,
-                            })
-                          }
-                          required={dcaFormData.dcaEnabled}
-                        >
-                          <option value="daily">
-                            {t("investments.dca.frequencies.daily")}
-                          </option>
-                          <option value="weekly">
-                            {t("investments.dca.frequencies.weekly")}
-                          </option>
-                          <option value="biweekly">
-                            {t("investments.dca.frequencies.biweekly")}
-                          </option>
-                          <option value="monthly">
-                            {t("investments.dca.frequencies.monthly")}
-                          </option>
-                          <option value="quarterly">
-                            {t("investments.dca.frequencies.quarterly")}
-                          </option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t("investments.dca.startDate")}{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="input-field"
-                          value={dcaFormData.dcaStartDate}
-                          onChange={(e) =>
-                            setDcaFormData({
-                              ...dcaFormData,
-                              dcaStartDate: e.target.value,
-                            })
-                          }
-                          required={dcaFormData.dcaEnabled}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t("investments.dca.endDate")}{" "}
-                          <span className="text-gray-400">
-                            {t("investments.dca.optional")}
-                          </span>
-                        </label>
-                        <input
-                          type="date"
-                          className="input-field"
-                          value={dcaFormData.dcaEndDate}
-                          onChange={(e) =>
-                            setDcaFormData({
-                              ...dcaFormData,
-                              dcaEndDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t("investments.dca.description")}
-                    </p>
+            <label className="flex items-start gap-3 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                id="dcaEnabledModal"
+                checked={dcaFormData.dcaEnabled}
+                onChange={(e) =>
+                  setDcaFormData({
+                    ...dcaFormData,
+                    dcaEnabled: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 mt-0.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 shrink-0"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t("investments.dca.enable")}
+              </span>
+            </label>
+
+            {dcaFormData.dcaEnabled && (
+              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-lg p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="dcaAmountModal"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >
+                      {t("investments.dca.amountPerPeriod")}{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="dcaAmountModal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-field"
+                      value={dcaFormData.dcaAmount || ""}
+                      onChange={(e) =>
+                        setDcaFormData({
+                          ...dcaFormData,
+                          dcaAmount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      required={dcaFormData.dcaEnabled}
+                      placeholder="0,00"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label
+                      htmlFor="dcaFrequencyModal"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >
+                      {t("investments.dca.frequency")}{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="dcaFrequencyModal"
+                      className="input-field"
+                      value={dcaFormData.dcaFrequency}
+                      onChange={(e) =>
+                        setDcaFormData({
+                          ...dcaFormData,
+                          dcaFrequency: e.target.value,
+                        })
+                      }
+                      required={dcaFormData.dcaEnabled}
+                    >
+                      <option value="daily">
+                        {t("investments.dca.frequencies.daily")}
+                      </option>
+                      <option value="weekly">
+                        {t("investments.dca.frequencies.weekly")}
+                      </option>
+                      <option value="biweekly">
+                        {t("investments.dca.frequencies.biweekly")}
+                      </option>
+                      <option value="monthly">
+                        {t("investments.dca.frequencies.monthly")}
+                      </option>
+                      <option value="quarterly">
+                        {t("investments.dca.frequencies.quarterly")}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="dcaStartDateModal"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >
+                      {t("investments.dca.startDate")}{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="dcaStartDateModal"
+                      type="date"
+                      className="input-field"
+                      value={dcaFormData.dcaStartDate}
+                      onChange={(e) =>
+                        setDcaFormData({
+                          ...dcaFormData,
+                          dcaStartDate: e.target.value,
+                        })
+                      }
+                      required={dcaFormData.dcaEnabled}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="dcaEndDateModal"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >
+                      {t("investments.dca.endDate")}{" "}
+                      <span className="text-gray-400 font-normal">
+                        {t("investments.dca.optional")}
+                      </span>
+                    </label>
+                    <input
+                      id="dcaEndDateModal"
+                      type="date"
+                      className="input-field"
+                      value={dcaFormData.dcaEndDate}
+                      onChange={(e) =>
+                        setDcaFormData({
+                          ...dcaFormData,
+                          dcaEndDate: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
+            )}
 
-              <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    setShowDCAModal(false);
-                    setEditingDCAInvestment(null);
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  onClick={handleSaveDCA}
-                  className="flex-1 btn-primary"
-                  disabled={
-                    dcaFormData.dcaEnabled &&
-                    (!dcaFormData.dcaAmount ||
-                      !dcaFormData.dcaStartDate ||
-                      !dcaFormData.dcaFrequency)
-                  }
-                >
-                  {t("common.save")}
-                </button>
-              </div>
+            <div className="flex gap-3 pt-4 mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDCAModal(false);
+                  setEditingDCAInvestment(null);
+                }}
+                className="flex-1 btn-secondary"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDCA}
+                className="flex-1 btn-primary"
+                disabled={
+                  dcaFormData.dcaEnabled &&
+                  (!dcaFormData.dcaAmount ||
+                    !dcaFormData.dcaStartDate ||
+                    !dcaFormData.dcaFrequency)
+                }
+              >
+                {t("common.save")}
+              </button>
             </div>
           </div>
         </div>
