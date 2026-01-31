@@ -1,0 +1,3622 @@
+[
+  {
+    "_id": "69582f063a00161590de92d5",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-28T23:00:00.000Z",
+    "totalValue": 534.66
+  },
+  {
+    "_id": "69582f063a00161590de92d6",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-29T23:00:00.000Z",
+    "totalValue": 534.66
+  },
+  {
+    "_id": "69582f063a00161590de92d7",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 534.66
+  },
+  {
+    "_id": "69582f063a00161590de92d8",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 32.83,
+    "changePercent": 6.14,
+    "date": "2025-12-31T23:00:00.000Z",
+    "totalValue": 567.4900218844414
+  },
+  {
+    "_id": "69582f063a00161590de92d9",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": 91.79,
+    "changePercent": 17.17,
+    "date": "2026-01-01T23:00:00.000Z",
+    "totalValue": 626.45
+  },
+  {
+    "_id": "69582f063a00161590de92da",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-22T23:00:00.000Z",
+    "totalValue": 1999.99605
+  },
+  {
+    "_id": "69582f063a00161590de92db",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -10.57,
+    "changePercent": -0.53,
+    "date": "2025-12-23T23:00:00.000Z",
+    "totalValue": 1989.4275988174438
+  },
+  {
+    "_id": "69582f063a00161590de92dc",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-24T23:00:00.000Z",
+    "totalValue": 1989.4275988174438
+  },
+  {
+    "_id": "69582f063a00161590de92dd",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-25T23:00:00.000Z",
+    "totalValue": 1989.4275988174438
+  },
+  {
+    "_id": "69582f073a00161590de92de",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-26T23:00:00.000Z",
+    "totalValue": 1989.4275988174438
+  },
+  {
+    "_id": "69582f073a00161590de92df",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-27T23:00:00.000Z",
+    "totalValue": 1989.4275988174438
+  },
+  {
+    "_id": "69582f073a00161590de92e0",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -20.07,
+    "changePercent": -1,
+    "date": "2025-12-28T23:00:00.000Z",
+    "totalValue": 1979.9292
+  },
+  {
+    "_id": "69582f073a00161590de92e1",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 20.07,
+    "changePercent": 1.01,
+    "date": "2025-12-29T23:00:00.000Z",
+    "totalValue": 1999.99605
+  },
+  {
+    "_id": "69582f073a00161590de92e2",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 140.47,
+    "changePercent": 7.02,
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 2140.464
+  },
+  {
+    "_id": "69582f073a00161590de92e3",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -123.88,
+    "changePercent": -5.79,
+    "date": "2025-12-31T23:00:00.000Z",
+    "totalValue": 2016.5847194869996
+  },
+  {
+    "_id": "69582f073a00161590de92e4",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-01T23:00:00.000Z",
+    "totalValue": 2140.464
+  },
+  {
+    "_id": "69582feb3a00161590de92e5",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-22T23:00:00.000Z",
+    "totalValue": 2180.5
+  },
+  {
+    "_id": "69582feb3a00161590de92e6",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": -142.1,
+    "changePercent": -6.52,
+    "date": "2025-12-23T23:00:00.000Z",
+    "totalValue": 2038.4000420570374
+  },
+  {
+    "_id": "69582feb3a00161590de92e7",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-24T23:00:00.000Z",
+    "totalValue": 2038.4000420570374
+  },
+  {
+    "_id": "69582feb3a00161590de92e8",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-25T23:00:00.000Z",
+    "totalValue": 2038.4000420570374
+  },
+  {
+    "_id": "69582feb3a00161590de92e9",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-26T23:00:00.000Z",
+    "totalValue": 2038.4000420570374
+  },
+  {
+    "_id": "69582feb3a00161590de92ea",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-27T23:00:00.000Z",
+    "totalValue": 2038.4000420570374
+  },
+  {
+    "_id": "69582feb3a00161590de92eb",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 78.4,
+    "changePercent": 3.85,
+    "date": "2025-12-28T23:00:00.000Z",
+    "totalValue": 2116.8000549077988
+  },
+  {
+    "_id": "69582feb3a00161590de92ec",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-29T23:00:00.000Z",
+    "totalValue": 2180.5
+  },
+  {
+    "_id": "69582feb3a00161590de92ed",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 2180.5
+  },
+  {
+    "_id": "69582feb3a00161590de92ee",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 73.5,
+    "changePercent": 3.37,
+    "date": "2025-12-31T23:00:00.000Z",
+    "totalValue": 2254.0000408887863
+  },
+  {
+    "_id": "69582feb3a00161590de92ef",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 112.7,
+    "changePercent": 5.17,
+    "date": "2026-01-01T23:00:00.000Z",
+    "totalValue": 2293.2000000000003
+  },
+  {
+    "_id": "695964dd3a00161590de936f",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -2182.4,
+    "changePercent": -100,
+    "date": "2026-01-01T23:00:00.000Z",
+    "totalValue": 2276.574
+  },
+  {
+    "_id": "695964dd3a00161590de9370",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-02T23:00:00.000Z",
+    "totalValue": 2276.574
+  },
+  {
+    "_id": "6959aa533a00161590de93e0",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-03T23:00:00.000Z",
+    "totalValue": 2293.2000000000003
+  },
+  {
+    "_id": "6959aa543a00161590de93e2",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-03T23:00:00.000Z",
+    "totalValue": 626.45
+  },
+  {
+    "_id": "6959aa543a00161590de93e3",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-03T23:00:00.000Z",
+    "totalValue": 2140.464
+  },
+  {
+    "_id": "695af0fb3a00161590de94f8",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -13.08,
+    "changePercent": -0.57,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 2263.4939999999997
+  },
+  {
+    "_id": "695af0fb3a00161590de94f9",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": 0.3,
+    "changePercent": 0.72,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 41.304
+  },
+  {
+    "_id": "695af0fb3a00161590de94fa",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 20056.30896
+  },
+  {
+    "_id": "695af0fc3a00161590de94fb",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 24952.521
+  },
+  {
+    "_id": "695af0fc3a00161590de94fc",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.04,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 11086.1605602
+  },
+  {
+    "_id": "695af0fc3a00161590de94fe",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.01,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 11409.54597
+  },
+  {
+    "_id": "695af0fd3a00161590de94ff",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 14968.050148799999
+  },
+  {
+    "_id": "695af0fd3a00161590de9501",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 28663.9953
+  },
+  {
+    "_id": "695af0fd3a00161590de9502",
+    "investment": "69597b8c491e62875add4a01",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "695af0fd3a00161590de9503",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 367.94
+  },
+  {
+    "_id": "695c42753a00161590de96c3",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 2000.77
+  },
+  {
+    "_id": "695c42753a00161590de96c5",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 2293.2000000000003
+  },
+  {
+    "_id": "695c42763a00161590de96c7",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 626.45
+  },
+  {
+    "_id": "695c42763a00161590de96c8",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": -131.91,
+    "changePercent": -6.16,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 2008.5579059999998
+  },
+  {
+    "_id": "695c42763a00161590de96c9",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 457.374
+  },
+  {
+    "_id": "695c42763a00161590de96cb",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-05T23:00:00.000Z",
+    "totalValue": 695.9113279999999
+  },
+  {
+    "_id": "695e3e313a00161590de979e",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 33.04,
+    "changePercent": 1.65,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 2033.81
+  },
+  {
+    "_id": "695e3e313a00161590de979f",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 19.6,
+    "changePercent": 0.85,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 2312.7999999999997
+  },
+  {
+    "_id": "695e3e313a00161590de97a1",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 40.2,
+    "changePercent": 6.42,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 666.6500000000001
+  },
+  {
+    "_id": "695e3e323a00161590de97a3",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -111.3,
+    "changePercent": -5.2,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 2029.1598720000002
+  },
+  {
+    "_id": "695e3e323a00161590de97a4",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 1.43,
+    "changePercent": 0.31,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 458.8
+  },
+  {
+    "_id": "695e3e323a00161590de97a5",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 25.47,
+    "changePercent": 3.66,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 721.3845660000001
+  },
+  {
+    "_id": "695fc01f3a00161590de97f3",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 33.04,
+    "changePercent": 1.65,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 2033.81
+  },
+  {
+    "_id": "695fc01f3a00161590de97f5",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 19.6,
+    "changePercent": 0.85,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 2312.7999999999997
+  },
+  {
+    "_id": "695fc01f3a00161590de97f7",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": 40.2,
+    "changePercent": 6.42,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 666.6500000000001
+  },
+  {
+    "_id": "695fc0203a00161590de97f8",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 20.6,
+    "changePercent": 1.03,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 2029.1598720000002
+  },
+  {
+    "_id": "695fc0203a00161590de97f9",
+    "user": "javier",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "__v": 0,
+    "changeAmount": 1.43,
+    "changePercent": 0.31,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 458.8
+  },
+  {
+    "_id": "695fc0203a00161590de97fa",
+    "user": "javier",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "__v": 0,
+    "changeAmount": 25.47,
+    "changePercent": 3.66,
+    "date": "2026-01-07T23:00:00.000Z",
+    "totalValue": 721.3845660000001
+  },
+  {
+    "_id": "6961063c3a00161590de9867",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -7.46,
+    "changePercent": -0.37,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 2026.35
+  },
+  {
+    "_id": "6961063c3a00161590de9868",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -49,
+    "changePercent": -2.12,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 2263.8
+  },
+  {
+    "_id": "6961063d3a00161590de986a",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -21.44,
+    "changePercent": -3.22,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 645.2099999999999
+  },
+  {
+    "_id": "6961063d3a00161590de986b",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 16.05,
+    "changePercent": 0.79,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 2045.213352
+  },
+  {
+    "_id": "6961063d3a00161590de986c",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -1.61,
+    "changePercent": -0.35,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "6961063d3a00161590de986d",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 3.56,
+    "changePercent": 0.49,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 724.9401039999999
+  },
+  {
+    "_id": "696283113a00161590de98dd",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -7.46,
+    "changePercent": -0.37,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 2026.35
+  },
+  {
+    "_id": "696283113a00161590de98df",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -49,
+    "changePercent": -2.12,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 2263.8
+  },
+  {
+    "_id": "696283123a00161590de98e1",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -21.44,
+    "changePercent": -3.22,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 645.2099999999999
+  },
+  {
+    "_id": "696283123a00161590de98e2",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 16.05,
+    "changePercent": 0.79,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 2045.213352
+  },
+  {
+    "_id": "696283133a00161590de98e3",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -1.61,
+    "changePercent": -0.35,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "696283133a00161590de98e4",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 3.56,
+    "changePercent": 0.49,
+    "date": "2026-01-09T23:00:00.000Z",
+    "totalValue": 724.9401039999999
+  },
+  {
+    "_id": "69680245ba65e894a8f8a325",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 29.47,
+    "changePercent": 1.45,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 2055.82
+  },
+  {
+    "_id": "69680245ba65e894a8f8a326",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -53.9,
+    "changePercent": -2.38,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 2209.9
+  },
+  {
+    "_id": "69680246ba65e894a8f8a328",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -6.03,
+    "changePercent": -0.93,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 639.18
+  },
+  {
+    "_id": "69680246ba65e894a8f8a329",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": 43.34,
+    "changePercent": 2.12,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 2088.557748
+  },
+  {
+    "_id": "69680246ba65e894a8f8a32a",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 22.16,
+    "changePercent": 4.85,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 479.353
+  },
+  {
+    "_id": "69680246ba65e894a8f8a32b",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 13.54,
+    "changePercent": 1.87,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 738.480372
+  },
+  {
+    "_id": "6968216aba65e894a8f8a32e",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "__v": 0,
+    "changeAmount": -48.4,
+    "changePercent": -2.13,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 2228.178
+  },
+  {
+    "_id": "6968216aba65e894a8f8a32f",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": 0.95,
+    "changePercent": 2.32,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 41.96
+  },
+  {
+    "_id": "6968216aba65e894a8f8a330",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 34,
+    "changePercent": 0.17,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 20090.3057181
+  },
+  {
+    "_id": "6968216aba65e894a8f8a331",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 39.95,
+    "changePercent": 0.16,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 24992.472999999998
+  },
+  {
+    "_id": "6968216aba65e894a8f8a332",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 317.35,
+    "changePercent": 2.86,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 11403.5122212
+  },
+  {
+    "_id": "6968216aba65e894a8f8a334",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 56.44,
+    "changePercent": 0.49,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 11465.98216905
+  },
+  {
+    "_id": "6968216aba65e894a8f8a335",
+    "user": "ana",
+    "investment": "69597507253648d4cac887a3",
+    "__v": 0,
+    "changeAmount": 398.19,
+    "changePercent": 2.66,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 15366.24279099
+  },
+  {
+    "_id": "6968216bba65e894a8f8a337",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -53.14,
+    "changePercent": -0.19,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 28610.855099999997
+  },
+  {
+    "_id": "6968216bba65e894a8f8a338",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "6968216bba65e894a8f8a339",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 11.56,
+    "changePercent": 3.14,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "6968216bba65e894a8f8a33a",
+    "user": "ana",
+    "investment": "696145c0a39926bb0978c56a",
+    "__v": 0,
+    "changeAmount": 2.19,
+    "changePercent": 0.02,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 10669.176217700002
+  },
+  {
+    "_id": "6968216bba65e894a8f8a33c",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 10666.999995201
+  },
+  {
+    "_id": "6968216bba65e894a8f8a33d",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.59,
+    "changePercent": 0.03,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 5001.5648
+  },
+  {
+    "_id": "6968216cba65e894a8f8a33f",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.8,
+    "changePercent": 0.04,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 5001.800893023999
+  },
+  {
+    "_id": "6968216cba65e894a8f8a340",
+    "user": "ana",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 5007.327867671381
+  },
+  {
+    "_id": "6968216cba65e894a8f8a341",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 9999.992083
+  },
+  {
+    "_id": "6968216cba65e894a8f8a342",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 5999.988228
+  },
+  {
+    "_id": "6968216cba65e894a8f8a343",
+    "user": "ana",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T00:00:00.000Z",
+    "totalValue": 3998.0909749999996
+  },
+  {
+    "_id": "6968216cba65e894a8f8a344",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 2000.00070171672
+  },
+  {
+    "_id": "6968216cba65e894a8f8a345",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-13T23:00:00.000Z",
+    "totalValue": 2011.6334105999997
+  },
+  {
+    "_id": "696a086d9dee52b247dbb601",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -24.85,
+    "changePercent": -1.13,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2183.706
+  },
+  {
+    "_id": "696a086e9dee52b247dbb602",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.21,
+    "changePercent": -0.49,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 41.952
+  },
+  {
+    "_id": "696a086e9dee52b247dbb603",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 20090.3057181
+  },
+  {
+    "_id": "696a086e9dee52b247dbb604",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 24992.472999999998
+  },
+  {
+    "_id": "696a086e9dee52b247dbb605",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 11403.5122212
+  },
+  {
+    "_id": "696a086e9dee52b247dbb607",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 314.53,
+    "changePercent": 2.74,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 11780.5218246
+  },
+  {
+    "_id": "696a086f9dee52b247dbb608",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 522.82,
+    "changePercent": 3.4,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 15889.061840400002
+  },
+  {
+    "_id": "696a086f9dee52b247dbb60a",
+    "user": "ana",
+    "investment": "6959798c253648d4cac88c5c",
+    "__v": 0,
+    "changeAmount": 444.83,
+    "changePercent": 1.55,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 29055.690000000002
+  },
+  {
+    "_id": "696a086f9dee52b247dbb60b",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "696a086f9dee52b247dbb60c",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "696a086f9dee52b247dbb60d",
+    "user": "ana",
+    "investment": "696145c0a39926bb0978c56a",
+    "__v": 0,
+    "changeAmount": -1461.14,
+    "changePercent": -13.7,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 10675.018740100002
+  },
+  {
+    "_id": "696a08709dee52b247dbb60f",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 6.81,
+    "changePercent": 0.06,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 10673.8050988662
+  },
+  {
+    "_id": "696a08709dee52b247dbb610",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 17.61,
+    "changePercent": 0.35,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 5269.0188800000005
+  },
+  {
+    "_id": "696a08709dee52b247dbb612",
+    "user": "ana",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "__v": 0,
+    "changeAmount": -16.65,
+    "changePercent": -0.33,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 5235.1543248
+  },
+  {
+    "_id": "696a08719dee52b247dbb613",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 13.26,
+    "changePercent": 0.27,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 5263.2002877144
+  },
+  {
+    "_id": "696a08719dee52b247dbb614",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -166.85,
+    "changePercent": -1.67,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 10333.1410182
+  },
+  {
+    "_id": "696a08719dee52b247dbb615",
+    "user": "ana",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "__v": 0,
+    "changeAmount": 84.17,
+    "changePercent": 1.4,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 6084.154089
+  },
+  {
+    "_id": "696a08719dee52b247dbb616",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 18.12,
+    "changePercent": 0.43,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 4230.048
+  },
+  {
+    "_id": "696a08719dee52b247dbb617",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": -273.78,
+    "changePercent": -13.69,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2001.2200601158802
+  },
+  {
+    "_id": "696a08719dee52b247dbb618",
+    "user": "ana",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "__v": 0,
+    "changeAmount": -1.69,
+    "changePercent": -0.08,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 2109.9197659
+  },
+  {
+    "_id": "696a08729dee52b247dbb619",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.84,
+    "changePercent": 0.06,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2999.758472
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb633",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 5.97,
+    "changePercent": 0.29,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2061.79
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb634",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -63.7,
+    "changePercent": -2.88,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2146.2
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb636",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -30.82,
+    "changePercent": -4.82,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 608.36
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb637",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2088.557748
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb638",
+    "user": "javier",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "__v": 0,
+    "changeAmount": -2.67,
+    "changePercent": -0.56,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 476.687
+  },
+  {
+    "_id": "696a34dd9dee52b247dbb639",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 3.8,
+    "changePercent": 0.51,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 742.27944
+  },
+  {
+    "_id": "696b928c9dee52b247dbb783",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -1.31,
+    "changePercent": -0.06,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 2182.398
+  },
+  {
+    "_id": "696b928c9dee52b247dbb784",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0.19,
+    "changePercent": 0.46,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 42.144
+  },
+  {
+    "_id": "696b928d9dee52b247dbb785",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 8,
+    "changePercent": 0.04,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 20098.301232
+  },
+  {
+    "_id": "696b928d9dee52b247dbb786",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 22.47,
+    "changePercent": 0.09,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "696b928d9dee52b247dbb787",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 89.48,
+    "changePercent": 0.78,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 11493.0307305
+  },
+  {
+    "_id": "696b928d9dee52b247dbb78d",
+    "investment": "69597b8c491e62875add4a01",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "696b928d9dee52b247dbb78e",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "696b928d9dee52b247dbb78f",
+    "user": "ana",
+    "investment": "696145c0a39926bb0978c56a",
+    "__v": 0,
+    "changeAmount": 543.65,
+    "changePercent": 5.09,
+    "date": "2026-01-16T00:00:00.000Z",
+    "totalValue": 12685.651944000003
+  },
+  {
+    "_id": "696b928e9dee52b247dbb791",
+    "user": "ana",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "__v": 0,
+    "changeAmount": -0.09,
+    "changePercent": 0,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 10673.7155580285
+  },
+  {
+    "_id": "696b928e9dee52b247dbb792",
+    "user": "ana",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "__v": 0,
+    "changeAmount": -22.01,
+    "changePercent": -0.42,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 5247.011840000001
+  },
+  {
+    "_id": "696b928e9dee52b247dbb794",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 18.37,
+    "changePercent": 0.35,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 5253.52342524
+  },
+  {
+    "_id": "696b928e9dee52b247dbb795",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -29.26,
+    "changePercent": -0.56,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 5233.9425079512
+  },
+  {
+    "_id": "696b928e9dee52b247dbb796",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -1153.26,
+    "changePercent": -11.16,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 10554.8829496
+  },
+  {
+    "_id": "696b928e9dee52b247dbb797",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 6084.154089
+  },
+  {
+    "_id": "696b928e9dee52b247dbb798",
+    "user": "ana",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "__v": 0,
+    "changeAmount": 5.76,
+    "changePercent": 0.14,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 4235.8032
+  },
+  {
+    "_id": "696b928e9dee52b247dbb799",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0.43,
+    "changePercent": 0.02,
+    "date": "2026-01-16T00:00:00.000Z",
+    "totalValue": 2276.6517365748
+  },
+  {
+    "_id": "696b928e9dee52b247dbb79a",
+    "user": "ana",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "__v": 0,
+    "changeAmount": -6.8,
+    "changePercent": -0.32,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 2103.1213788
+  },
+  {
+    "_id": "696b928e9dee52b247dbb79b",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 2.77,
+    "changePercent": 0.09,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 3002.524076
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15c7",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 2182.398,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15cc",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 42.144,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15d4",
+    "user": "ana",
+    "investment": "695969bdb9b23b1325db50e0",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 20056.30896,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15dc",
+    "user": "ana",
+    "investment": "69596a85b9b23b1325db5101",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 24952.521,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15e0",
+    "user": "ana",
+    "investment": "69596c93253648d4cac883c6",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 11086.2007161,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d4fd2bec57b550e15e8",
+    "user": "ana",
+    "investment": "695972c5253648d4cac88543",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 11409.5561196,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d50d2bec57b550e15ec",
+    "user": "ana",
+    "investment": "69597507253648d4cac887a3",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 14968.050148799999,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d50d2bec57b550e15f1",
+    "user": "ana",
+    "investment": "6959798c253648d4cac88c5c",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 28663.9953,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d50d2bec57b550e15f5",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 14420.7,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0d50d2bec57b550e15f9",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "date": "2025-12-30T23:00:00.000Z",
+    "totalValue": 367.94,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "__v": 0
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e2",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-03T23:00:00.000Z",
+    "totalValue": 2276.574
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e3",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "__v": 0,
+    "changeAmount": 15.04,
+    "changePercent": 0.66,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 2278.536
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e4",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -43.16,
+    "changePercent": -1.89,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 2235.3720000000003
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e5",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -26.81,
+    "changePercent": -1.2,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 2208.558
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e6",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": -42.14,
+    "changePercent": -99.98,
+    "date": "2026-01-02T23:00:00.000Z",
+    "totalValue": 41.008
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e7",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-03T23:00:00.000Z",
+    "totalValue": 41.008
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e8",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.78,
+    "changePercent": -1.88,
+    "date": "2026-01-06T23:00:00.000Z",
+    "totalValue": 40.528
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7e9",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0.48,
+    "changePercent": 1.18,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 41.008
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7ea",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.15,
+    "changePercent": 2.81,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 42.16
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7eb",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-08-07T22:00:00.000Z",
+    "totalValue": 20056.30896
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7ec",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 33.99,
+    "changePercent": 0.17,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 20090.302704
+  },
+  {
+    "_id": "696c0f299dee52b247dbb7ed",
+    "user": "ana",
+    "investment": "69596a85b9b23b1325db5101",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-09-18T22:00:00.000Z",
+    "totalValue": 24952.521
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7ee",
+    "user": "ana",
+    "investment": "69596a85b9b23b1325db5101",
+    "__v": 0,
+    "changeAmount": 39.95,
+    "changePercent": 0.16,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 24992.472999999998
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7ef",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-10-14T22:00:00.000Z",
+    "totalValue": 9999.999841143
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f0",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 86.16,
+    "changePercent": 0.86,
+    "date": "2025-12-17T23:00:00.000Z",
+    "totalValue": 11086.2007161
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f1",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 317.35,
+    "changePercent": 2.86,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 11403.5535266
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f5",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-10-29T23:00:00.000Z",
+    "totalValue": 10394.976729599999
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f6",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 14.57,
+    "changePercent": 0.14,
+    "date": "2025-12-17T23:00:00.000Z",
+    "totalValue": 11409.5561196
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f7",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 56.44,
+    "changePercent": 0.49,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 11465.992368854
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f8",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-29T23:00:00.000Z",
+    "totalValue": 14968.050148799999
+  },
+  {
+    "_id": "696c0f2a9dee52b247dbb7f9",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 398.19,
+    "changePercent": 2.66,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 15366.24279099
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb7fb",
+    "user": "ana",
+    "investment": "6959798c253648d4cac88c5c",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-10-15T22:00:00.000Z",
+    "totalValue": 28663.9953
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb7fc",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -53.14,
+    "changePercent": -0.19,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 28610.855099999997
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb7fd",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-10-15T22:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb7fe",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-10-15T22:00:00.000Z",
+    "totalValue": 367.94
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb7ff",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 11.56,
+    "changePercent": 3.14,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "696c0f2b9dee52b247dbb800",
+    "investment": "696145c0a39926bb0978c56a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 10666.9852718
+  },
+  {
+    "_id": "696c0f2c9dee52b247dbb802",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 10666.999995201
+  },
+  {
+    "_id": "696c0f2c9dee52b247dbb803",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 4999.9768
+  },
+  {
+    "_id": "696c0f2c9dee52b247dbb805",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 5000.000563896
+  },
+  {
+    "_id": "696c0f2c9dee52b247dbb806",
+    "user": "ana",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 4999.937885468001
+  },
+  {
+    "_id": "696c0f2d9dee52b247dbb807",
+    "user": "ana",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 9999.992083
+  },
+  {
+    "_id": "696c0f2d9dee52b247dbb808",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 5999.988228
+  },
+  {
+    "_id": "696c0f2d9dee52b247dbb809",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 3998.0909749999996
+  },
+  {
+    "_id": "696c0f2d9dee52b247dbb80a",
+    "user": "ana",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-08T23:00:00.000Z",
+    "totalValue": 2997.9147360000006
+  },
+  {
+    "_id": "696c16d59dee52b247dbb80b",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2182.398
+  },
+  {
+    "_id": "696c16d69dee52b247dbb80c",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 42.144
+  },
+  {
+    "_id": "696c16d79dee52b247dbb80d",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 20098.301232
+  },
+  {
+    "_id": "696c16d79dee52b247dbb80e",
+    "user": "ana",
+    "investment": "69596a85b9b23b1325db5101",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "696c16d89dee52b247dbb80f",
+    "user": "ana",
+    "investment": "69596c93253648d4cac883c6",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 11493.0307305
+  },
+  {
+    "_id": "696c16da9dee52b247dbb815",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "696c16db9dee52b247dbb816",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "696c16db9dee52b247dbb817",
+    "user": "ana",
+    "investment": "696145c0a39926bb0978c56a",
+    "__v": 0,
+    "changeAmount": 1998.57,
+    "changePercent": 18.72,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 12673.590342000003
+  },
+  {
+    "_id": "696c16dc9dee52b247dbb819",
+    "user": "ana",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 10673.7155580285
+  },
+  {
+    "_id": "696c16dd9dee52b247dbb81a",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 9.34,
+    "changePercent": 0.18,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 5256.34816
+  },
+  {
+    "_id": "696c16de9dee52b247dbb81c",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.78,
+    "changePercent": 0.03,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 5255.30374242
+  },
+  {
+    "_id": "696c16de9dee52b247dbb81d",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 10.08,
+    "changePercent": 0.19,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 5244.022727385241
+  },
+  {
+    "_id": "696c16de9dee52b247dbb81e",
+    "user": "ana",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "__v": 0,
+    "changeAmount": -1677.89,
+    "changePercent": -14.32,
+    "date": "2026-01-17T00:00:00.000Z",
+    "totalValue": 10040.390227999998
+  },
+  {
+    "_id": "696c16df9dee52b247dbb81f",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 6084.154089
+  },
+  {
+    "_id": "696c16df9dee52b247dbb820",
+    "user": "ana",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 4235.8032
+  },
+  {
+    "_id": "696c16e09dee52b247dbb821",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": 274.54,
+    "changePercent": 13.72,
+    "date": "2026-01-16T23:00:00.000Z",
+    "totalValue": 2275.75843052572
+  },
+  {
+    "_id": "696c16e09dee52b247dbb822",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T00:00:00.000Z",
+    "totalValue": 2003.1825527999997
+  },
+  {
+    "_id": "696c16e19dee52b247dbb823",
+    "user": "ana",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "__v": 0,
+    "changeAmount": -2.77,
+    "changePercent": -0.09,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2999.758472
+  },
+  {
+    "_id": "696c1ac29dee52b247dbb824",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-28T23:00:00.000Z",
+    "totalValue": 1998.4
+  },
+  {
+    "_id": "696c1ac39dee52b247dbb825",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 2.37,
+    "changePercent": 0.12,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 2000.77
+  },
+  {
+    "_id": "696c1ac39dee52b247dbb826",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2061.79
+  },
+  {
+    "_id": "696c1ac49dee52b247dbb827",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 2293.2000000000003
+  },
+  {
+    "_id": "696c1ac59dee52b247dbb828",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2146.2
+  },
+  {
+    "_id": "696c1ac79dee52b247dbb82c",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 608.36
+  },
+  {
+    "_id": "696c1ac89dee52b247dbb82d",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2088.557748
+  },
+  {
+    "_id": "696c1ac99dee52b247dbb82e",
+    "user": "javier",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-03T23:00:00.000Z",
+    "totalValue": 260.72999999999996
+  },
+  {
+    "_id": "696c1ac99dee52b247dbb82f",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -8.45,
+    "changePercent": -3.24,
+    "date": "2025-12-22T23:00:00.000Z",
+    "totalValue": 449.03499999999997
+  },
+  {
+    "_id": "696c1ac99dee52b247dbb830",
+    "user": "javier",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "__v": 0,
+    "changeAmount": 8.34,
+    "changePercent": 1.86,
+    "date": "2026-01-04T23:00:00.000Z",
+    "totalValue": 457.374
+  },
+  {
+    "_id": "696c1aca9dee52b247dbb831",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 476.687
+  },
+  {
+    "_id": "696c1aca9dee52b247dbb832",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2025-12-22T23:00:00.000Z",
+    "totalValue": 695.9113279999999
+  },
+  {
+    "_id": "696c1acb9dee52b247dbb833",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 742.27944
+  },
+  {
+    "_id": "696ea95f9dee52b247dbbc7c",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 9.7,
+    "changePercent": 0.47,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 2071.49
+  },
+  {
+    "_id": "696ea95f9dee52b247dbbc7d",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": -44.1,
+    "changePercent": -2.05,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 2102.1
+  },
+  {
+    "_id": "696ea95f9dee52b247dbbc7f",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -1.34,
+    "changePercent": -0.22,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 607.02
+  },
+  {
+    "_id": "696ea9609dee52b247dbbc80",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": 20.47,
+    "changePercent": 0.98,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 2109.025935
+  },
+  {
+    "_id": "696ea9609dee52b247dbbc81",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -19.5,
+    "changePercent": -4.09,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "696ea9609dee52b247dbbc82",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -5.99,
+    "changePercent": -0.81,
+    "date": "2026-01-19T00:00:00.000Z",
+    "totalValue": 736.2886019999999
+  },
+  {
+    "_id": "696f10a69dee52b247dbbc95",
+    "user": "ana",
+    "investment": "695964ddb9b23b1325db4e18",
+    "__v": 0,
+    "changeAmount": -5.23,
+    "changePercent": -0.24,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 2177.166
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc96",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.17,
+    "changePercent": -0.4,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 41.976
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc97",
+    "user": "ana",
+    "investment": "695969bdb9b23b1325db50e0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 20098.301232
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc98",
+    "user": "ana",
+    "investment": "69596a85b9b23b1325db5101",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc99",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 11493.0307305
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc9b",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 32.35,
+    "changePercent": 0.27,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 11812.86916915323
+  },
+  {
+    "_id": "696f10a79dee52b247dbbc9c",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 125.99,
+    "changePercent": 0.79,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 16015.055729151998
+  },
+  {
+    "_id": "696f10a89dee52b247dbbc9e",
+    "user": "ana",
+    "investment": "6959798c253648d4cac88c5c",
+    "__v": 0,
+    "changeAmount": 69.43,
+    "changePercent": 0.24,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 29125.1205
+  },
+  {
+    "_id": "696f10a89dee52b247dbbc9f",
+    "user": "ana",
+    "investment": "69597b8c491e62875add4a01",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "696f10a89dee52b247dbbca0",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "696f10a89dee52b247dbbca1",
+    "user": "ana",
+    "investment": "696145c0a39926bb0978c56a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 12673.590342000003
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca3",
+    "user": "ana",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 10673.7155580285
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca4",
+    "user": "ana",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 5256.34816
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca6",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 5255.30374242
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca7",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 5244.022727385241
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca8",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 11969.7507336
+  },
+  {
+    "_id": "696f10a99dee52b247dbbca9",
+    "user": "ana",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 6084.154089
+  },
+  {
+    "_id": "696f10aa9dee52b247dbbcaa",
+    "user": "ana",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 4235.8032
+  },
+  {
+    "_id": "696f10aa9dee52b247dbbcab",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 2276.39067098988
+  },
+  {
+    "_id": "696f10aa9dee52b247dbbcac",
+    "user": "ana",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 2103.1213788
+  },
+  {
+    "_id": "696f10aa9dee52b247dbbcad",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-19T23:00:00.000Z",
+    "totalValue": 2999.758472
+  },
+  {
+    "_id": "697375fafc01ae0a7178cb61",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -33.66,
+    "changePercent": -1.62,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 2037.83
+  },
+  {
+    "_id": "697375fafc01ae0a7178cb62",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 161.7,
+    "changePercent": 7.69,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 2263.8
+  },
+  {
+    "_id": "697375fafc01ae0a7178cb64",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 13.4,
+    "changePercent": 2.21,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 620.42
+  },
+  {
+    "_id": "697375fafc01ae0a7178cb65",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 2109.025935
+  },
+  {
+    "_id": "697375fafc01ae0a7178cb66",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "697375fbfc01ae0a7178cb67",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -11.93,
+    "changePercent": -1.62,
+    "date": "2026-01-23T00:00:00.000Z",
+    "totalValue": 724.3556319999999
+  },
+  {
+    "_id": "6974aaaafc01ae0a71795146",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 2037.83
+  },
+  {
+    "_id": "6974aaaafc01ae0a71795147",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 2263.8
+  },
+  {
+    "_id": "6974aaabfc01ae0a71795148",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -4.69,
+    "changePercent": -0.76,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 615.73
+  },
+  {
+    "_id": "6974aaabfc01ae0a71795149",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0.13,
+    "changePercent": 0.01,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 2109.159714
+  },
+  {
+    "_id": "6974aaabfc01ae0a7179514a",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "6974aaabfc01ae0a7179514b",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-24T00:00:00.000Z",
+    "totalValue": 724.3556319999999
+  },
+  {
+    "_id": "69752a65fc01ae0a717951a7",
+    "investment": "6975292be54d7ff0a5d13d1c",
+    "user": "test-dca",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-23T23:00:00.000Z",
+    "totalValue": 9000
+  },
+  {
+    "_id": "69777555fc01ae0a717a00d1",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 6.59,
+    "changePercent": 0.32,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 2044.42
+  },
+  {
+    "_id": "69777555fc01ae0a717a00d2",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": 39.2,
+    "changePercent": 1.73,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 2303
+  },
+  {
+    "_id": "69777555fc01ae0a717a00d3",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -1.34,
+    "changePercent": -0.22,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 614.39
+  },
+  {
+    "_id": "69777555fc01ae0a717a00d4",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 35.72,
+    "changePercent": 1.69,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 2144.8787070000003
+  },
+  {
+    "_id": "69777556fc01ae0a717a00d5",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "69777556fc01ae0a717a00d6",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -3.99,
+    "changePercent": -0.55,
+    "date": "2026-01-26T00:00:00.000Z",
+    "totalValue": 720.3617399999999
+  },
+  {
+    "_id": "69778676fc01ae0a717a0808",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 38.59,
+    "changePercent": 1.77,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 2215.752
+  },
+  {
+    "_id": "69778676fc01ae0a717a0809",
+    "user": "ana",
+    "investment": "69596556b9b23b1325db4e56",
+    "__v": 0,
+    "changeAmount": 0.62,
+    "changePercent": 1.49,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 42.6
+  },
+  {
+    "_id": "69778676fc01ae0a717a080a",
+    "user": "ana",
+    "investment": "695969bdb9b23b1325db50e0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 20098.301232
+  },
+  {
+    "_id": "69778676fc01ae0a717a080b",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "69778677fc01ae0a717a080c",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 11493.0307305
+  },
+  {
+    "_id": "69778677fc01ae0a717a080e",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 11812.86916915323
+  },
+  {
+    "_id": "69778677fc01ae0a717a080f",
+    "investment": "69597507253648d4cac887a3",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 16015.055729151998
+  },
+  {
+    "_id": "69778677fc01ae0a717a0811",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 29125.1205
+  },
+  {
+    "_id": "69778678fc01ae0a717a0812",
+    "investment": "69597b8c491e62875add4a01",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "69778678fc01ae0a717a0813",
+    "user": "ana",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "69778678fc01ae0a717a0814",
+    "investment": "696145c0a39926bb0978c56a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -532.99,
+    "changePercent": -4.21,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 12673.590342000003
+  },
+  {
+    "_id": "69778678fc01ae0a717a0816",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -528.62,
+    "changePercent": -4.95,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 10678.1030590758
+  },
+  {
+    "_id": "69778678fc01ae0a717a0817",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 5256.34816
+  },
+  {
+    "_id": "69778679fc01ae0a717a0819",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 5255.30374242
+  },
+  {
+    "_id": "69778679fc01ae0a717a081a",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 5244.022727385241
+  },
+  {
+    "_id": "69778679fc01ae0a717a081b",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 11969.7507336
+  },
+  {
+    "_id": "69778679fc01ae0a717a081c",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 6084.154089
+  },
+  {
+    "_id": "69778679fc01ae0a717a081d",
+    "user": "ana",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 4235.8032
+  },
+  {
+    "_id": "69778679fc01ae0a717a081e",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 2276.39067098988
+  },
+  {
+    "_id": "69778679fc01ae0a717a081f",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 2103.1213788
+  },
+  {
+    "_id": "6977867afc01ae0a717a0820",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -2.54,
+    "changePercent": -0.08,
+    "date": "2026-01-25T23:00:00.000Z",
+    "totalValue": 2997.2233350000006
+  },
+  {
+    "_id": "6978ba2dfc01ae0a717a16a2",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -26.81,
+    "changePercent": -1.21,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 2188.938
+  },
+  {
+    "_id": "6978ba2dfc01ae0a717a16a3",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0.55,
+    "changePercent": 1.3,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 43.152
+  },
+  {
+    "_id": "6978ba2dfc01ae0a717a16a4",
+    "user": "ana",
+    "investment": "695969bdb9b23b1325db50e0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 20098.301232
+  },
+  {
+    "_id": "6978ba2dfc01ae0a717a16a5",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "6978ba2dfc01ae0a717a16a6",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11493.0307305
+  },
+  {
+    "_id": "6978ba2efc01ae0a717a16a8",
+    "user": "ana",
+    "investment": "695972c5253648d4cac88543",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11812.86916915323
+  },
+  {
+    "_id": "6978ba2efc01ae0a717a16a9",
+    "user": "ana",
+    "investment": "69597507253648d4cac887a3",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 16015.055729151998
+  },
+  {
+    "_id": "6978ba2efc01ae0a717a16ab",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 29125.1205
+  },
+  {
+    "_id": "6978ba2efc01ae0a717a16ac",
+    "investment": "69597b8c491e62875add4a01",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16ad",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16ae",
+    "investment": "696145c0a39926bb0978c56a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -1465.52,
+    "changePercent": -11.56,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11208.070488000003
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16af",
+    "investment": "696813ebe9f7da1d5a16a5da",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11227.95531
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16b0",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 534.07,
+    "changePercent": 5,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11212.173156405099
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16b1",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 22.67,
+    "changePercent": 0.43,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 5279.02208
+  },
+  {
+    "_id": "6978ba2ffc01ae0a717a16b3",
+    "user": "ana",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 5255.30374242
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b4",
+    "user": "ana",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 5244.022727385241
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b5",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 11969.7507336
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b6",
+    "user": "ana",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "__v": 0,
+    "changeAmount": 111.07,
+    "changePercent": 1.83,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 6195.222279999999
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b7",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 4235.8032
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b8",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -1.48,
+    "changePercent": -0.06,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 2274.91307529836
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16b9",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 2103.1213788
+  },
+  {
+    "_id": "6978ba30fc01ae0a717a16ba",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1.38,
+    "changePercent": 0.05,
+    "date": "2026-01-26T23:00:00.000Z",
+    "totalValue": 2998.6061370000007
+  },
+  {
+    "_id": "6978fa37fc01ae0a717a2522",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -2.29,
+    "changePercent": -0.11,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 2042.13
+  },
+  {
+    "_id": "6978fa37fc01ae0a717a2524",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 73.5,
+    "changePercent": 3.19,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 2376.5
+  },
+  {
+    "_id": "6978fa37fc01ae0a717a2525",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 614.39
+  },
+  {
+    "_id": "6978fa37fc01ae0a717a2526",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 2144.8787070000003
+  },
+  {
+    "_id": "6978fa38fc01ae0a717a2527",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 457.18800000000005
+  },
+  {
+    "_id": "6978fa38fc01ae0a717a2528",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -7.11,
+    "changePercent": -0.99,
+    "date": "2026-01-27T00:00:00.000Z",
+    "totalValue": 713.2506639999999
+  },
+  {
+    "_id": "6979050bfc01ae0a717a252f",
+    "investment": "6968183ae9f7da1d5a16a6fd",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-15T23:00:00.000Z",
+    "totalValue": 5948.47682
+  },
+  {
+    "_id": "69792885fc01ae0a717a25fa",
+    "investment": "696145c0a39926bb0978c56a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 12673.590342000003
+  },
+  {
+    "_id": "69792887fc01ae0a717a25fb",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 5256.34816
+  },
+  {
+    "_id": "69792888fc01ae0a717a25fc",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 5255.30374242
+  },
+  {
+    "_id": "69792889fc01ae0a717a25fd",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 5244.022727385241
+  },
+  {
+    "_id": "6979288afc01ae0a717a25fe",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1414.87,
+    "changePercent": 13.4,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 11969.7507336
+  },
+  {
+    "_id": "6979288bfc01ae0a717a2600",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 15.09,
+    "changePercent": 0.38,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 4211.9312
+  },
+  {
+    "_id": "6979288dfc01ae0a717a2602",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0.63,
+    "changePercent": 0.03,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2276.39067098988
+  },
+  {
+    "_id": "6979288dfc01ae0a717a2604",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-17T23:00:00.000Z",
+    "totalValue": 2103.1213788
+  },
+  {
+    "_id": "6979288ffc01ae0a717a2606",
+    "investment": "6978bd2973cdc599a7ac3108",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 1988.5993908
+  },
+  {
+    "_id": "6979288ffc01ae0a717a2607",
+    "investment": "6978f92d73cdc599a7ac355b",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-14T23:00:00.000Z",
+    "totalValue": 98.3934
+  },
+  {
+    "_id": "697a89b7fc01ae0a717a3946",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 2042.13
+  },
+  {
+    "_id": "697a89b8fc01ae0a717a3947",
+    "investment": "695400e4614a7a8fd184f816",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 73.5,
+    "changePercent": 3.09,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 2450
+  },
+  {
+    "_id": "697a89b8fc01ae0a717a3948",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 38.86,
+    "changePercent": 6.32,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 653.25
+  },
+  {
+    "_id": "697a89b8fc01ae0a717a3949",
+    "investment": "695428110767739a3b577aba",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 13.11,
+    "changePercent": 0.61,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 2157.9890490000003
+  },
+  {
+    "_id": "697a89b8fc01ae0a717a394a",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": -15,
+    "changePercent": -3.28,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 442.18399999999997
+  },
+  {
+    "_id": "697a89b8fc01ae0a717a394b",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-28T00:00:00.000Z",
+    "totalValue": 713.2506639999999
+  },
+  {
+    "_id": "697a8a44fc01ae0a717a394c",
+    "investment": "695964ddb9b23b1325db4e18",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 2188.938
+  },
+  {
+    "_id": "697a8a45fc01ae0a717a394d",
+    "investment": "69596556b9b23b1325db4e56",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 43.152
+  },
+  {
+    "_id": "697a8a45fc01ae0a717a394e",
+    "investment": "695969bdb9b23b1325db50e0",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 20098.304247300002
+  },
+  {
+    "_id": "697a8a46fc01ae0a717a394f",
+    "investment": "69596a85b9b23b1325db5101",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 25014.946
+  },
+  {
+    "_id": "697a8a46fc01ae0a717a3950",
+    "investment": "69596c93253648d4cac883c6",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.04,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 11492.989101
+  },
+  {
+    "_id": "697a8a47fc01ae0a717a3952",
+    "investment": "695972c5253648d4cac88543",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -0.01,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 11812.858660778
+  },
+  {
+    "_id": "697a8a48fc01ae0a717a3954",
+    "user": "ana",
+    "investment": "69597507253648d4cac887a3",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 16015.055729151998
+  },
+  {
+    "_id": "697a8a49fc01ae0a717a3956",
+    "investment": "6959798c253648d4cac88c5c",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 29125.1205
+  },
+  {
+    "_id": "697a8a49fc01ae0a717a3957",
+    "investment": "69597b8c491e62875add4a01",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 14420.7
+  },
+  {
+    "_id": "697a8a49fc01ae0a717a3958",
+    "investment": "69597cf3cdda5f46266e2c8a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 379.5
+  },
+  {
+    "_id": "697a8a4afc01ae0a717a3959",
+    "investment": "696145c0a39926bb0978c56a",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 1477.58,
+    "changePercent": 13.18,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 12685.651944000003
+  },
+  {
+    "_id": "697a8a4afc01ae0a717a395a",
+    "investment": "696813ebe9f7da1d5a16a5da",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 11227.95531
+  },
+  {
+    "_id": "697a8a4bfc01ae0a717a395b",
+    "investment": "6968145de9f7da1d5a16a5ee",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 11212.172738984598
+  },
+  {
+    "_id": "697a8a4bfc01ae0a717a395c",
+    "investment": "696817cce9f7da1d5a16a66e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 5279.02208
+  },
+  {
+    "_id": "697a8a4cfc01ae0a717a395d",
+    "investment": "6968183ae9f7da1d5a16a6fd",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 5948.47682
+  },
+  {
+    "_id": "697a8a4cfc01ae0a717a395e",
+    "user": "ana",
+    "investment": "696819e7e9f7da1d5a16a797",
+    "__v": 0,
+    "changeAmount": -20.15,
+    "changePercent": -0.38,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 5235.1543248
+  },
+  {
+    "_id": "697a8a4dfc01ae0a717a395f",
+    "investment": "69681b51e9f7da1d5a16a8a7",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 19.16,
+    "changePercent": 0.37,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 5263.18314448407
+  },
+  {
+    "_id": "697a8a4dfc01ae0a717a3960",
+    "investment": "69681c6de9f7da1d5a16aab5",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -251.47,
+    "changePercent": -2.1,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 11718.2845962
+  },
+  {
+    "_id": "697a8a4efc01ae0a717a3961",
+    "investment": "69681cd5e9f7da1d5a16aac9",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 4.23,
+    "changePercent": 0.07,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 6199.449789
+  },
+  {
+    "_id": "697a8a4efc01ae0a717a3962",
+    "investment": "69681d5de9f7da1d5a16ab15",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 12.12,
+    "changePercent": 0.29,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 4247.9184
+  },
+  {
+    "_id": "697a8a4efc01ae0a717a3963",
+    "user": "ana",
+    "investment": "69681e24e9f7da1d5a16ad99",
+    "__v": 0,
+    "changeAmount": 1.75,
+    "changePercent": 0.08,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 2276.65884040024
+  },
+  {
+    "_id": "697a8a4ffc01ae0a717a3964",
+    "investment": "69681ea0e9f7da1d5a16adad",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 14.75,
+    "changePercent": 0.7,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 2117.870422
+  },
+  {
+    "_id": "697a8a4ffc01ae0a717a3965",
+    "investment": "696824e2e9f7da1d5a16b88e",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 2998.6061370000007
+  },
+  {
+    "_id": "697a8a50fc01ae0a717a3966",
+    "investment": "6978bd2973cdc599a7ac3108",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": -24.68,
+    "changePercent": -1.24,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 1963.9229484
+  },
+  {
+    "_id": "697a8a50fc01ae0a717a3967",
+    "investment": "6978f92d73cdc599a7ac355b",
+    "user": "ana",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-27T23:00:00.000Z",
+    "totalValue": 98.3934
+  },
+  {
+    "_id": "697bb56cfd940f05e80acff8",
+    "user": "javier",
+    "investment": "6953089c7696a0fa5d23cbf0",
+    "__v": 0,
+    "changeAmount": 0,
+    "changePercent": 0,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 2042.13
+  },
+  {
+    "_id": "697bb56cfd940f05e80acff9",
+    "user": "javier",
+    "investment": "695400e4614a7a8fd184f816",
+    "__v": 0,
+    "changeAmount": -58.8,
+    "changePercent": -2.4,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 2391.2
+  },
+  {
+    "_id": "697bb56dfd940f05e80acffa",
+    "user": "javier",
+    "investment": "69540bc769a39a9645a6c5a2",
+    "__v": 0,
+    "changeAmount": -12.06,
+    "changePercent": -1.85,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 641.1899999999999
+  },
+  {
+    "_id": "697bb56dfd940f05e80acffb",
+    "user": "javier",
+    "investment": "695428110767739a3b577aba",
+    "__v": 0,
+    "changeAmount": 13.51,
+    "changePercent": 0.63,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 2171.500728
+  },
+  {
+    "_id": "697bb56dfd940f05e80acffc",
+    "user": "javier",
+    "investment": "695a661a2a4e0908e66e6cf9",
+    "__v": 0,
+    "changeAmount": -2.79,
+    "changePercent": -0.63,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 439.394
+  },
+  {
+    "_id": "697bb56efd940f05e80acffd",
+    "investment": "695a6f8e6c1cd0001be0cbfa",
+    "user": "javier",
+    "__v": 0,
+    "changeAmount": 17.73,
+    "changePercent": 2.49,
+    "date": "2026-01-28T23:00:00.000Z",
+    "totalValue": 730.979648
+  }
+]
