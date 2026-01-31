@@ -81,6 +81,12 @@
     "updatingPrices": "Actualitzant...",
     "updatePricesTooltip": "Actualitzar preus des d'APIs en temps real (també s'actualitzen automàticament cada 5 minuts)",
     "automaticUpdate": "Actualització automàtica",
+    "automaticUpdateOn": "Auto-actualització activa",
+    "automaticUpdateOff": "Activar auto-actualització",
+    "automaticUpdateActivateAll": "Activar auto-actualització",
+    "automaticUpdateDeactivateAll": "Desactivar auto-actualització",
+    "automaticUpdateActivateAllTooltip": "Activar l'actualització automàtica de preus a totes les inversions (amb símbol o ISIN)",
+    "automaticUpdateDeactivateAllTooltip": "Desactivar l'actualització automàtica de preus a totes les inversions",
     "noInvestments": "No hi ha inversions registrades",
     "investmentTypes": {
       "stock": "Acció",
