@@ -682,7 +682,10 @@ router.get("/balance-daily", async (req, res) => {
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const perfInvestments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     });
 
     if (perfInvestments.length === 0) {
@@ -697,8 +700,7 @@ router.get("/balance-daily", async (req, res) => {
       InvestmentHistory.find({
         user: req.userId,
         investment: { $in: activeInvestmentIds }, // Solo inversiones activas
-        operation: { $in: ["creation", "add", "withdraw"] },
-        operationAmount: { $exists: true, $ne: null },
+        operation: { $in: ["creation", "add", "withdraw", "sell"] },
       }).sort({ date: 1 }),
       Transaction.find({
         user: req.userId,
@@ -747,13 +749,13 @@ router.get("/balance-daily", async (req, res) => {
       (t) => t.type === "expense",
     );
 
-    // Calcular cash inicial: empezar con el cash actual y "deshacer" todas las operaciones desde startDate
-    // Esto nos da el cash que había al inicio de startDate
-    // IMPORTANTE: Si no hay transacciones registradas, empezamos con cash = 0 y solo reflejamos inversiones - deudas
-    // (como funcionaba antes cuando no había efectivo)
-    // EXCEPCIÓN: Si hay subcuentas de cash/savings con initialDate, consideramos ese efectivo inicial
+    // Calcular cash inicial: partir del cash actual y "deshacer" operaciones desde startDate
+    // Esto nos da el cash que había al inicio de startDate.
+    // Si no hay transacciones, usamos las operaciones de inversión como mejor aproximación.
     let initialCash = 0;
-    let useCashCalculation = allTransactions.length > 0; // Solo calcular cash si hay transacciones
+    const hasTransactions = allTransactions.length > 0;
+    const hasCashSubAccounts = cashSubAccounts.length > 0;
+    let useCashCalculation = hasCashSubAccounts || hasTransactions;
 
     // Separar subcuentas: las que tienen initialDate y las que no
     const cashSubAccountsWithDate = cashSubAccounts.filter(
@@ -767,63 +769,88 @@ router.get("/balance-daily", async (req, res) => {
         (subAcc.type === "cash" || subAcc.type === "savings"),
     );
 
-    if (cashSubAccountsWithoutDate.length > 0) {
-    }
-
     // Variable para almacenar subcuentas que se crearon después de startDate (para aplicar en el loop)
     let subAccountsAfterStart = [];
+    const getOpAmount = (op) => Math.abs(getOperationAmountForStats(op) || 0);
 
-    if (cashSubAccountsWithDate.length > 0) {
-      // Si hay subcuentas con fecha inicial, usamos el cálculo de cash
-      useCashCalculation = true;
-      initialCash = currentCashBalance;
-
-      // IMPORTANTE: Restar el balance de subcuentas SIN initialDate (no se incluyen en cash histórico)
-      cashSubAccountsWithoutDate.forEach((subAcc) => {
-        initialCash -= subAcc.balance;
-      });
-
-      // Separar subcuentas por fecha: las que tienen initialDate antes/igual a startDate y las que tienen después
-      const subAccountsBeforeStart = [];
+    if (useCashCalculation) {
       const startDateNormalized = new Date(startDate);
       startDateNormalized.setHours(0, 0, 0, 0);
 
-      cashSubAccountsWithDate.forEach((subAcc) => {
-        const subAccInitialDate = new Date(subAcc.initialDate);
-        subAccInitialDate.setHours(0, 0, 0, 0);
+      if (cashSubAccountsWithDate.length > 0) {
+        initialCash = currentCashBalance;
 
-        if (subAccInitialDate <= startDateNormalized) {
-          // Esta subcuenta ya existía al inicio, su balance está incluido en initialCash
-          subAccountsBeforeStart.push(subAcc);
+        // Separar subcuentas por fecha: las que tienen initialDate antes/igual a startDate y las que tienen después
+        const subAccountsBeforeStart = [];
+        cashSubAccountsWithDate.forEach((subAcc) => {
+          const subAccInitialDate = new Date(subAcc.initialDate);
+          subAccInitialDate.setHours(0, 0, 0, 0);
+
+          if (subAccInitialDate <= startDateNormalized) {
+            // Esta subcuenta ya existía al inicio, su balance está incluido en initialCash
+            subAccountsBeforeStart.push(subAcc);
+          } else {
+            // Esta subcuenta se creó después de startDate, su balance NO debe estar en initialCash
+            subAccountsAfterStart.push(subAcc);
+            initialCash -= subAcc.balance;
+          }
+        });
+
+        const hasCashAtStart =
+          subAccountsBeforeStart.length > 0 ||
+          cashSubAccountsWithoutDate.length > 0;
+
+        if (hasCashAtStart) {
+          // Deshacer todas las operaciones de capital desde startDate
+          allCapitalOperations.forEach((op) => {
+            const opDate = new Date(op.date);
+            opDate.setHours(0, 0, 0, 0);
+
+            if (opDate >= startDateNormalized) {
+              const amount = getOpAmount(op);
+              if (op.operation === "creation" || op.operation === "add") {
+                initialCash += amount;
+              } else if (
+                op.operation === "withdraw" ||
+                op.operation === "sell"
+              ) {
+                initialCash -= amount;
+              }
+            }
+          });
+
+          // Deshacer todas las transacciones desde startDate
+          allTransactions.forEach((transaction) => {
+            const transDate = new Date(transaction.date);
+            transDate.setHours(0, 0, 0, 0);
+
+            if (transDate >= startDateNormalized) {
+              if (transaction.type === "income") {
+                initialCash -= transaction.amount;
+              } else if (transaction.type === "expense") {
+                initialCash += transaction.amount;
+              }
+            }
+          });
         } else {
-          // Esta subcuenta se creó después de startDate, su balance NO debe estar en initialCash
-          subAccountsAfterStart.push(subAcc);
-          // Restar su balance del initialCash porque no existía al inicio
-          initialCash -= subAcc.balance;
+          // Todas las subcuentas tienen initialDate después de startDate, el cash inicial es 0
+          initialCash = 0;
         }
-      });
+      } else {
+        // No hay fechas iniciales: asumimos que el cash actual existe desde startDate
+        initialCash = currentCashBalance;
 
-      if (subAccountsBeforeStart.length > 0) {
-      }
-      if (subAccountsAfterStart.length > 0) {
-      }
-
-      // IMPORTANTE: Solo "deshacer" operaciones si hay subcuentas con initialDate antes de startDate
-      // Si todas las subcuentas tienen initialDate después de startDate, el initialCash debería ser 0
-      if (subAccountsBeforeStart.length > 0) {
-        // Hay subcuentas que existían antes de startDate, deshacer operaciones para calcular el cash inicial real
         // Deshacer todas las operaciones de capital desde startDate
         allCapitalOperations.forEach((op) => {
           const opDate = new Date(op.date);
           opDate.setHours(0, 0, 0, 0);
 
           if (opDate >= startDateNormalized) {
+            const amount = getOpAmount(op);
             if (op.operation === "creation" || op.operation === "add") {
-              // Las aportaciones reducen el cash, así que para deshacerlas las sumamos
-              initialCash += op.operationAmount;
-            } else if (op.operation === "withdraw") {
-              // Las retiradas aumentan el cash, así que para deshacerlas las restamos
-              initialCash -= Math.abs(op.operationAmount);
+              initialCash += amount;
+            } else if (op.operation === "withdraw" || op.operation === "sell") {
+              initialCash -= amount;
             }
           }
         });
@@ -835,59 +862,15 @@ router.get("/balance-daily", async (req, res) => {
 
           if (transDate >= startDateNormalized) {
             if (transaction.type === "income") {
-              // Los ingresos aumentan el cash, así que para deshacerlos los restamos
               initialCash -= transaction.amount;
             } else if (transaction.type === "expense") {
-              // Los gastos reducen el cash, así que para deshacerlos los sumamos
               initialCash += transaction.amount;
             }
           }
         });
-      } else {
-        // Todas las subcuentas tienen initialDate después de startDate, el cash inicial es 0
-        initialCash = 0;
       }
 
       initialCash = Math.max(0, initialCash);
-    } else if (allTransactions.length > 0) {
-      // Hay transacciones pero no subcuentas con fecha, calcular cash normalmente
-      useCashCalculation = true;
-      initialCash = currentCashBalance;
-
-      // Deshacer todas las operaciones de capital desde startDate
-      allCapitalOperations.forEach((op) => {
-        const opDate = new Date(op.date);
-        opDate.setHours(0, 0, 0, 0);
-        const startDateNormalized = new Date(startDate);
-        startDateNormalized.setHours(0, 0, 0, 0);
-
-        if (opDate >= startDateNormalized) {
-          if (op.operation === "creation" || op.operation === "add") {
-            initialCash += op.operationAmount;
-          } else if (op.operation === "withdraw") {
-            initialCash -= Math.abs(op.operationAmount);
-          }
-        }
-      });
-
-      // Deshacer todas las transacciones desde startDate
-      allTransactions.forEach((transaction) => {
-        const transDate = new Date(transaction.date);
-        transDate.setHours(0, 0, 0, 0);
-        const startDateNormalized = new Date(startDate);
-        startDateNormalized.setHours(0, 0, 0, 0);
-
-        if (transDate >= startDateNormalized) {
-          if (transaction.type === "income") {
-            initialCash -= transaction.amount;
-          } else if (transaction.type === "expense") {
-            initialCash += transaction.amount;
-          }
-        }
-      });
-
-      initialCash = Math.max(0, initialCash);
-    } else {
     }
 
     // Obtener deudas actuales (no tenemos histórico de deudas)
@@ -911,8 +894,7 @@ router.get("/balance-daily", async (req, res) => {
         $or: [
           { totalValue: { $exists: true, $ne: null, $gt: 0 } },
           {
-            operation: { $in: ["creation", "add", "withdraw"] },
-            operationAmount: { $exists: true, $ne: null },
+            operation: { $in: ["creation", "add", "withdraw", "sell"] },
           },
         ],
       }).sort({ date: 1, investment: 1 }),
@@ -1001,12 +983,13 @@ router.get("/balance-daily", async (req, res) => {
         let contributionsToday = 0;
         let withdrawalsToday = 0;
         operationsToday.forEach((op) => {
+          const amount = getOpAmount(op);
           if (op.operation === "creation" || op.operation === "add") {
-            cash -= op.operationAmount;
-            contributionsToday += op.operationAmount;
-          } else if (op.operation === "withdraw") {
-            cash += Math.abs(op.operationAmount);
-            withdrawalsToday += Math.abs(op.operationAmount);
+            cash -= amount;
+            contributionsToday += amount;
+          } else if (op.operation === "withdraw" || op.operation === "sell") {
+            cash += amount;
+            withdrawalsToday += amount;
           }
         });
 
@@ -1031,15 +1014,15 @@ router.get("/balance-daily", async (req, res) => {
           (h) =>
             h.investment &&
             h.investment.toString() === inv._id.toString() &&
-            h.operation === "creation" &&
-            h.operationAmount,
+            h.operation === "creation",
         );
-
-        if (!creationOp) {
+        const creationDateValue =
+          creationOp?.date || inv.purchaseDate || inv.createdAt;
+        if (!creationDateValue) {
           continue;
         }
 
-        const creationDate = new Date(creationOp.date);
+        const creationDate = new Date(creationDateValue);
         creationDate.setHours(0, 0, 0, 0);
         const creationDateEnd = new Date(creationDate);
         creationDateEnd.setHours(23, 59, 59, 999);
@@ -1119,24 +1102,22 @@ router.get("/balance-daily", async (req, res) => {
                   hDateEnd.setHours(23, 59, 59, 999);
                   return (
                     hDateEnd <= dateEndNormalized &&
-                    ["creation", "add", "withdraw"].includes(h.operation) &&
-                    h.operationAmount
+                    ["creation", "add", "withdraw", "sell"].includes(
+                      h.operation,
+                    )
                   );
                 });
 
                 let capital = 0;
                 capitalOperations.forEach((op) => {
+                  const amount = getOpAmount(op);
                   if (op.operation === "creation" || op.operation === "add") {
-                    // Usar operationAmount o calcular desde quantity * operationPrice
-                    capital +=
-                      op.operationAmount ||
-                      op.quantity * (op.operationPrice || 0);
-                  } else if (op.operation === "withdraw") {
-                    // Usar operationAmount o calcular desde quantity * operationPrice
-                    capital -= Math.abs(
-                      op.operationAmount ||
-                        op.quantity * (op.operationPrice || 0),
-                    );
+                    capital += amount;
+                  } else if (
+                    op.operation === "withdraw" ||
+                    op.operation === "sell"
+                  ) {
+                    capital -= amount;
                   }
                 });
 
@@ -1158,7 +1139,7 @@ router.get("/balance-daily", async (req, res) => {
       }
 
       // Balance total = cash + subcuentas de inversión + inversiones - deudas
-      // Si no estamos calculando cash (no hay transacciones), solo reflejamos inversiones - deudas
+      // Si no estamos calculando cash (sin datos suficientes), solo reflejamos inversiones - deudas
       // IMPORTANTE: Las subcuentas de inversión se incluyen siempre (son dinero disponible para invertir)
       // NOTA: Este cálculo debe coincidir con /stats que devuelve netWorth = totalBalance - totalDebts
       const balanceTotal =
@@ -1202,10 +1183,14 @@ router.get("/balance-daily", async (req, res) => {
             const opDate = new Date(op.date);
             opDate.setHours(0, 0, 0, 0);
             if (opDate <= lastDateNormalized) {
+              const amount = getOpAmount(op);
               if (op.operation === "creation" || op.operation === "add") {
-                lastDayCash -= op.operationAmount;
-              } else if (op.operation === "withdraw") {
-                lastDayCash += Math.abs(op.operationAmount);
+                lastDayCash -= amount;
+              } else if (
+                op.operation === "withdraw" ||
+                op.operation === "sell"
+              ) {
+                lastDayCash += amount;
               }
             }
           });
@@ -1258,12 +1243,13 @@ router.get("/balance-daily", async (req, res) => {
             (h) =>
               h.investment &&
               h.investment.toString() === inv._id.toString() &&
-              h.operation === "creation" &&
-              h.operationAmount,
+              h.operation === "creation",
           );
-          if (!creationOp) continue;
+          const creationDateValue =
+            creationOp?.date || inv.purchaseDate || inv.createdAt;
+          if (!creationDateValue) continue;
 
-          const creationDate = new Date(creationOp.date);
+          const creationDate = new Date(creationDateValue);
           creationDate.setHours(0, 0, 0, 0);
           const creationDateEnd = new Date(creationDate);
           creationDateEnd.setHours(23, 59, 59, 999);
@@ -1398,6 +1384,62 @@ router.get("/distribution-by-asset-class", async (req, res) => {
       { name: "Renta Variable", value: totalVariableIncome },
       { name: "Efectivo", value: totalCash },
     ].filter((item) => item.value > 0); // Solo incluir categorías con valor > 0
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET distribución por tipo de renta: renta fija corto, renta fija medio, renta variable, alternativa
+router.get("/distribution-by-asset-type", async (req, res) => {
+  try {
+    const investments = await Investment.find({
+      user: req.userId,
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
+    });
+
+    let rentaFijaCorto = 0;
+    let rentaFijaMedio = 0;
+    let rentaVariable = 0;
+    let alternativa = 0;
+
+    investments.forEach((inv) => {
+      const totalValue = inv.isAutomatedPortfolio
+        ? inv.currentPrice
+        : inv.quantity * inv.currentPrice;
+
+      if (inv.isAlternative) {
+        alternativa += totalValue;
+        return;
+      }
+
+      if (inv.assetClass === "fixed_income") {
+        if (inv.fixedIncomeSubtype === "short") {
+          rentaFijaCorto += totalValue;
+        } else {
+          rentaFijaMedio += totalValue; // medium o sin subtype
+        }
+      } else if (inv.assetClass === "variable_income") {
+        rentaVariable += totalValue;
+      } else if (inv.assetClass === "mixed") {
+        const fixedPct = inv.fixedIncomePercentage || 0;
+        const varPct = inv.variableIncomePercentage || 0;
+        rentaFijaMedio += (totalValue * fixedPct) / 100;
+        rentaVariable += (totalValue * varPct) / 100;
+      }
+    });
+
+    const data = [
+      { id: "fixed_short", name: "Renta fija corto", value: rentaFijaCorto },
+      { id: "fixed_medium", name: "Renta fija medio", value: rentaFijaMedio },
+      { id: "variable", name: "Renta variable", value: rentaVariable },
+      { id: "alternative", name: "Alternativa", value: alternativa },
+    ].filter((item) => item.value > 0);
 
     res.json(data);
   } catch (error) {
@@ -1542,6 +1584,16 @@ router.get("/distribution-by-bank", async (req, res) => {
         path: "account",
         select: "_id name bankName",
         match: { user: req.userId },
+      })
+      .populate({
+        path: "allocations.account",
+        select: "_id",
+        match: { user: req.userId },
+      })
+      .populate({
+        path: "allocations.subAccount",
+        select: "_id",
+        match: { user: req.userId },
       });
 
     // Crear un mapa de inversiones por subcuenta
@@ -1549,25 +1601,82 @@ router.get("/distribution-by-bank", async (req, res) => {
     // Crear un mapa de inversiones directas por cuenta
     const investmentsByAccount = {};
 
+    const getInvestmentTotalValue = (inv) =>
+      inv.isAutomatedPortfolio
+        ? Number(inv.currentPrice) || 0
+        : (Number(inv.quantity) || 0) * (Number(inv.currentPrice) || 0);
+
+    const addToMap = (map, key, value) => {
+      if (!key || !Number.isFinite(value)) return;
+      if (!map[key]) {
+        map[key] = 0;
+      }
+      map[key] += value;
+    };
+
+    const getAllocationCurrentValue = (
+      inv,
+      allocation,
+      totalAmount,
+      totalValue,
+    ) => {
+      const amount = Number(allocation.amount) || 0;
+      if (inv.isAutomatedPortfolio) {
+        const share = totalAmount > 0 ? amount / totalAmount : 0;
+        return totalValue * share;
+      }
+      const allocationQty = Number(allocation.quantity) || 0;
+      if (allocationQty > 0) {
+        return allocationQty * (Number(inv.currentPrice) || 0);
+      }
+      const share = totalAmount > 0 ? amount / totalAmount : 0;
+      return totalValue * share;
+    };
+
     investments.forEach((inv) => {
-      const value = inv.isAutomatedPortfolio
-        ? inv.currentPrice
-        : inv.quantity * inv.currentPrice;
+      const totalValue = getInvestmentTotalValue(inv);
+
+      if (Array.isArray(inv.allocations) && inv.allocations.length > 0) {
+        const totalAmount = inv.allocations.reduce(
+          (sum, allocation) => sum + (Number(allocation.amount) || 0),
+          0,
+        );
+
+        inv.allocations.forEach((allocation) => {
+          const subAccountId =
+            allocation.subAccount?._id?.toString() ||
+            allocation.subAccount?.toString();
+          const accountId =
+            allocation.account?._id?.toString() ||
+            allocation.account?.toString();
+          const allocationValue = getAllocationCurrentValue(
+            inv,
+            allocation,
+            totalAmount,
+            totalValue,
+          );
+
+          if (subAccountId) {
+            addToMap(investmentsBySubAccount, subAccountId, allocationValue);
+            return;
+          }
+          if (accountId) {
+            addToMap(investmentsByAccount, accountId, allocationValue);
+          }
+        });
+        return;
+      }
 
       if (inv.subAccount && inv.subAccount._id) {
         // Inversión asociada a subcuenta
         const subAccountId = inv.subAccount._id.toString();
-        if (!investmentsBySubAccount[subAccountId]) {
-          investmentsBySubAccount[subAccountId] = 0;
-        }
-        investmentsBySubAccount[subAccountId] += value;
-      } else if (inv.account && inv.account._id) {
+        addToMap(investmentsBySubAccount, subAccountId, totalValue);
+        return;
+      }
+      if (inv.account && inv.account._id) {
         // Inversión directa asociada a cuenta
         const accountId = inv.account._id.toString();
-        if (!investmentsByAccount[accountId]) {
-          investmentsByAccount[accountId] = 0;
-        }
-        investmentsByAccount[accountId] += value;
+        addToMap(investmentsByAccount, accountId, totalValue);
       }
     });
 
