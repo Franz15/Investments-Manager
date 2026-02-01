@@ -68,6 +68,13 @@
     "distribution": "Distribució",
     "byBank": "Distribució per Banc",
     "byAssetClass": "Distribució per Classe d'Actiu",
+    "byAssetType": "Per tipus de renda",
+    "assetType": {
+      "fixed_short": "Renda fixa curt",
+      "fixed_medium": "Renda fixa mig",
+      "variable": "Renda variable",
+      "alternative": "Alternativa"
+    },
     "byInvestment": "Distribució per Inversió Individual",
     "totalNetWorthEvolution": "Evolució del Patrimoni Total",
     "totalNetWorth": "Patrimoni Total"
