@@ -88,6 +88,14 @@
     "automaticUpdateActivateAllTooltip": "Activar la actualización automática de precios en todas las inversiones (con símbolo o ISIN)",
     "automaticUpdateDeactivateAllTooltip": "Desactivar la actualización automática de precios en todas las inversiones",
     "noInvestments": "No hay inversiones registradas",
+    "noClosedInvestments": "No hay inversiones cerradas",
+    "views": {
+      "active": "Activas",
+      "closed": "Histórico"
+    },
+    "badges": {
+      "closed": "Cerrada"
+    },
     "investmentTypes": {
       "stock": "Acción",
       "bond": "Bono",
@@ -104,6 +112,8 @@
       "addCapitalTooltip": "Añadir capital a inversión",
       "sell": "Vender",
       "sellTooltip": "Retirar de inversión",
+      "close": "Cerrar",
+      "closeTooltip": "Retirar todo el capital",
       "update": "Actualizar",
       "updateValue": "Actualizar Valor",
       "updateValueTooltip": "Actualizar valor desde la plataforma",
@@ -292,17 +302,31 @@
       "disabled": "Desactivada",
       "platform": "Plataforma:",
       "status": "Estado:",
-      "totalContributed": "Total aportado:"
+      "totalContributed": "Total aportado:",
+      "totalWithdrawn": "Total retirado:",
+      "closedDateLabel": "Fecha de cierre:"
     },
     "deleteConfirm": {
       "title": "Eliminar Inversión",
-      "message": "¿Estás seguro de que deseas eliminar esta inversión?",
+      "message": "¿Seguro que quieres eliminar la inversión {name}?",
       "returnMoney": "Devolver dinero a la cuenta",
       "keepMoney": "Mantener dinero en la cuenta",
       "whatToDo": "¿Qué deseas hacer con la inversión {name}?",
       "originalAmount": "Monto original invertido:",
       "deleteWithoutReturn": "Eliminar sin devolver dinero",
-      "deleteAndReturn": "Eliminar y devolver dinero a la subcuenta"
+      "deleteAndReturn": "Eliminar y devolver dinero a la subcuenta",
+      "confirm": "Eliminar inversión"
+    },
+    "closeConfirm": {
+      "title": "Cerrar Inversión",
+      "description": "Vas a retirar todo el capital de {name}.",
+      "dateLabel": "Fecha de cierre",
+      "priceLabel": "Precio de cierre",
+      "notesLabel": "Notas (opcional)",
+      "notesPlaceholder": "Añade un comentario sobre el cierre...",
+      "totalToWithdraw": "Total a retirar:",
+      "cashDestination": "El capital se devolverá a las subcuentas de efectivo correspondientes.",
+      "confirm": "Cerrar inversión"
     },
     "modals": {
       "addCapital": {
@@ -331,7 +355,8 @@
         "pricePerUnit": "Precio por unidad",
         "returnToSubAccount": "Devolver dinero a la subcuenta",
         "returnToCashSingle": "Devolver dinero a efectivo de la cuenta",
-        "returnToCashMultiple": "Devolver dinero a efectivo de las cuentas asignadas"
+        "returnToCashMultiple": "Devolver dinero a efectivo de las cuentas asignadas",
+        "useClose": "Para retirar todo el capital, usa la opción de cerrar la inversión"
       },
       "updateValue": {
         "title": "Actualizar Valor - {name}",
@@ -361,6 +386,8 @@
         "allocationsMismatch": "La suma de asignaciones debe coincidir con el monto invertido",
         "saveInvestment": "Error al guardar la inversión",
         "deleteInvestment": "Error al eliminar la inversión",
+        "closeInvestment": "Error al cerrar la inversión",
+        "closedInvestment": "La inversión está cerrada",
         "loadHistory": "Error al cargar el historial: {error}",
         "editHistory": "Error al editar la entrada del historial",
         "deleteHistory": "Error al eliminar la entrada del historial",

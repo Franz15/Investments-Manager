@@ -1,5 +1,6 @@
 import DailyVariation from "../models/DailyVariation.js";
 import InvestmentHistory from "../models/InvestmentHistory.js";
+import Investment from "../models/Investment.js";
 import { normalizeDay, getSignedOperationAmount } from "./variationEngine.js";
 
 const sumChangesForPeriod = async (userId, investmentIds, start, end) => {
@@ -22,7 +23,12 @@ const sumChangesForPeriod = async (userId, investmentIds, start, end) => {
   return variationsAgg.length > 0 ? variationsAgg[0].total : 0;
 };
 
-const getPortfolioValueAtDate = async (userId, investmentIds, date) => {
+const getPortfolioValueAtDate = async (
+  userId,
+  investmentIds,
+  date,
+  investments = null,
+) => {
   const targetDate = normalizeDay(date);
   const variations = await DailyVariation.find({
     user: userId,
@@ -30,6 +36,10 @@ const getPortfolioValueAtDate = async (userId, investmentIds, date) => {
     date: { $lte: targetDate },
   }).sort({ date: -1 });
 
+  const investmentIdList = investmentIds.map((id) => id.toString());
+  const investmentMap = Array.isArray(investments)
+    ? new Map(investments.map((inv) => [inv._id.toString(), inv]))
+    : null;
   const values = new Map();
   for (const variation of variations) {
     const invId = variation.investment.toString();
@@ -39,6 +49,48 @@ const getPortfolioValueAtDate = async (userId, investmentIds, date) => {
     if (values.size === investmentIds.length) {
       break;
     }
+  }
+
+  let missingIds = investmentIdList.filter((id) => !values.has(id));
+  if (missingIds.length > 0) {
+    const historyEntries = await InvestmentHistory.find({
+      user: userId,
+      investment: { $in: missingIds },
+      date: { $lte: targetDate },
+      totalValue: { $exists: true, $ne: null },
+    }).sort({ date: -1 });
+    historyEntries.forEach((entry) => {
+      const invId = entry.investment.toString();
+      if (!values.has(invId)) {
+        values.set(invId, entry.totalValue || 0);
+      }
+    });
+  }
+
+  missingIds = investmentIdList.filter((id) => !values.has(id));
+  if (missingIds.length > 0) {
+    const fallbackInvestments = investmentMap
+      ? missingIds.map((id) => investmentMap.get(id)).filter(Boolean)
+      : await Investment.find({
+          user: userId,
+          _id: { $in: missingIds },
+        }).lean();
+    fallbackInvestments.forEach((inv) => {
+      const invId = inv._id.toString();
+      if (values.has(invId)) {
+        return;
+      }
+      if (inv.purchaseDate) {
+        const purchaseDate = normalizeDay(inv.purchaseDate);
+        if (purchaseDate > targetDate) {
+          return;
+        }
+      }
+      const value = inv.isAutomatedPortfolio
+        ? inv.currentPrice || 0
+        : (inv.quantity || 0) * (inv.currentPrice || 0);
+      values.set(invId, value);
+    });
   }
 
   let total = 0;
@@ -192,6 +244,7 @@ const getPortfolioPeriodReturn = async (
   investmentIds,
   periodStart,
   periodEnd,
+  investments = null,
 ) => {
   const startDate = normalizeDay(periodStart);
   const endDate = normalizeDay(periodEnd);
@@ -202,6 +255,7 @@ const getPortfolioPeriodReturn = async (
     userId,
     investmentIds,
     dayBeforeStart,
+    investments,
   );
 
   if (!startValue || startValue === 0) {
@@ -209,6 +263,7 @@ const getPortfolioPeriodReturn = async (
       userId,
       investmentIds,
       startDate,
+      investments,
     );
     startValue = fallback.total;
   }
@@ -217,6 +272,7 @@ const getPortfolioPeriodReturn = async (
     userId,
     investmentIds,
     endDate,
+    investments,
   );
   const totalChange = await sumChangesForPeriod(
     userId,
@@ -234,7 +290,11 @@ const getPortfolioPeriodReturn = async (
   };
 };
 
-const getPortfolioAccumulatedReturn = async (userId, investmentIds) => {
+const getPortfolioAccumulatedReturn = async (
+  userId,
+  investmentIds,
+  investments = null,
+) => {
   const firstVariation = await DailyVariation.findOne({
     user: userId,
     investment: { $in: investmentIds },
@@ -257,6 +317,7 @@ const getPortfolioAccumulatedReturn = async (userId, investmentIds) => {
     userId,
     investmentIds,
     startDate,
+    investments,
   );
   const totalChange = await sumChangesForPeriod(
     userId,
