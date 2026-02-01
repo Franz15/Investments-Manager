@@ -12,10 +12,8 @@ import {
   getPortfolioDailyReturn,
   getPortfolioPeriodReturn,
   getPortfolioAccumulatedReturn,
-  getCapitalChangeForPeriod,
   getCapitalFlowsForPeriod,
 } from "../services/portfolioReturnService.js";
-import { getSignedOperationAmount } from "../services/variationEngine.js";
 import YahooFinance from "yahoo-finance2";
 
 const router = express.Router();
@@ -80,7 +78,10 @@ router.get("/stats", async (req, res) => {
     // Solo obtener inversiones que tienen account (requerido)
     const investments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     })
       .populate({
         path: "subAccount",
@@ -343,7 +344,10 @@ router.get("/balance-chart", async (req, res) => {
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const perfInvestments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     });
 
     if (perfInvestments.length === 0) {
@@ -1613,7 +1617,7 @@ router.get("/distribution-by-bank", async (req, res) => {
   }
 });
 
-// GET resumen por cuentas/subcuentas: capital aportado real (desde historial) y valor actual
+// GET resumen por cuentas/subcuentas: capital invertido (según allocations) y valor actual
 // ?byPrimaryAccount=1 atribuye cada inversión 100% a su cuenta principal (inv.account/subAccount), útil si las allocations están mal
 router.get("/accounts-summary", async (req, res) => {
   try {
@@ -1630,41 +1634,51 @@ router.get("/accounts-summary", async (req, res) => {
       .populate({ path: "allocations.subAccount", select: "_id" })
       .lean();
 
-    const investmentIds = investments.map((inv) => inv._id);
-    const historyEntries = await InvestmentHistory.find({
-      user: req.userId,
-      investment: { $in: investmentIds },
-      operation: { $in: ["creation", "add", "sell", "withdraw"] },
-    }).lean();
-
-    const netContributedByInvestment = new Map();
-    investmentIds.forEach((id) =>
-      netContributedByInvestment.set(id.toString(), 0),
-    );
-    historyEntries.forEach((entry) => {
-      const invId = (
-        entry.investment && entry.investment._id
-          ? entry.investment._id
-          : entry.investment
-      ).toString();
-      const amount = getSignedOperationAmount(entry);
-      netContributedByInvestment.set(
-        invId,
-        (netContributedByInvestment.get(invId) || 0) + amount,
-      );
-    });
-
     const keyFn = (accountId, subAccountId) =>
       `${accountId || ""}-${subAccountId || "none"}`;
     const contributedByKey = new Map();
     const valueByKey = new Map();
 
-    investments.forEach((inv) => {
-      const netContributed =
-        netContributedByInvestment.get(inv._id.toString()) || 0;
-      const currentValue = inv.isAutomatedPortfolio
+    const getInvestmentTotalValue = (inv) =>
+      inv.isAutomatedPortfolio
         ? inv.currentPrice || 0
         : (inv.quantity || 0) * (inv.currentPrice || 0);
+
+    const getInvestmentInvestedCapital = (inv) => {
+      if (inv.isAutomatedPortfolio) {
+        return inv.quantity || 0;
+      }
+      const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
+      return (inv.quantity || 0) * avgPrice;
+    };
+
+    const getAllocationMetrics = (inv, allocation, totalAmount, totalValue) => {
+      const amount = Number(allocation.amount) || 0;
+      if (inv.isAutomatedPortfolio) {
+        const share = totalAmount > 0 ? amount / totalAmount : 0;
+        return {
+          investedCapital: amount,
+          currentValue: totalValue * share,
+        };
+      }
+      const allocationQty = Number(allocation.quantity) || 0;
+      const allocationAvg = Number(allocation.averagePurchasePrice) || 0;
+      if (allocationQty > 0 && allocationAvg > 0) {
+        return {
+          investedCapital: allocationQty * allocationAvg,
+          currentValue: allocationQty * (inv.currentPrice || 0),
+        };
+      }
+      const share = totalAmount > 0 ? amount / totalAmount : 0;
+      return {
+        investedCapital: amount,
+        currentValue: totalValue * share,
+      };
+    };
+
+    investments.forEach((inv) => {
+      const currentValue = getInvestmentTotalValue(inv);
+      const investedCapital = getInvestmentInvestedCapital(inv);
 
       if (byPrimaryAccount) {
         const accId = inv.account ? String(inv.account._id || inv.account) : "";
@@ -1674,7 +1688,7 @@ router.get("/accounts-summary", async (req, res) => {
         const k = keyFn(accId, subId);
         contributedByKey.set(
           k,
-          (contributedByKey.get(k) || 0) + netContributed,
+          (contributedByKey.get(k) || 0) + investedCapital,
         );
         valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
         return;
@@ -1685,9 +1699,19 @@ router.get("/accounts-summary", async (req, res) => {
         (sum, a) => sum + (Number(a.amount) || 0),
         0,
       );
-      const shareDenom = totalAmount > 0 ? totalAmount : 1;
+      const hasAllocationQuantities =
+        !inv.isAutomatedPortfolio &&
+        allocations.some(
+          (allocation) =>
+            (Number(allocation.quantity) || 0) > 0 &&
+            (Number(allocation.averagePurchasePrice) || 0) > 0,
+        );
 
-      if (totalAmount === 0 && allocations.length > 0) {
+      if (
+        totalAmount === 0 &&
+        !hasAllocationQuantities &&
+        allocations.length > 0
+      ) {
         const first = allocations[0];
         const accId =
           (
@@ -1704,9 +1728,10 @@ router.get("/accounts-summary", async (req, res) => {
         const k = keyFn(accId, subId);
         contributedByKey.set(
           k,
-          (contributedByKey.get(k) || 0) + netContributed,
+          (contributedByKey.get(k) || 0) + investedCapital,
         );
         valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
+        return;
       }
 
       allocations.forEach((alloc) => {
@@ -1723,12 +1748,17 @@ router.get("/accounts-summary", async (req, res) => {
             ""
           : null;
         const k = keyFn(accId, subId);
-        const share = (Number(alloc.amount) || 0) / shareDenom;
+        const metrics = getAllocationMetrics(
+          inv,
+          alloc,
+          totalAmount,
+          currentValue,
+        );
         contributedByKey.set(
           k,
-          (contributedByKey.get(k) || 0) + netContributed * share,
+          (contributedByKey.get(k) || 0) + metrics.investedCapital,
         );
-        valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue * share);
+        valueByKey.set(k, (valueByKey.get(k) || 0) + metrics.currentValue);
       });
 
       if (allocations.length === 0) {
@@ -1744,7 +1774,7 @@ router.get("/accounts-summary", async (req, res) => {
         const k = keyFn(accId, subId);
         contributedByKey.set(
           k,
-          (contributedByKey.get(k) || 0) + netContributed,
+          (contributedByKey.get(k) || 0) + investedCapital,
         );
         valueByKey.set(k, (valueByKey.get(k) || 0) + currentValue);
       }
@@ -1855,22 +1885,26 @@ router.get("/performance", async (req, res) => {
       perfInvestmentIds,
       perfMonthStart,
       perfToday,
+      perfInvestments,
     );
     const perfQuarterlyData = await getPortfolioPeriodReturn(
       req.userId,
       perfInvestmentIds,
       perfQuarterStart,
       perfToday,
+      perfInvestments,
     );
     const perfAnnualData = await getPortfolioPeriodReturn(
       req.userId,
       perfInvestmentIds,
       perfYearStart,
       perfToday,
+      perfInvestments,
     );
     const perfAccumulatedData = await getPortfolioAccumulatedReturn(
       req.userId,
       perfInvestmentIds,
+      perfInvestments,
     );
 
     const perfStartDate = perfAccumulatedData.startDate || perfToday;
@@ -2021,1480 +2055,6 @@ router.get("/performance", async (req, res) => {
       endDate: perfEndDate.toISOString(),
       years: parseFloat(perfYears.toFixed(2)),
       sp500Comparison: perfSp500Comparison,
-    });
-
-    // Obtener todas las inversiones del usuario
-    const allInvestments = await Investment.find({
-      user: req.userId,
-      account: { $exists: true, $ne: null },
-    });
-
-    if (allInvestments.length === 0) {
-      return res.json({
-        annualizedReturn: null,
-        totalReturn: null,
-        sp500Comparison: null,
-        period: null,
-        message: "No hay inversiones para calcular el rendimiento",
-      });
-    }
-
-    // Calcular valor inicial: suma de TODOS los aportes de capital (creation + add) menos TODAS las ventas (sell/withdraw)
-    // Esto representa el capital total invertido, no solo el inicial
-    const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-      .default;
-    const investments = allInvestments;
-    const validInvestments = [];
-
-    // Obtener TODOS los registros de historial (sin filtrar por fecha)
-    // Necesitamos sumar todos los aportes de capital, no solo los iniciales
-    const allHistoryEntries = await InvestmentHistory.find({
-      user: req.userId,
-      investment: { $in: allInvestments.map((inv) => inv._id) },
-    }).sort({ date: 1 });
-
-    const getOperationAmount = (entry) => {
-      let amount = entry.operationAmount;
-      if (!amount || amount === 0) {
-        if (entry.operationPrice && entry.quantity) {
-          amount = entry.operationPrice * entry.quantity;
-        } else if (entry.operation === "creation" && entry.totalValue) {
-          amount = entry.totalValue;
-        }
-      }
-      amount = amount || 0;
-      return amount;
-    };
-
-    const calculateNetCapitalChange = (
-      entries,
-      periodStart,
-      periodEnd,
-      investmentsInPeriod = [],
-      filterInvestmentIds = null,
-    ) => {
-      if (!periodStart || !periodEnd) {
-        return 0;
-      }
-      const start = new Date(periodStart);
-      const end = new Date(periodEnd);
-      let netCapitalChange = 0;
-      const filterSet =
-        filterInvestmentIds && filterInvestmentIds.size > 0
-          ? filterInvestmentIds
-          : null;
-
-      entries.forEach((entry) => {
-        if (!entry || !entry.date) {
-          return;
-        }
-        const entryDate = new Date(entry.date);
-        if (entryDate < start || entryDate > end) {
-          return;
-        }
-        if (filterSet) {
-          const entryInvId =
-            entry.investment?.toString() || entry.investment?._id?.toString();
-          if (!filterSet.has(entryInvId)) {
-            return;
-          }
-        }
-
-        if (entry.operation === "creation" || entry.operation === "add") {
-          let amount = getOperationAmount(entry);
-          if (amount < 0) {
-            amount = 0;
-          }
-          netCapitalChange += amount;
-        } else if (
-          entry.operation === "sell" ||
-          entry.operation === "withdraw"
-        ) {
-          const amount = Math.abs(getOperationAmount(entry));
-          netCapitalChange -= amount;
-        }
-      });
-
-      if (investmentsInPeriod.length > 0) {
-        investmentsInPeriod.forEach((inv) => {
-          if (!inv?.purchaseDate) {
-            return;
-          }
-          const purchaseDate = new Date(inv.purchaseDate);
-          purchaseDate.setHours(0, 0, 0, 0);
-          if (purchaseDate < start || purchaseDate > end) {
-            return;
-          }
-
-          const invId = inv._id?.toString();
-          const hasCapitalEntry = entries.some((entry) => {
-            const entryInvId =
-              entry.investment?.toString() || entry.investment?._id?.toString();
-            if (entryInvId !== invId) {
-              return false;
-            }
-            const entryDate = new Date(entry.date);
-            if (entryDate < start || entryDate > end) {
-              return false;
-            }
-            return entry.operation === "creation" || entry.operation === "add";
-          });
-
-          if (!hasCapitalEntry) {
-            let impliedCapital = 0;
-            if (inv.isAutomatedPortfolio) {
-              impliedCapital = inv.quantity || 0;
-            } else {
-              const priceToUse =
-                inv.averagePurchasePrice || inv.purchasePrice || 0;
-              impliedCapital = (inv.quantity || 0) * priceToUse;
-            }
-
-            if (impliedCapital === 0) {
-              impliedCapital = inv.isAutomatedPortfolio
-                ? inv.currentPrice || 0
-                : (inv.quantity || 0) * (inv.currentPrice || 0);
-            }
-
-            if (impliedCapital > 0) {
-              netCapitalChange += impliedCapital;
-            }
-          }
-        });
-      }
-
-      return netCapitalChange;
-    };
-
-    // Calcular el capital total invertido (todos los aportes menos todas las ventas)
-    let totalInvestedCapital = 0;
-    let totalContributedCapital = 0;
-    let totalWithdrawnCapital = 0;
-    const capitalOperations = []; // Para depuración
-
-    // Si hay historial, calcular basándose en los operationAmount
-    if (allHistoryEntries.length > 0) {
-      allHistoryEntries.forEach((entry) => {
-        if (entry.operation === "creation" || entry.operation === "add") {
-          // Sumar aportes de capital
-          // IMPORTANTE: Para 'add', SIEMPRE usar operationAmount, nunca totalValue
-          // porque totalValue incluye el valor total de la inversión, no solo el capital añadido
-          let amount = entry.operationAmount;
-          if (!amount || amount === 0) {
-            // Intentar calcular desde operationPrice y quantity
-            if (entry.operationPrice && entry.quantity) {
-              amount = entry.operationPrice * entry.quantity;
-            } else if (entry.operation === "creation" && entry.totalValue) {
-              // SOLO para creation, el totalValue inicial es el capital aportado
-              // Para 'add', NUNCA usar totalValue porque incluye el valor previo
-              amount = entry.totalValue;
-            }
-          }
-          amount = amount || 0;
-
-          // Validar que el amount sea razonable
-          // Para 'add', el amount debería ser razonablemente pequeño comparado con el totalValue
-          // (el totalValue incluye lo que ya había + lo nuevo)
-          if (
-            entry.operation === "add" &&
-            entry.totalValue &&
-            amount > entry.totalValue * 0.9
-          ) {
-            // Si el amount es > 90% del totalValue, probablemente estamos usando totalValue por error
-            // Intentar calcular desde operationPrice y quantity si están disponibles
-            if (entry.operationPrice && entry.quantity) {
-              const calculatedAmount = entry.operationPrice * entry.quantity;
-              if (calculatedAmount < entry.totalValue * 0.5) {
-                amount = calculatedAmount;
-              }
-            }
-          }
-
-          // Validar que el amount sea razonable (no negativo)
-          if (amount < 0) {
-            amount = 0; // Ignorar amounts negativos en operaciones de add
-          }
-
-          totalInvestedCapital += amount;
-          totalContributedCapital += amount;
-          capitalOperations.push({
-            date: entry.date,
-            operation: entry.operation,
-            amount: amount,
-            investment: entry.investment?._id || entry.investment,
-            type: "add",
-          });
-        } else if (
-          entry.operation === "sell" ||
-          entry.operation === "withdraw"
-        ) {
-          // Restar ventas/retiros (el capital retirado)
-          let amount = entry.operationAmount;
-          if (!amount || amount === 0) {
-            // Intentar calcular desde operationPrice y quantity
-            if (entry.operationPrice && entry.quantity) {
-              amount = entry.operationPrice * entry.quantity;
-            }
-          }
-          amount = Math.abs(amount || 0);
-
-          // Validar que el amount no sea excesivamente grande (más del 200% del valor actual de esa inversión)
-          const investment = allInvestments.find(
-            (inv) =>
-              inv._id.toString() ===
-              (entry.investment?._id?.toString() ||
-                entry.investment?.toString()),
-          );
-          if (investment) {
-            const invCurrentValue = investment.isAutomatedPortfolio
-              ? investment.currentPrice
-              : investment.quantity * investment.currentPrice;
-            if (amount > invCurrentValue * 2) {
-              // Limitar el amount al valor actual de la inversión
-              amount = Math.min(amount, invCurrentValue);
-            }
-          }
-
-          totalInvestedCapital -= amount;
-          totalWithdrawnCapital += amount;
-          capitalOperations.push({
-            date: entry.date,
-            operation: entry.operation,
-            amount: -amount,
-            investment: entry.investment?._id || entry.investment,
-            type: "subtract",
-          });
-        }
-        // 'update' no afecta el capital invertido, solo refleja cambios de precio
-      });
-
-      // Agregar todas las inversiones que tienen operación "creation" a validInvestments
-      allInvestments.forEach((inv) => {
-        const hasCreationEntry = allHistoryEntries.some((entry) => {
-          const entryInvId =
-            entry.investment?.toString() || entry.investment?._id?.toString();
-          return (
-            entryInvId === inv._id.toString() && entry.operation === "creation"
-          );
-        });
-        if (hasCreationEntry) {
-          validInvestments.push(inv);
-        }
-      });
-
-      // IMPORTANTE: Verificar inversiones que NO tienen operación "creation" registrada
-      // Estas inversiones no se contaron en totalInvestedCapital, pero su capital inicial debe incluirse
-      for (const inv of allInvestments) {
-        const hasCreationEntry = allHistoryEntries.some((entry) => {
-          const entryInvId =
-            entry.investment?.toString() || entry.investment?._id?.toString();
-          return (
-            entryInvId === inv._id.toString() && entry.operation === "creation"
-          );
-        });
-
-        if (!hasCreationEntry) {
-          // Buscar primera entrada de historial
-          const firstHistoryEntry = await InvestmentHistory.findOne({
-            user: req.userId,
-            investment: inv._id,
-          })
-            .sort({ date: 1 })
-            .limit(1);
-
-          let initialCapital = 0;
-          if (
-            firstHistoryEntry &&
-            (firstHistoryEntry.operation === "creation" ||
-              firstHistoryEntry.operation === "add")
-          ) {
-            initialCapital =
-              firstHistoryEntry.operationAmount ||
-              (firstHistoryEntry.operationPrice && firstHistoryEntry.quantity
-                ? firstHistoryEntry.operationPrice * firstHistoryEntry.quantity
-                : 0);
-          }
-
-          // Si no hay historial con capital, calcular desde precios de compra
-          if (initialCapital === 0) {
-            if (inv.isAutomatedPortfolio) {
-              // Para carteras automatizadas, la cantidad es el capital inicial
-              initialCapital = inv.quantity || 0;
-            } else {
-              // Usar precio medio de compra si existe, sino precio inicial
-              const priceToUse =
-                inv.averagePurchasePrice || inv.purchasePrice || 0;
-              initialCapital = (inv.quantity || 0) * priceToUse;
-            }
-          }
-
-          // Solo como último recurso: estimación conservadora del 80% del valor actual
-          // Esto evita inflar artificialmente el capital invertido
-          if (initialCapital === 0 && inv.currentPrice && inv.quantity) {
-            const currentValue = inv.isAutomatedPortfolio
-              ? inv.currentPrice || 0
-              : (inv.quantity || 0) * (inv.currentPrice || 0);
-            // Usar el 80% del valor actual como estimación conservadora
-            initialCapital = currentValue * 0.8;
-          }
-
-          // IMPORTANTE: Si no podemos determinar el capital inicial con confianza,
-          // excluir esta inversión del cálculo del rendimiento acumulado
-          if (initialCapital === 0) {
-            console.log(
-              `Excluyendo inversión ${inv.name} del cálculo del rendimiento acumulado (capital inicial desconocido)`,
-            );
-            continue; // Saltar esta inversión
-          }
-
-          if (initialCapital > 0) {
-            totalInvestedCapital += initialCapital;
-            totalContributedCapital += initialCapital;
-            capitalOperations.push({
-              date: inv.purchaseDate || new Date(),
-              operation: "creation",
-              amount: initialCapital,
-              investment: inv._id,
-              type: "add",
-            });
-            validInvestments.push(inv); // Agregar a inversiones válidas
-          }
-        }
-      }
-    } else {
-      // Si no hay historial, calcular basándose en purchaseDate y purchasePrice
-      investments.forEach((inv) => {
-        let investedInThisInv = 0;
-
-        if (inv.isAutomatedPortfolio) {
-          investedInThisInv = inv.quantity || 0; // Para carteras, quantity es el capital inicial
-        } else {
-          const avgPrice = inv.averagePurchasePrice || inv.purchasePrice || 0;
-          investedInThisInv = (inv.quantity || 0) * avgPrice;
-        }
-
-        // Para inversiones antiguas sin operaciones registradas, asumir capital inicial = 0
-        // si la fecha de compra es anterior a la primera operación registrada por más de 30 días
-        if (investedInThisInv === 0 && inv.purchaseDate) {
-          const purchaseDate = new Date(inv.purchaseDate);
-          const now = new Date();
-          const daysSincePurchase =
-            (now - purchaseDate) / (1000 * 60 * 60 * 24);
-
-          // Si la inversión existe desde hace más de 30 días pero no hay capital registrado,
-          // asumir que todo el valor actual es rendimiento acumulado (capital inicial = 0)
-          if (daysSincePurchase > 30) {
-            investedInThisInv = 0;
-          }
-        }
-
-        totalInvestedCapital += investedInThisInv;
-        totalContributedCapital += investedInThisInv;
-      });
-    }
-
-    const netInvestedCapital = totalInvestedCapital;
-    const initialValue = Math.max(0, totalContributedCapital);
-
-    // Calcular valor actual (solo con inversiones válidas)
-    let currentValue = 0;
-    validInvestments.forEach((inv) => {
-      if (inv.isAutomatedPortfolio) {
-        currentValue += inv.currentPrice || 0;
-      } else {
-        currentValue += (inv.quantity || 0) * (inv.currentPrice || 0);
-      }
-    });
-
-    // Valor actual total (todas las inversiones)
-    let currentTotalValue = 0;
-    investments.forEach((inv) => {
-      if (inv.isAutomatedPortfolio) {
-        currentTotalValue += inv.currentPrice || 0;
-      } else {
-        currentTotalValue += (inv.quantity || 0) * (inv.currentPrice || 0);
-      }
-    });
-
-    const DailyVariation = (await import("../models/DailyVariation.js"))
-      .default;
-
-    // Calcular rendimiento acumulado correctamente:
-    // Rendimiento acumulado = Valor actual total - Capital neto aportado históricamente
-    // El capital neto aportado es la suma de todos los "add" y "creation" menos todos los "sell" y "withdraw"
-    const accumulatedReturnCapital = currentTotalValue - netInvestedCapital;
-
-    // Usar variaciones diarias si existen para obtener el rendimiento acumulado más fiable
-    const accumulatedVariationsAgg = await DailyVariation.aggregate([
-      {
-        $match: {
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: { $ifNull: ["$changeAmount", 0] } },
-        },
-      },
-    ]);
-    const accumulatedReturnFromVariations =
-      accumulatedVariationsAgg.length > 0
-        ? accumulatedVariationsAgg[0].total
-        : null;
-
-    const accumulatedReturnDiff =
-      accumulatedReturnFromVariations !== null
-        ? Math.abs(accumulatedReturnFromVariations - accumulatedReturnCapital)
-        : null;
-    const accumulatedReturnThresholdValue = Math.max(
-      50,
-      currentTotalValue * 0.01,
-    );
-    const accumulatedReturnThresholdReturn = Math.max(
-      50,
-      Math.abs(accumulatedReturnCapital) * 0.1,
-    );
-    const accumulatedReturnThreshold = Math.min(
-      accumulatedReturnThresholdValue,
-      accumulatedReturnThresholdReturn,
-    );
-    const accumulatedReturn = accumulatedReturnCapital;
-    const accumulatedReturnPercent =
-      netInvestedCapital > 0
-        ? (accumulatedReturn / netInvestedCapital) * 100
-        : 0;
-    const accumulatedReturnCapitalPercent =
-      netInvestedCapital > 0
-        ? (accumulatedReturnCapital / netInvestedCapital) * 100
-        : 0;
-    const accumulatedReturnVariationsPercent =
-      accumulatedReturnFromVariations !== null && netInvestedCapital > 0
-        ? (accumulatedReturnFromVariations / netInvestedCapital) * 100
-        : null;
-    const accumulatedReturnSource = "capital";
-    const totalReturn = accumulatedReturn;
-    const totalReturnPercent = accumulatedReturnPercent;
-
-    // Logs de depuración - mostrar TODAS las operaciones, incluyendo sell/withdraw
-    const allOperations = capitalOperations.map((op) => ({
-      date: op.date,
-      operation: op.operation,
-      amount: op.amount,
-      investment: op.investment,
-      type: op.type,
-    }));
-
-    // Calcular rendimiento anual del año actual (desde el 1 de enero del año actual hasta hoy)
-    const currentYear = new Date().getFullYear();
-    const yearStart = new Date(currentYear, 0, 1); // 1 de enero del año actual
-    yearStart.setHours(0, 0, 0, 0);
-
-    // Obtener el valor del portfolio al inicio del año actual
-    // Buscar la variación más reciente del 31 de diciembre (último día del año anterior)
-    const lastDayOfPreviousYear = new Date(currentYear - 1, 11, 31); // 31 de diciembre del año anterior
-    lastDayOfPreviousYear.setHours(0, 0, 0, 0);
-    const lastDayEnd = new Date(lastDayOfPreviousYear);
-    lastDayEnd.setDate(lastDayEnd.getDate() + 1);
-
-    // Buscar variaciones del 31 de diciembre
-    let yearStartValue = 0;
-    const variationsDec31 = await DailyVariation.find({
-      user: req.userId,
-      investment: { $in: investments.map((inv) => inv._id) },
-      date: { $gte: lastDayOfPreviousYear, $lt: lastDayEnd },
-    });
-
-    // Verificar si las variaciones del 31/12 están desactualizadas comparándolas con el valor actual
-    // Si hay una discrepancia grande (más del 20%), usar el valor actual del modelo Investment
-    const variationsDec31Map = new Map();
-    if (variationsDec31.length > 0) {
-      variationsDec31.forEach((v) => {
-        const invId = v.investment.toString();
-        const inv = investments.find((inv) => inv._id.toString() === invId);
-        if (inv) {
-          const currentValue = inv.isAutomatedPortfolio
-            ? inv.currentPrice || 0
-            : (inv.quantity || 0) * (inv.currentPrice || 0);
-          const variationValue = v.totalValue || 0;
-
-          // Si la diferencia es mayor al 20%, usar el valor actual (probablemente fue corregido)
-          const diffPercent =
-            currentValue > 0
-              ? Math.abs((variationValue - currentValue) / currentValue)
-              : 0;
-          if (diffPercent > 0.2 && variationValue > currentValue * 1.2) {
-            // La variación es mucho mayor que el valor actual, probablemente fue corregido
-            // Usar el valor actual en lugar de la variación desactualizada
-            variationsDec31Map.set(invId, currentValue);
-          } else {
-            variationsDec31Map.set(invId, variationValue);
-          }
-        } else {
-          variationsDec31Map.set(invId, v.totalValue || 0);
-        }
-      });
-
-      variationsDec31Map.forEach((value) => {
-        yearStartValue += value;
-      });
-    } else {
-      // Si no hay del 31 de diciembre, buscar la más reciente antes del 1 de enero
-      const lastVariationBeforeYear = await DailyVariation.findOne({
-        user: req.userId,
-        investment: { $in: investments.map((inv) => inv._id) },
-        date: { $lt: yearStart },
-      })
-        .sort({ date: -1 })
-        .limit(1)
-        .select("date");
-
-      if (lastVariationBeforeYear) {
-        // Obtener todas las variaciones de esa fecha
-        const lastDate = new Date(lastVariationBeforeYear.date);
-        lastDate.setHours(0, 0, 0, 0);
-        const lastDateEnd = new Date(lastDate);
-        lastDateEnd.setDate(lastDateEnd.getDate() + 1);
-
-        const variationsAtLastDate = await DailyVariation.find({
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $gte: lastDate, $lt: lastDateEnd },
-        });
-
-        variationsAtLastDate.forEach((v) => {
-          yearStartValue += v.totalValue || 0;
-        });
-      } else {
-        // Si no hay variaciones diarias, usar el historial más reciente antes del año
-        const historyBeforeYear = await InvestmentHistory.find({
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $lt: yearStart },
-        }).sort({ date: -1 });
-
-        // Agrupar por inversión y tomar el totalValue más reciente de cada una
-        const latestByInvestment = new Map();
-        historyBeforeYear.forEach((h) => {
-          const invId = h.investment.toString();
-          if (!latestByInvestment.has(invId) && h.totalValue) {
-            latestByInvestment.set(invId, h.totalValue);
-          }
-        });
-
-        latestByInvestment.forEach((totalValue) => {
-          yearStartValue += totalValue || 0;
-        });
-      }
-    }
-
-    // Identificar inversiones que existían antes del 1 de enero de 2026
-    // La fecha de creación (purchaseDate) es la que importa, no la fecha de registro
-    const oldInvestmentIds = new Set();
-    const newInvestmentIds = new Set();
-
-    investments.forEach((inv) => {
-      const purchaseDate = new Date(inv.purchaseDate);
-      purchaseDate.setHours(0, 0, 0, 0);
-      if (purchaseDate < yearStart) {
-        oldInvestmentIds.add(inv._id.toString());
-      } else {
-        newInvestmentIds.add(inv._id.toString());
-      }
-    });
-
-    // Calcular el valor al 31 de diciembre de 2025 de las inversiones antiguas
-    // IMPORTANTE: Necesitamos el valor REAL al 31/12, no el capital inicial
-    let actualYearStartValue = yearStartValue;
-    const missingInvestments = [];
-    const investmentsInYearStartValue = new Set();
-
-    // Identificar qué inversiones están ya incluidas en yearStartValue
-    if (variationsDec31.length > 0) {
-      variationsDec31.forEach((v) => {
-        const vInvId =
-          v.investment?.toString() ||
-          (typeof v.investment === "object"
-            ? v.investment._id?.toString()
-            : null);
-        if (vInvId) {
-          investmentsInYearStartValue.add(vInvId);
-        }
-      });
-    } else {
-      // Si no hay variaciones del 31/12, buscar en las variaciones más recientes
-      const lastVariationBeforeYear = await DailyVariation.findOne({
-        user: req.userId,
-        investment: { $in: investments.map((inv) => inv._id) },
-        date: { $lt: yearStart },
-      })
-        .sort({ date: -1 })
-        .limit(1)
-        .select("date");
-
-      if (lastVariationBeforeYear) {
-        const lastDate = new Date(lastVariationBeforeYear.date);
-        lastDate.setHours(0, 0, 0, 0);
-        const lastDateEnd = new Date(lastDate);
-        lastDateEnd.setDate(lastDateEnd.getDate() + 1);
-
-        const variationsAtLastDate = await DailyVariation.find({
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $gte: lastDate, $lt: lastDateEnd },
-        });
-
-        variationsAtLastDate.forEach((v) => {
-          const vInvId =
-            v.investment?.toString() ||
-            (typeof v.investment === "object"
-              ? v.investment._id?.toString()
-              : null);
-          if (vInvId) {
-            investmentsInYearStartValue.add(vInvId);
-          }
-        });
-      }
-    }
-
-    // Para inversiones antiguas que no tienen registro en DailyVariation al 31/12,
-    // buscar su valor más reciente antes del 1 de enero
-    for (const inv of investments) {
-      const invId = inv._id.toString();
-      if (
-        oldInvestmentIds.has(invId) &&
-        !investmentsInYearStartValue.has(invId)
-      ) {
-        // Buscar el valor más reciente antes del 1 de enero en DailyVariation
-        const lastVariation = await DailyVariation.findOne({
-          user: req.userId,
-          investment: inv._id,
-          date: { $lt: yearStart },
-        })
-          .sort({ date: -1 })
-          .limit(1);
-
-        if (lastVariation && lastVariation.totalValue) {
-          actualYearStartValue += lastVariation.totalValue;
-          missingInvestments.push({
-            name: inv.name,
-            value: lastVariation.totalValue,
-            date: lastVariation.date,
-            source: "DailyVariation",
-          });
-        } else {
-          // Si no hay en DailyVariation, buscar en InvestmentHistory
-          // IMPORTANTE: Buscar el valor más cercano al 31/12, no solo el último registro
-          // Preferir registros de 'update' o el último registro antes del 31/12
-          const lastDayOfPreviousYear = new Date(currentYear - 1, 11, 31);
-          lastDayOfPreviousYear.setHours(0, 0, 0, 0);
-          const lastDayEnd = new Date(lastDayOfPreviousYear);
-          lastDayEnd.setDate(lastDayEnd.getDate() + 1);
-
-          // Primero buscar registros del 31/12
-          const historyDec31 = await InvestmentHistory.findOne({
-            user: req.userId,
-            investment: inv._id,
-            date: { $gte: lastDayOfPreviousYear, $lt: lastDayEnd },
-          })
-            .sort({ date: -1 })
-            .limit(1);
-
-          if (historyDec31 && historyDec31.totalValue) {
-            actualYearStartValue += historyDec31.totalValue;
-            missingInvestments.push({
-              name: inv.name,
-              value: historyDec31.totalValue,
-              date: historyDec31.date,
-              source: "InvestmentHistory 31/12",
-            });
-          } else {
-            // Si no hay registro del 31/12, buscar el más reciente antes del 1 de enero con totalValue
-            const lastHistory = await InvestmentHistory.findOne({
-              user: req.userId,
-              investment: inv._id,
-              date: { $lt: yearStart },
-              totalValue: { $exists: true, $ne: null, $gt: 0 },
-            })
-              .sort({ date: -1 })
-              .limit(1);
-
-            if (lastHistory && lastHistory.totalValue) {
-              // IMPORTANTE: Usar el totalValue si el registro es reciente (dentro de 30 días del 31/12)
-              // Esto refleja mejor el valor de mercado que calcular el capital invertido
-              const lastDayOfPreviousYear = new Date(currentYear - 1, 11, 31);
-              lastDayOfPreviousYear.setHours(0, 0, 0, 0);
-              const daysDiff =
-                (yearStart - lastHistory.date) / (1000 * 60 * 60 * 24);
-
-              // Usar totalValue si el registro es del 31/12, 30/12, o está dentro de 30 días
-              // Esto es mejor que usar capital invertido porque refleja el valor de mercado
-              if (daysDiff <= 30) {
-                // El registro es reciente, usar su totalValue como aproximación del valor al 31/12
-                actualYearStartValue += lastHistory.totalValue;
-                investmentsInYearStartValue.add(invId);
-                missingInvestments.push({
-                  name: inv.name,
-                  value: lastHistory.totalValue,
-                  date: lastHistory.date,
-                  source: `InvestmentHistory (${daysDiff.toFixed(0)} días antes del 1/1)`,
-                });
-              } else {
-                // El registro es anterior al 30/12
-                // IMPORTANTE: No usar capital invertido, buscar el último totalValue antes del 1/1
-                // que refleje el valor real de mercado, no solo el capital aportado
-
-                // Buscar el último registro con totalValue antes del 1/1, preferiblemente de tipo 'update'
-                const lastUpdateBeforeYear = await InvestmentHistory.findOne({
-                  user: req.userId,
-                  investment: inv._id,
-                  date: { $lt: yearStart },
-                  totalValue: { $exists: true, $ne: null, $gt: 0 },
-                })
-                  .sort({ date: -1 })
-                  .limit(1);
-
-                if (lastUpdateBeforeYear && lastUpdateBeforeYear.totalValue) {
-                  // Usar el totalValue del último registro, que debería reflejar el valor de mercado
-                  actualYearStartValue += lastUpdateBeforeYear.totalValue;
-                  missingInvestments.push({
-                    name: inv.name,
-                    value: lastUpdateBeforeYear.totalValue,
-                    date: lastUpdateBeforeYear.date,
-                    source: "InvestmentHistory (last totalValue)",
-                  });
-                } else {
-                  // Como último recurso, si no hay ningún registro con totalValue,
-                  // calcular el capital invertido (pero esto no es ideal)
-                  let invCapitalBeforeYear = 0;
-                  const invHistoryBeforeYear = allHistoryEntries.filter((e) => {
-                    const eInvId =
-                      e.investment?._id?.toString() || e.investment?.toString();
-                    const eDate = new Date(e.date);
-                    eDate.setHours(0, 0, 0, 0);
-                    return eInvId === invId && eDate < yearStart;
-                  });
-
-                  invHistoryBeforeYear.forEach((e) => {
-                    if (e.operation === "creation" || e.operation === "add") {
-                      let amount = e.operationAmount;
-                      if (!amount || amount === 0) {
-                        if (e.operationPrice && e.quantity) {
-                          amount = e.operationPrice * e.quantity;
-                        } else if (e.totalValue && e.operation === "creation") {
-                          amount = e.totalValue;
-                        }
-                      }
-                      amount = amount || 0;
-                      if (amount >= 0) {
-                        invCapitalBeforeYear += amount;
-                      }
-                    } else if (
-                      e.operation === "sell" ||
-                      e.operation === "withdraw"
-                    ) {
-                      let amount = e.operationAmount;
-                      if (!amount || amount === 0) {
-                        if (e.operationPrice && e.quantity) {
-                          amount = e.operationPrice * e.quantity;
-                        }
-                      }
-                      amount = Math.abs(amount || 0);
-                      invCapitalBeforeYear -= amount;
-                    }
-                  });
-
-                  if (invCapitalBeforeYear > 0) {
-                    actualYearStartValue += invCapitalBeforeYear;
-                    missingInvestments.push({
-                      name: inv.name,
-                      value: invCapitalBeforeYear,
-                      date: null,
-                      source: "calculatedFromHistory (fallback)",
-                    });
-                  } else {
-                    let fallbackValue = 0;
-                    if (inv.isAutomatedPortfolio) {
-                      fallbackValue = inv.quantity || 0;
-                    } else {
-                      const priceToUse =
-                        inv.averagePurchasePrice || inv.purchasePrice || 0;
-                      fallbackValue = (inv.quantity || 0) * priceToUse;
-                    }
-
-                    if (fallbackValue === 0) {
-                      fallbackValue = inv.isAutomatedPortfolio
-                        ? inv.currentPrice || 0
-                        : (inv.quantity || 0) * (inv.currentPrice || 0);
-                    }
-
-                    if (fallbackValue > 0) {
-                      actualYearStartValue += fallbackValue;
-                      missingInvestments.push({
-                        name: inv.name,
-                        value: fallbackValue,
-                        date: null,
-                        source: "investmentData (fallback)",
-                      });
-                    }
-                  }
-                }
-              }
-            } else {
-              // Como último recurso, buscar el último totalValue en InvestmentHistory
-              // antes del 1/1, que refleje el valor real de mercado
-              const lastTotalValueBeforeYear = await InvestmentHistory.findOne({
-                user: req.userId,
-                investment: inv._id,
-                date: { $lt: yearStart },
-                totalValue: { $exists: true, $ne: null, $gt: 0 },
-              })
-                .sort({ date: -1 })
-                .limit(1);
-
-              if (
-                lastTotalValueBeforeYear &&
-                lastTotalValueBeforeYear.totalValue
-              ) {
-                // Usar el totalValue del último registro
-                actualYearStartValue += lastTotalValueBeforeYear.totalValue;
-                missingInvestments.push({
-                  name: inv.name,
-                  value: lastTotalValueBeforeYear.totalValue,
-                  date: lastTotalValueBeforeYear.date,
-                  source: "InvestmentHistory (last totalValue)",
-                });
-              } else {
-                // Si no hay ningún registro con totalValue, calcular el capital invertido
-                // (pero esto no es ideal porque no refleja el rendimiento previo)
-                let invCapitalBeforeYear = 0;
-                const invHistoryBeforeYear = allHistoryEntries.filter((e) => {
-                  const eInvId =
-                    e.investment?._id?.toString() || e.investment?.toString();
-                  const eDate = new Date(e.date);
-                  eDate.setHours(0, 0, 0, 0);
-                  return eInvId === invId && eDate < yearStart;
-                });
-
-                invHistoryBeforeYear.forEach((e) => {
-                  if (e.operation === "creation" || e.operation === "add") {
-                    let amount = e.operationAmount;
-                    if (!amount || amount === 0) {
-                      if (e.operationPrice && e.quantity) {
-                        amount = e.operationPrice * e.quantity;
-                      } else if (e.totalValue && e.operation === "creation") {
-                        amount = e.totalValue;
-                      }
-                    }
-                    amount = amount || 0;
-                    if (amount >= 0) {
-                      invCapitalBeforeYear += amount;
-                    }
-                  } else if (
-                    e.operation === "sell" ||
-                    e.operation === "withdraw"
-                  ) {
-                    let amount = e.operationAmount;
-                    if (!amount || amount === 0) {
-                      if (e.operationPrice && e.quantity) {
-                        amount = e.operationPrice * e.quantity;
-                      }
-                    }
-                    amount = Math.abs(amount || 0);
-                    invCapitalBeforeYear -= amount;
-                  }
-                });
-
-                if (invCapitalBeforeYear > 0) {
-                  actualYearStartValue += invCapitalBeforeYear;
-                  missingInvestments.push({
-                    name: inv.name,
-                    value: invCapitalBeforeYear,
-                    date: null,
-                    source: "calculatedFromHistory (fallback)",
-                  });
-                } else {
-                  let fallbackValue = 0;
-                  if (inv.isAutomatedPortfolio) {
-                    fallbackValue = inv.quantity || 0;
-                  } else {
-                    const priceToUse =
-                      inv.averagePurchasePrice || inv.purchasePrice || 0;
-                    fallbackValue = (inv.quantity || 0) * priceToUse;
-                  }
-
-                  if (fallbackValue === 0) {
-                    fallbackValue = inv.isAutomatedPortfolio
-                      ? inv.currentPrice || 0
-                      : (inv.quantity || 0) * (inv.currentPrice || 0);
-                  }
-
-                  if (fallbackValue > 0) {
-                    actualYearStartValue += fallbackValue;
-                    missingInvestments.push({
-                      name: inv.name,
-                      value: fallbackValue,
-                      date: null,
-                      source: "investmentData (fallback)",
-                    });
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Ajustar rendimiento por movimientos de capital para no contarlos como beneficio
-
-    // Calcular rendimiento anual excluyendo aportes/retiros
-    const yearEnd = new Date();
-    yearEnd.setHours(23, 59, 59, 999);
-    const annualCapitalChange = calculateNetCapitalChange(
-      allHistoryEntries,
-      yearStart,
-      yearEnd,
-      investments,
-    );
-    const annualReturnCapital =
-      currentTotalValue - actualYearStartValue - annualCapitalChange;
-    const annualVariationsAgg = await DailyVariation.aggregate([
-      {
-        $match: {
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $gte: yearStart, $lte: yearEnd },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: { $ifNull: ["$changeAmount", 0] } },
-        },
-      },
-    ]);
-    const annualReturn =
-      annualVariationsAgg.length > 0 ? annualVariationsAgg[0].total : 0;
-    const annualReturnPercent =
-      actualYearStartValue > 0
-        ? (annualReturn / actualYearStartValue) * 100
-        : 0;
-
-    // Coherencia acumulado vs anual: rendimiento antes del año actual
-    let netInvestedBeforeYear = 0;
-    allHistoryEntries.forEach((entry) => {
-      if (!entry?.date) {
-        return;
-      }
-      const entryDate = new Date(entry.date);
-      if (entryDate >= yearStart) {
-        return;
-      }
-
-      if (entry.operation === "creation" || entry.operation === "add") {
-        netInvestedBeforeYear += getOperationAmount(entry);
-      } else if (entry.operation === "sell" || entry.operation === "withdraw") {
-        netInvestedBeforeYear -= Math.abs(getOperationAmount(entry));
-      }
-    });
-    const returnBeforeYear = actualYearStartValue - netInvestedBeforeYear;
-    const accumulatedReturnCheck = returnBeforeYear + annualReturnCapital;
-    const accumulatedReturnCheckDiff =
-      accumulatedReturn - accumulatedReturnCheck;
-
-    // Calcular rendimiento diario: SOLO sumar las variaciones diarias de HOY
-    // IMPORTANTE: Las variaciones diarias ya excluyen aportes/retiros, así que solo sumamos
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
-
-    // Obtener todas las variaciones diarias de HOY (se guardan con fecha de hoy cuando se actualizan precios)
-    const todayVariations = await DailyVariation.find({
-      user: req.userId,
-      investment: { $in: investments.map((inv) => inv._id) },
-      date: { $gte: today, $lt: tomorrow },
-    });
-
-    // Obtener variaciones de ayer para calcular el valor base (para el porcentaje)
-    const yesterdayVariations = await DailyVariation.find({
-      user: req.userId,
-      investment: { $in: investments.map((inv) => inv._id) },
-      date: { $gte: yesterday, $lt: yesterdayEnd },
-    });
-
-    // Crear un mapa de valores de ayer por inversión
-    const yesterdayValuesByInvestment = new Map();
-    for (const variation of yesterdayVariations) {
-      const invId = variation.investment.toString();
-      if (variation.totalValue !== null && variation.totalValue !== undefined) {
-        yesterdayValuesByInvestment.set(invId, variation.totalValue);
-      }
-    }
-
-    // Filtrar inversiones que existían ayer (para no incluir inversiones nuevas en el cálculo)
-    const investmentsThatExistedYesterday = investments.filter((inv) => {
-      const purchaseDate = new Date(inv.purchaseDate);
-      purchaseDate.setHours(0, 0, 0, 0);
-      return purchaseDate < yesterday;
-    });
-
-    const investmentIdsThatExistedYesterday = new Set(
-      investmentsThatExistedYesterday.map((inv) => inv._id.toString()),
-    );
-
-    // Calcular valor de ayer con fallback si falta DailyVariation
-    let dailyBaseValue = 0;
-    for (const inv of investmentsThatExistedYesterday) {
-      const invId = inv._id.toString();
-      const yesterdayValue = yesterdayValuesByInvestment.get(invId);
-      if (yesterdayValue !== undefined && yesterdayValue > 0) {
-        dailyBaseValue += yesterdayValue;
-        continue;
-      }
-
-      const lastVariation = await DailyVariation.findOne({
-        user: req.userId,
-        investment: inv._id,
-        date: { $lt: yesterday },
-      })
-        .sort({ date: -1 })
-        .limit(1);
-
-      if (lastVariation && lastVariation.totalValue) {
-        dailyBaseValue += lastVariation.totalValue;
-        continue;
-      }
-
-      const lastHistory = await InvestmentHistory.findOne({
-        user: req.userId,
-        investment: inv._id,
-        date: { $lt: yesterday },
-        totalValue: { $exists: true, $ne: null, $gt: 0 },
-      })
-        .sort({ date: -1 })
-        .limit(1);
-
-      if (lastHistory && lastHistory.totalValue) {
-        dailyBaseValue += lastHistory.totalValue;
-        continue;
-      }
-
-      if (inv.isAutomatedPortfolio) {
-        dailyBaseValue += inv.currentPrice || 0;
-      } else {
-        dailyBaseValue += (inv.quantity || 0) * (inv.currentPrice || 0);
-      }
-    }
-
-    // Calcular valor actual solo de inversiones que existían ayer
-    let currentValueExisting = 0;
-    investmentsThatExistedYesterday.forEach((inv) => {
-      if (inv.isAutomatedPortfolio) {
-        currentValueExisting += inv.currentPrice || 0;
-      } else {
-        currentValueExisting += (inv.quantity || 0) * (inv.currentPrice || 0);
-      }
-    });
-
-    // Ajustar por movimientos de capital del día para inversiones existentes
-    const dailyCapitalChange = calculateNetCapitalChange(
-      allHistoryEntries,
-      today,
-      tomorrow,
-      [],
-      investmentIdsThatExistedYesterday,
-    );
-
-    const dailyReturn =
-      currentValueExisting - dailyBaseValue - dailyCapitalChange;
-    const dailyReturnPercent =
-      dailyBaseValue > 0 ? (dailyReturn / dailyBaseValue) * 100 : 0;
-
-    // Calcular rendimiento trimestral: sumar TODAS las variaciones diarias del trimestre
-    // IMPORTANTE: Las variaciones diarias ya excluyen aportes/retiros, pero incluyen el rendimiento de nuevas inversiones
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-
-    // Determinar el mes de inicio del trimestre actual (0, 3, 6, 9)
-    let quarterStartMonth = 0;
-    if (currentMonth >= 0 && currentMonth < 3) {
-      quarterStartMonth = 0; // Q1: Enero
-    } else if (currentMonth >= 3 && currentMonth < 6) {
-      quarterStartMonth = 3; // Q2: Abril
-    } else if (currentMonth >= 6 && currentMonth < 9) {
-      quarterStartMonth = 6; // Q3: Julio
-    } else {
-      quarterStartMonth = 9; // Q4: Octubre
-    }
-
-    const quarterStart = new Date(currentYear, quarterStartMonth, 1);
-    quarterStart.setHours(0, 0, 0, 0);
-    const quarterEnd = new Date();
-    quarterEnd.setHours(23, 59, 59, 999);
-
-    // Obtener el valor al inicio del trimestre (antes de cualquier aportación durante el trimestre)
-    // Para cada inversión que existía al inicio del trimestre, buscar su valor más reciente antes del inicio del trimestre
-    const investmentsExistingAtQuarterStart = investments.filter((inv) => {
-      const purchaseDate = new Date(inv.purchaseDate);
-      purchaseDate.setHours(0, 0, 0, 0);
-      return purchaseDate < quarterStart;
-    });
-
-    let quarterStartValue = 0;
-    for (const inv of investmentsExistingAtQuarterStart) {
-      // Buscar la variación más reciente de esta inversión antes del inicio del trimestre
-      const lastVariation = await DailyVariation.findOne({
-        user: req.userId,
-        investment: inv._id,
-        date: { $lt: quarterStart },
-      })
-        .sort({ date: -1 })
-        .limit(1);
-
-      if (lastVariation && lastVariation.totalValue) {
-        quarterStartValue += lastVariation.totalValue;
-      } else {
-        const lastHistory = await InvestmentHistory.findOne({
-          user: req.userId,
-          investment: inv._id,
-          date: { $lt: quarterStart },
-          totalValue: { $exists: true, $ne: null, $gt: 0 },
-        })
-          .sort({ date: -1 })
-          .limit(1);
-
-        if (lastHistory && lastHistory.totalValue) {
-          quarterStartValue += lastHistory.totalValue;
-        } else {
-          // Si no hay variación histórica, usar el valor actual (aproximación)
-          if (inv.isAutomatedPortfolio) {
-            quarterStartValue += inv.currentPrice || 0;
-          } else {
-            quarterStartValue += (inv.quantity || 0) * (inv.currentPrice || 0);
-          }
-        }
-      }
-    }
-
-    // Si no hay inversiones que existieran al inicio del trimestre, quarterStartValue será 0
-    // En ese caso, el rendimiento trimestral será 0 (no hay base para comparar)
-
-    // Calcular rendimiento trimestral excluyendo aportes/retiros
-    const quarterCapitalChange = calculateNetCapitalChange(
-      allHistoryEntries,
-      quarterStart,
-      quarterEnd,
-      investments,
-    );
-    const quarterVariationsAgg = await DailyVariation.aggregate([
-      {
-        $match: {
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $gte: quarterStart, $lte: quarterEnd },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: { $ifNull: ["$changeAmount", 0] } },
-        },
-      },
-    ]);
-    const quarterlyReturn =
-      quarterVariationsAgg.length > 0 ? quarterVariationsAgg[0].total : 0;
-    const quarterlyReturnPercent =
-      quarterStartValue > 0 ? (quarterlyReturn / quarterStartValue) * 100 : 0;
-
-    // Calcular rendimiento mensual excluyendo aportes/retiros
-    const monthStart = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1,
-    );
-    monthStart.setHours(0, 0, 0, 0);
-    const monthEnd = new Date();
-    monthEnd.setHours(23, 59, 59, 999);
-
-    // Obtener el valor al inicio del mes (antes de cualquier aportación durante el mes)
-    // Para cada inversión que existía al inicio del mes, buscar su valor más reciente antes del inicio del mes
-    const investmentsExistingAtMonthStart = investments.filter((inv) => {
-      const purchaseDate = new Date(inv.purchaseDate);
-      purchaseDate.setHours(0, 0, 0, 0);
-      return purchaseDate < monthStart;
-    });
-
-    let monthStartValue = 0;
-    for (const inv of investmentsExistingAtMonthStart) {
-      // Buscar la variación más reciente de esta inversión antes del inicio del mes
-      const lastVariation = await DailyVariation.findOne({
-        user: req.userId,
-        investment: inv._id,
-        date: { $lt: monthStart },
-      })
-        .sort({ date: -1 })
-        .limit(1);
-
-      if (lastVariation && lastVariation.totalValue) {
-        monthStartValue += lastVariation.totalValue;
-      } else {
-        const lastHistory = await InvestmentHistory.findOne({
-          user: req.userId,
-          investment: inv._id,
-          date: { $lt: monthStart },
-          totalValue: { $exists: true, $ne: null, $gt: 0 },
-        })
-          .sort({ date: -1 })
-          .limit(1);
-
-        if (lastHistory && lastHistory.totalValue) {
-          monthStartValue += lastHistory.totalValue;
-        } else {
-          // Si no hay variación histórica, usar el valor actual (aproximación)
-          if (inv.isAutomatedPortfolio) {
-            monthStartValue += inv.currentPrice || 0;
-          } else {
-            monthStartValue += (inv.quantity || 0) * (inv.currentPrice || 0);
-          }
-        }
-      }
-    }
-
-    // Si no hay inversiones que existieran al inicio del mes, monthStartValue será 0
-    // En ese caso, el rendimiento mensual será 0 (no hay base para comparar)
-
-    // Calcular rendimiento mensual excluyendo aportes/retiros
-    const monthCapitalChange = calculateNetCapitalChange(
-      allHistoryEntries,
-      monthStart,
-      monthEnd,
-      investments,
-    );
-    const monthVariationsAgg = await DailyVariation.aggregate([
-      {
-        $match: {
-          user: req.userId,
-          investment: { $in: investments.map((inv) => inv._id) },
-          date: { $gte: monthStart, $lte: monthEnd },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: { $ifNull: ["$changeAmount", 0] } },
-        },
-      },
-    ]);
-    const monthlyReturn =
-      monthVariationsAgg.length > 0 ? monthVariationsAgg[0].total : 0;
-    const monthlyReturnPercent =
-      monthStartValue > 0 ? (monthlyReturn / monthStartValue) * 100 : 0;
-
-    // Obtener la fecha más antigua para el cálculo del período (usar inversiones válidas si existen)
-    let startDate = new Date();
-    const investmentsForPeriod =
-      validInvestments.length > 0 ? validInvestments : investments;
-    investmentsForPeriod.forEach((inv) => {
-      const purchaseDate = new Date(inv.purchaseDate);
-      if (purchaseDate < startDate) {
-        startDate = purchaseDate;
-      }
-    });
-
-    // Calcular capital adicional aportado después de la fecha inicial
-    let additionalCapital = 0;
-    if (allHistoryEntries.length > 0) {
-      allHistoryEntries.forEach((entry) => {
-        const entryDate = new Date(entry.date);
-        // Solo considerar aportes después de la fecha de inicio
-        if (entryDate > startDate) {
-          if (entry.operation === "creation" || entry.operation === "add") {
-            // Sumar aportes de capital adicionales
-            additionalCapital += getOperationAmount(entry);
-          } else if (
-            entry.operation === "sell" ||
-            entry.operation === "withdraw"
-          ) {
-            // Restar ventas/retiros (el capital retirado después de la fecha inicial)
-            additionalCapital -= Math.abs(getOperationAmount(entry));
-          }
-        }
-      });
-    }
-
-    // Calcular capital inicial (solo aportes hasta la fecha de inicio)
-    let initialCapital = 0;
-    if (allHistoryEntries.length > 0) {
-      allHistoryEntries.forEach((entry) => {
-        const entryDate = new Date(entry.date);
-        // Solo considerar aportes hasta la fecha de inicio
-        if (entryDate <= startDate) {
-          if (entry.operation === "creation" || entry.operation === "add") {
-            initialCapital += getOperationAmount(entry);
-          } else if (
-            entry.operation === "sell" ||
-            entry.operation === "withdraw"
-          ) {
-            initialCapital -= Math.abs(getOperationAmount(entry));
-          }
-        }
-      });
-    } else {
-      // Si no hay historial, todo el capital es inicial
-      initialCapital = initialValue;
-    }
-
-    // Asegurar que no sean negativos
-    initialCapital = Math.max(0, initialCapital);
-    additionalCapital = Math.max(0, additionalCapital); // Solo mostramos aportes adicionales positivos
-
-    // Calcular tiempo transcurrido en años
-    const endDate = new Date();
-    const timeDiff = endDate - startDate;
-    const years = timeDiff / (1000 * 60 * 60 * 24 * 365.25); // Años con decimales
-
-    // Calcular CAGR (Compound Annual Growth Rate)
-    // CAGR = (Valor Final / Valor Inicial)^(1/Años) - 1
-    // Usamos el capital total invertido (initialValue = initialCapital + additionalCapital)
-    // igual que para el rendimiento acumulado, para ser coherente
-    // Nota: Esta es una aproximación que asume que todo el capital estuvo invertido
-    // durante todo el período. Un cálculo exacto con flujos de caja requeriría TWR o IRR
-    let annualizedReturn = null;
-
-    // Usar el capital total (inicial + adicional) para calcular el CAGR
-    // Esto es coherente con el cálculo del rendimiento acumulado
-    if (initialValue > 0 && years > 0) {
-      const ratio = currentValue / initialValue;
-      // Validar que el ratio sea razonable (evitar valores extremos)
-      if (ratio > 0 && ratio < 1000000 && years > 0.01) {
-        const cagr = (Math.pow(ratio, 1 / years) - 1) * 100;
-        // Limitar el CAGR a un rango razonable (entre -99% y +10000%)
-        if (cagr >= -99 && cagr <= 10000) {
-          annualizedReturn = parseFloat(cagr.toFixed(2));
-        }
-      }
-    }
-
-    // Obtener datos del S&P 500 para comparación
-    // Usamos el rendimiento histórico promedio del S&P 500 (~10% anual)
-    // ya que obtener datos históricos precisos requeriría una API especializada
-    const sp500HistoricalReturn = 10; // % anual promedio histórico (últimos ~100 años)
-
-    // Calcular qué habría sido el rendimiento del S&P 500 en el mismo período
-    const sp500ProjectedReturn =
-      years > 0
-        ? (Math.pow(1 + sp500HistoricalReturn / 100, years) - 1) * 100
-        : 0;
-
-    let sp500Comparison = {
-      historicalAnnualReturn: sp500HistoricalReturn,
-      projectedReturn: parseFloat(sp500ProjectedReturn.toFixed(2)),
-      outperformance:
-        annualizedReturn !== null
-          ? parseFloat((annualizedReturn - sp500HistoricalReturn).toFixed(2))
-          : null,
-      outperformancePercent:
-        annualizedReturn !== null && sp500HistoricalReturn !== 0
-          ? parseFloat(
-              ((annualizedReturn / sp500HistoricalReturn - 1) * 100).toFixed(2),
-            )
-          : null,
-    };
-
-    // Intentar obtener precio actual del S&P 500 (opcional, no crítico para la comparación)
-    try {
-      const yahooFinance = new YahooFinance();
-
-      // Intentar primero con ^GSPC (índice directo)
-      try {
-        const sp500Quote = await yahooFinance.quote("^GSPC");
-        if (sp500Quote && sp500Quote.regularMarketPrice) {
-          sp500Comparison.currentPrice = sp500Quote.regularMarketPrice;
-        }
-      } catch (gspcError) {
-        // Si ^GSPC falla, intentar con SPY (ETF que replica el S&P 500)
-        try {
-          const spyQuote = await yahooFinance.quote("SPY");
-          if (spyQuote && spyQuote.regularMarketPrice) {
-            sp500Comparison.currentPrice = spyQuote.regularMarketPrice;
-          }
-        } catch (spyError) {
-          // Si ambos fallan, continuar sin precio actual (no es crítico)
-        }
-      }
-    } catch (sp500Error) {
-      // No es crítico, continuamos sin el precio actual
-      // La comparación de rendimiento funciona perfectamente sin el precio actual
-    }
-
-    res.json({
-      annualizedReturn,
-      totalReturn,
-      totalReturnPercent: parseFloat(totalReturnPercent.toFixed(2)),
-      accumulatedReturn: parseFloat(accumulatedReturn.toFixed(2)),
-      accumulatedReturnPercent: parseFloat(accumulatedReturnPercent.toFixed(2)),
-      accumulatedReturnCapital: parseFloat(accumulatedReturnCapital.toFixed(2)),
-      accumulatedReturnCapitalPercent: parseFloat(
-        accumulatedReturnCapitalPercent.toFixed(2),
-      ),
-      accumulatedReturnVariations:
-        accumulatedReturnFromVariations !== null
-          ? parseFloat(accumulatedReturnFromVariations.toFixed(2))
-          : null,
-      accumulatedReturnVariationsPercent:
-        accumulatedReturnVariationsPercent !== null
-          ? parseFloat(accumulatedReturnVariationsPercent.toFixed(2))
-          : null,
-      accumulatedReturnSource,
-      accumulatedReturnDiff:
-        accumulatedReturnDiff !== null
-          ? parseFloat(accumulatedReturnDiff.toFixed(2))
-          : null,
-      accumulatedReturnThreshold: parseFloat(
-        accumulatedReturnThreshold.toFixed(2),
-      ),
-      accumulatedReturnThresholdValue: parseFloat(
-        accumulatedReturnThresholdValue.toFixed(2),
-      ),
-      accumulatedReturnThresholdReturn: parseFloat(
-        accumulatedReturnThresholdReturn.toFixed(2),
-      ),
-      totalContributedCapital: parseFloat(totalContributedCapital.toFixed(2)),
-      totalWithdrawnCapital: parseFloat(totalWithdrawnCapital.toFixed(2)),
-      netInvestedCapital: parseFloat(netInvestedCapital.toFixed(2)),
-      actualYearStartValue: parseFloat(actualYearStartValue.toFixed(2)),
-      netInvestedBeforeYear: parseFloat(netInvestedBeforeYear.toFixed(2)),
-      returnBeforeYear: parseFloat(returnBeforeYear.toFixed(2)),
-      accumulatedReturnCheck: parseFloat(accumulatedReturnCheck.toFixed(2)),
-      accumulatedReturnCheckDiff: parseFloat(
-        accumulatedReturnCheckDiff.toFixed(2),
-      ),
-      annualReturn: parseFloat(annualReturn.toFixed(2)),
-      annualReturnPercent: parseFloat(annualReturnPercent.toFixed(2)),
-      annualReturnCapital: parseFloat(annualReturnCapital.toFixed(2)),
-      dailyReturn: parseFloat(dailyReturn.toFixed(2)),
-      dailyReturnPercent: parseFloat(dailyReturnPercent.toFixed(2)),
-      quarterlyReturn: parseFloat(quarterlyReturn.toFixed(2)),
-      quarterlyReturnPercent: parseFloat(quarterlyReturnPercent.toFixed(2)),
-      monthlyReturn: parseFloat(monthlyReturn.toFixed(2)),
-      monthlyReturnPercent: parseFloat(monthlyReturnPercent.toFixed(2)),
-      initialValue: parseFloat(initialValue.toFixed(2)),
-      initialCapital: parseFloat(initialCapital.toFixed(2)),
-      additionalCapital: parseFloat(additionalCapital.toFixed(2)),
-      currentValue: parseFloat(currentValue.toFixed(2)),
-      yearStartValue: parseFloat(yearStartValue.toFixed(2)),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      years: parseFloat(years.toFixed(2)),
-      sp500Comparison,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

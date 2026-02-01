@@ -121,9 +121,7 @@ const Accounts = () => {
         api.get("/subaccounts"),
         api.get("/investments"),
         api.get("/transactions"),
-        api
-          .get("/dashboard/accounts-summary?byPrimaryAccount=1")
-          .catch(() => ({ data: null })),
+        api.get("/dashboard/accounts-summary").catch(() => ({ data: null })),
       ]);
       setAccounts(accountsRes.data);
       setSubAccounts(subAccountsRes.data);
