@@ -8,6 +8,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@nivo/core": "^0.99.0",
+    "@nivo/treemap": "^0.99.0",
+    "@react-spring/web": "^9.7.3",
     "axios": "^1.6.2",
     "country-flag-icons": "^1.6.4",
     "date-fns": "^2.30.0",
