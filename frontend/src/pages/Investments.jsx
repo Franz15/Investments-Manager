@@ -1297,9 +1297,26 @@ const Investments = () => {
           onClick={() => setInvestmentView("active")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
             investmentView === "active"
-              ? "bg-blue-600 text-white"
+              ? "text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           }`}
+          style={
+            investmentView === "active"
+              ? {
+                  backgroundColor: "var(--user-color-600)",
+                }
+              : undefined
+          }
+          onMouseEnter={(e) => {
+            if (investmentView === "active") {
+              e.currentTarget.style.backgroundColor = "var(--user-color-700)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (investmentView === "active") {
+              e.currentTarget.style.backgroundColor = "var(--user-color-600)";
+            }
+          }}
         >
           {t("investments.views.active")}
         </button>
@@ -1307,9 +1324,26 @@ const Investments = () => {
           onClick={() => setInvestmentView("closed")}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
             investmentView === "closed"
-              ? "bg-blue-600 text-white"
+              ? "text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           }`}
+          style={
+            investmentView === "closed"
+              ? {
+                  backgroundColor: "var(--user-color-600)",
+                }
+              : undefined
+          }
+          onMouseEnter={(e) => {
+            if (investmentView === "closed") {
+              e.currentTarget.style.backgroundColor = "var(--user-color-700)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (investmentView === "closed") {
+              e.currentTarget.style.backgroundColor = "var(--user-color-600)";
+            }
+          }}
         >
           {t("investments.views.closed")}
         </button>
