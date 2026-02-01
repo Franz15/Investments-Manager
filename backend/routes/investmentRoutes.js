@@ -11,6 +11,7 @@ import {
   calculateDailyChangeFromHistory,
 } from "../services/dailyVariationService.js";
 import { calculateHistoricalVariations } from "../services/historicalVariationService.js";
+import { resolveOperationAmount } from "../services/variationEngine.js";
 
 const router = express.Router();
 
@@ -298,8 +299,15 @@ const applyCashDeltaForInvestment = async (investment, userId, amount) => {
 // GET todas las inversiones
 router.get("/", async (req, res) => {
   try {
-    const { subAccountId, accountId } = req.query;
+    const { subAccountId, accountId, includeClosed, status } = req.query;
     const query = { user: req.userId };
+    const includeClosedNormalized = String(includeClosed || "").toLowerCase();
+
+    if (status) {
+      query.status = status;
+    } else if (!["1", "true", "yes"].includes(includeClosedNormalized)) {
+      query.status = { $ne: "closed" };
+    }
 
     if (subAccountId) {
       query.$or = [
@@ -436,6 +444,18 @@ router.get("/:id", async (req, res) => {
       });
     if (!investment) {
       return res.status(404).json({ message: "Inversión no encontrada" });
+    }
+    if (investment.status === "closed") {
+      return res.status(400).json({ message: "La inversión está cerrada" });
+    }
+    if (investment.status === "closed") {
+      return res.status(400).json({ message: "La inversión está cerrada" });
+    }
+    if (investment.status === "closed") {
+      return res.status(400).json({ message: "La inversión está cerrada" });
+    }
+    if (investment.status === "closed") {
+      return res.status(400).json({ message: "La inversión está cerrada" });
     }
     res.json(investment);
   } catch (error) {
@@ -1081,126 +1101,11 @@ router.post("/:id/sell", async (req, res) => {
 
     ensureInvestmentAllocations(investment);
 
-    // Si se retira todo, eliminar la inversión
+    // Si se retira todo, usar el cierre dedicado
     if (remainingQuantity <= 0) {
-      let allocationTarget = null;
-      if (req.body.allocation?.account) {
-        ensureInvestmentAllocations(investment);
-        const validation = await validateAllocationEntry(
-          {
-            account: req.body.allocation.account,
-            subAccount: req.body.allocation.subAccount || null,
-            amount: 0,
-          },
-          req.userId,
-        );
-        if (validation.error) {
-          return res.status(400).json({ message: validation.error });
-        }
-        const targetKey = getAllocationKey(validation.allocation);
-        const target = investment.allocations?.find(
-          (allocation) => getAllocationKey(allocation) === targetKey,
-        );
-        if (!target) {
-          return res.status(400).json({
-            message: "La asignación seleccionada no existe en esta inversión",
-          });
-        }
-        allocationTarget = validation.allocation;
-      }
-      // Devolver el dinero al efectivo si se solicita
-      let returnedToSubAccount = false;
-      if (returnToSubAccount) {
-        if (allocationTarget) {
-          const cashSubAccount = await getCashSubAccountForAccount(
-            allocationTarget.account,
-            req.userId,
-          );
-          if (!cashSubAccount) {
-            return res.status(400).json({
-              message:
-                "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
-            });
-          }
-          cashSubAccount.balance += saleAmount;
-          await cashSubAccount.save();
-        } else {
-          const cashSubAccounts = await applyCashDeltaForInvestment(
-            investment,
-            req.userId,
-            saleAmount,
-          );
-          if (!cashSubAccounts || cashSubAccounts.length === 0) {
-            return res.status(400).json({
-              message:
-                "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
-            });
-          }
-        }
-        returnedToSubAccount = true;
-      }
-
-      // Crear entrada en el historial antes de eliminar
-      if (date) {
-        const InvestmentHistory = (
-          await import("../models/InvestmentHistory.js")
-        ).default;
-        const totalValue = 0; // Se vendió todo
-
-        // Calcular diferencias respecto al día anterior
-        const dailyChanges = await calculateDailyChanges(
-          investment._id,
-          req.userId,
-          totalValue,
-          date || new Date(),
-        );
-
-        const historyEntry = new InvestmentHistory({
-          user: req.userId,
-          investment: investment._id,
-          date: date || new Date(),
-          ...getHistoryAllocation(investment, req.body.allocation),
-          currentPrice: investment.isAutomatedPortfolio ? saleAmount : price,
-          quantity: 0, // Se vendió todo
-          totalValue: totalValue,
-          notes:
-            notes ||
-            `Retiro completo: ${quantity} ${investment.isAutomatedPortfolio ? "€" : "unidades"} a ${investment.isAutomatedPortfolio ? "" : price + "€"}`,
-          operation: "withdraw",
-          operationAmount: saleAmount,
-          operationPrice: investment.isAutomatedPortfolio ? null : price,
-          dailyChangeAmount: dailyChanges.dailyChangeAmount,
-          dailyChangePercent: dailyChanges.dailyChangePercent,
-        });
-        await historyEntry.save();
-      }
-
-      const investmentId = investment._id;
-
-      // IMPORTANTE: Eliminar TODOS los registros históricos de esta inversión
-      // Si se elimina una inversión, debe desaparecer completamente del historial
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
-      const DailyVariation = (await import("../models/DailyVariation.js"))
-        .default;
-
-      const deletedHistory = await InvestmentHistory.deleteMany({
-        user: req.userId,
-        investment: investmentId,
-      });
-
-      const deletedVariations = await DailyVariation.deleteMany({
-        user: req.userId,
-        investment: investmentId,
-      });
-
-      // Eliminar la inversión
-      await Investment.findByIdAndDelete(investment._id);
-
-      return res.json({
-        message: "Inversión retirada completamente y eliminada",
-        saleAmount,
-        returnedToSubAccount,
+      return res.status(400).json({
+        message:
+          "Para retirar todo el capital usa la opción de cerrar la inversión",
       });
     }
 
@@ -1433,6 +1338,183 @@ router.post("/:id/sell", async (req, res) => {
   }
 });
 
+// POST cerrar una inversión (retirar todo el capital sin eliminar)
+router.post("/:id/close", async (req, res) => {
+  try {
+    const { price, date, notes } = req.body;
+    const investment = await Investment.findOne({
+      _id: req.params.id,
+      user: req.userId,
+    })
+      .populate({
+        path: "subAccount",
+        match: { user: req.userId },
+      })
+      .populate({
+        path: "account",
+        match: { user: req.userId },
+      });
+
+    if (!investment) {
+      return res.status(404).json({ message: "Inversión no encontrada" });
+    }
+    if (investment.status === "closed") {
+      return res.status(400).json({ message: "La inversión ya está cerrada" });
+    }
+
+    const closeDate = date ? new Date(date) : new Date();
+    const hasValidDate = !Number.isNaN(closeDate?.getTime?.());
+    if (!hasValidDate) {
+      return res.status(400).json({ message: "Fecha de cierre inválida" });
+    }
+
+    let priceToUse = price;
+    if (!investment.isAutomatedPortfolio) {
+      priceToUse =
+        Number(priceToUse) ||
+        Number(investment.currentPrice) ||
+        Number(investment.purchasePrice) ||
+        0;
+      if (!priceToUse || priceToUse <= 0) {
+        return res
+          .status(400)
+          .json({ message: "El precio de cierre es requerido" });
+      }
+    }
+
+    if (investment.quantity <= 0) {
+      return res.status(400).json({
+        message: "No hay cantidad disponible para cerrar la inversión",
+      });
+    }
+
+    const saleAmount = investment.isAutomatedPortfolio
+      ? Number(investment.currentPrice) || 0
+      : investment.quantity * priceToUse;
+
+    if (!saleAmount || saleAmount <= 0) {
+      return res.status(400).json({
+        message: "No se pudo calcular el monto a retirar",
+      });
+    }
+
+    ensureInvestmentAllocations(investment);
+
+    const cashSubAccounts = await applyCashDeltaForInvestment(
+      investment,
+      req.userId,
+      saleAmount,
+    );
+    if (!cashSubAccounts || cashSubAccounts.length === 0) {
+      return res.status(400).json({
+        message:
+          "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+      });
+    }
+
+    const totalValue = 0;
+    const dailyChanges = await calculateDailyChanges(
+      investment._id,
+      req.userId,
+      totalValue,
+      closeDate,
+    );
+
+    const historyEntry = new InvestmentHistory({
+      user: req.userId,
+      investment: investment._id,
+      date: closeDate,
+      ...getHistoryAllocation(investment),
+      currentPrice: investment.isAutomatedPortfolio ? saleAmount : priceToUse,
+      quantity: 0,
+      totalValue,
+      notes:
+        notes ||
+        `Cierre de inversión: ${investment.isAutomatedPortfolio ? `${saleAmount} €` : `${investment.quantity} unidades`}`,
+      operation: "withdraw",
+      operationAmount: saleAmount,
+      operationPrice: investment.isAutomatedPortfolio ? null : priceToUse,
+      dailyChangeAmount: dailyChanges.dailyChangeAmount,
+      dailyChangePercent: dailyChanges.dailyChangePercent,
+    });
+    await historyEntry.save();
+
+    investment.status = "closed";
+    investment.closedAt = closeDate;
+    investment.autoUpdate = false;
+    investment.dcaEnabled = false;
+    investment.dcaNextDate = null;
+    investment.dcaDeactivatedDate = closeDate;
+    investment.quantity = 0;
+    if (!investment.isAutomatedPortfolio && priceToUse) {
+      investment.currentPrice = priceToUse;
+    }
+    if (investment.isAutomatedPortfolio) {
+      investment.currentPrice = 0;
+    }
+
+    const summaryEntries = await InvestmentHistory.find({
+      user: req.userId,
+      investment: investment._id,
+      operation: { $in: ["creation", "add", "withdraw", "sell"] },
+    });
+
+    let totalContributed = 0;
+    let totalWithdrawn = 0;
+    summaryEntries.forEach((entry) => {
+      const amount = resolveOperationAmount(entry);
+      if (entry.operation === "creation" || entry.operation === "add") {
+        totalContributed += amount;
+      } else if (entry.operation === "withdraw" || entry.operation === "sell") {
+        totalWithdrawn += Math.abs(amount);
+      }
+    });
+
+    const resultAmount = totalWithdrawn - totalContributed;
+    const resultPercent =
+      totalContributed > 0 ? (resultAmount / totalContributed) * 100 : 0;
+
+    investment.closeSummary = {
+      totalContributed,
+      totalWithdrawn,
+      resultAmount,
+      resultPercent,
+    };
+
+    await investment.save();
+
+    await recalculateDailyVariationsForInvestmentFromDate(
+      investment._id,
+      req.userId,
+      closeDate,
+    );
+
+    const populatedInvestment = await Investment.findById(investment._id)
+      .populate({
+        path: "allocations.subAccount",
+        populate: { path: "account" },
+      })
+      .populate({
+        path: "allocations.account",
+      })
+      .populate({
+        path: "subAccount",
+        populate: { path: "account" },
+      })
+      .populate({
+        path: "account",
+      });
+
+    res.json({
+      message: "Inversión cerrada correctamente",
+      saleAmount,
+      investment: populatedInvestment,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // POST actualizar precios de todas las inversiones con símbolo
 router.post("/update-prices", async (req, res) => {
   try {
@@ -1446,6 +1528,9 @@ router.post("/update-prices", async (req, res) => {
             { symbol: { $exists: true, $ne: null, $ne: "" } },
             { isin: { $exists: true, $ne: null, $ne: "" } },
           ],
+        },
+        {
+          status: { $ne: "closed" },
         },
         {
           $or: [
@@ -1787,6 +1872,7 @@ router.post("/execute-dca", async (req, res) => {
     // Buscar todas las inversiones con DCA habilitado y próxima fecha <= hoy
     const investments = await Investment.find({
       user: req.userId,
+      status: { $ne: "closed" },
       dcaEnabled: true,
       dcaNextDate: { $lte: today },
       $or: [

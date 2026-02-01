@@ -347,6 +347,12 @@ router.post("/", async (req, res) => {
     }
 
     const operation = req.body.operation || "update";
+    if (investment.status === "closed" && operation === "update") {
+      return res.status(400).json({
+        message:
+          "No se pueden registrar actualizaciones en una inversión cerrada",
+      });
+    }
     const entryDate = date ? new Date(date) : new Date();
     entryDate.setHours(0, 0, 0, 0);
     const nextDay = new Date(entryDate);
@@ -513,7 +519,11 @@ router.get("/evolution", async (req, res) => {
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const investments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     });
 
     if (investments.length === 0) {
