@@ -1405,6 +1405,62 @@ router.get("/distribution-by-asset-class", async (req, res) => {
   }
 });
 
+// GET distribución por tipo de renta: renta fija corto, renta fija medio, renta variable, alternativa
+router.get("/distribution-by-asset-type", async (req, res) => {
+  try {
+    const investments = await Investment.find({
+      user: req.userId,
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
+    });
+
+    let rentaFijaCorto = 0;
+    let rentaFijaMedio = 0;
+    let rentaVariable = 0;
+    let alternativa = 0;
+
+    investments.forEach((inv) => {
+      const totalValue = inv.isAutomatedPortfolio
+        ? inv.currentPrice
+        : inv.quantity * inv.currentPrice;
+
+      if (inv.isAlternative) {
+        alternativa += totalValue;
+        return;
+      }
+
+      if (inv.assetClass === "fixed_income") {
+        if (inv.fixedIncomeSubtype === "short") {
+          rentaFijaCorto += totalValue;
+        } else {
+          rentaFijaMedio += totalValue; // medium o sin subtype
+        }
+      } else if (inv.assetClass === "variable_income") {
+        rentaVariable += totalValue;
+      } else if (inv.assetClass === "mixed") {
+        const fixedPct = inv.fixedIncomePercentage || 0;
+        const varPct = inv.variableIncomePercentage || 0;
+        rentaFijaMedio += (totalValue * fixedPct) / 100;
+        rentaVariable += (totalValue * varPct) / 100;
+      }
+    });
+
+    const data = [
+      { id: "fixed_short", name: "Renta fija corto", value: rentaFijaCorto },
+      { id: "fixed_medium", name: "Renta fija medio", value: rentaFijaMedio },
+      { id: "variable", name: "Renta variable", value: rentaVariable },
+      { id: "alternative", name: "Alternativa", value: alternativa },
+    ].filter((item) => item.value > 0);
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET distribución detallada por inversión individual
 router.get("/investments-detailed", async (req, res) => {
   try {
@@ -1542,6 +1598,16 @@ router.get("/distribution-by-bank", async (req, res) => {
         path: "account",
         select: "_id name bankName",
         match: { user: req.userId },
+      })
+      .populate({
+        path: "allocations.account",
+        select: "_id",
+        match: { user: req.userId },
+      })
+      .populate({
+        path: "allocations.subAccount",
+        select: "_id",
+        match: { user: req.userId },
       });
 
     // Crear un mapa de inversiones por subcuenta
@@ -1549,25 +1615,82 @@ router.get("/distribution-by-bank", async (req, res) => {
     // Crear un mapa de inversiones directas por cuenta
     const investmentsByAccount = {};
 
+    const getInvestmentTotalValue = (inv) =>
+      inv.isAutomatedPortfolio
+        ? Number(inv.currentPrice) || 0
+        : (Number(inv.quantity) || 0) * (Number(inv.currentPrice) || 0);
+
+    const addToMap = (map, key, value) => {
+      if (!key || !Number.isFinite(value)) return;
+      if (!map[key]) {
+        map[key] = 0;
+      }
+      map[key] += value;
+    };
+
+    const getAllocationCurrentValue = (
+      inv,
+      allocation,
+      totalAmount,
+      totalValue,
+    ) => {
+      const amount = Number(allocation.amount) || 0;
+      if (inv.isAutomatedPortfolio) {
+        const share = totalAmount > 0 ? amount / totalAmount : 0;
+        return totalValue * share;
+      }
+      const allocationQty = Number(allocation.quantity) || 0;
+      if (allocationQty > 0) {
+        return allocationQty * (Number(inv.currentPrice) || 0);
+      }
+      const share = totalAmount > 0 ? amount / totalAmount : 0;
+      return totalValue * share;
+    };
+
     investments.forEach((inv) => {
-      const value = inv.isAutomatedPortfolio
-        ? inv.currentPrice
-        : inv.quantity * inv.currentPrice;
+      const totalValue = getInvestmentTotalValue(inv);
+
+      if (Array.isArray(inv.allocations) && inv.allocations.length > 0) {
+        const totalAmount = inv.allocations.reduce(
+          (sum, allocation) => sum + (Number(allocation.amount) || 0),
+          0,
+        );
+
+        inv.allocations.forEach((allocation) => {
+          const subAccountId =
+            allocation.subAccount?._id?.toString() ||
+            allocation.subAccount?.toString();
+          const accountId =
+            allocation.account?._id?.toString() ||
+            allocation.account?.toString();
+          const allocationValue = getAllocationCurrentValue(
+            inv,
+            allocation,
+            totalAmount,
+            totalValue,
+          );
+
+          if (subAccountId) {
+            addToMap(investmentsBySubAccount, subAccountId, allocationValue);
+            return;
+          }
+          if (accountId) {
+            addToMap(investmentsByAccount, accountId, allocationValue);
+          }
+        });
+        return;
+      }
 
       if (inv.subAccount && inv.subAccount._id) {
         // Inversión asociada a subcuenta
         const subAccountId = inv.subAccount._id.toString();
-        if (!investmentsBySubAccount[subAccountId]) {
-          investmentsBySubAccount[subAccountId] = 0;
-        }
-        investmentsBySubAccount[subAccountId] += value;
-      } else if (inv.account && inv.account._id) {
+        addToMap(investmentsBySubAccount, subAccountId, totalValue);
+        return;
+      }
+      if (inv.account && inv.account._id) {
         // Inversión directa asociada a cuenta
         const accountId = inv.account._id.toString();
-        if (!investmentsByAccount[accountId]) {
-          investmentsByAccount[accountId] = 0;
-        }
-        investmentsByAccount[accountId] += value;
+        addToMap(investmentsByAccount, accountId, totalValue);
       }
     });
 

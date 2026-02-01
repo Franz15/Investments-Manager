@@ -68,6 +68,13 @@
     "distribution": "Distribución",
     "byBank": "Distribución por Banco",
     "byAssetClass": "Distribución por Clase de Activo",
+    "byAssetType": "Por tipo de renta",
+    "assetType": {
+      "fixed_short": "Renta fija corto",
+      "fixed_medium": "Renta fija medio",
+      "variable": "Renta variable",
+      "alternative": "Alternativa"
+    },
     "byInvestment": "Distribución por Inversión Individual",
     "totalNetWorthEvolution": "Evolución del Patrimonio Total",
     "totalNetWorth": "Patrimonio Total"

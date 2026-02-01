@@ -13,6 +13,8 @@ import {
 import {
   LineChart,
   Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   XAxis,
@@ -24,12 +26,13 @@ import {
   PieChart,
   Pie,
   Cell,
-  Treemap,
 } from "recharts";
+import { ResponsiveTreeMap } from "@nivo/treemap";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "../contexts/TranslationContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 // Funciones auxiliares
 const formatPrice = (value, currency = "EUR") => {
@@ -72,12 +75,185 @@ const calculateProfitLossPercentage = (investment) => {
   return ((investment.currentPrice - avgPrice) / avgPrice) * 100;
 };
 
+// Tooltip común para gráficas: estilo moderno y compatible con tema claro/oscuro
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+  labelLabel = "Fecha",
+  valueFormatter,
+  isDark,
+}) => {
+  if (!active || !payload?.length) return null;
+  const bg = isDark
+    ? "bg-[#2c2c2e] border-[#404040]"
+    : "bg-white border-gray-200";
+  return (
+    <div
+      className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[140px]`}
+    >
+      {label && (
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+          {labelLabel}: {label}
+        </p>
+      )}
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center justify-between gap-4">
+          <span
+            className="text-sm text-gray-600 dark:text-gray-300"
+            style={{ color: entry.color }}
+          >
+            ● {entry.name}
+          </span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {valueFormatter ? valueFormatter(entry.value) : entry.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Lista de barras horizontales apiladas para distribución por banco (sub-colores por subcuenta)
+const BankBarList = ({ banks, generateBankColors, isDark, formatCurrency }) => {
+  const [hoveredBank, setHoveredBank] = useState(null);
+  const sorted = [...banks].sort((a, b) => (b.total || 0) - (a.total || 0));
+  const maxTotal = Math.max(...sorted.map((b) => b.total || 0), 1);
+
+  return (
+    <div className="flex-1 min-w-0 space-y-4">
+      {sorted.map((bank) => {
+        const colors = generateBankColors(
+          bank.bankName,
+          bank.subAccounts?.length || 0,
+          bank.color,
+        );
+        const subs = bank.subAccounts || [];
+        const total = bank.total || 0;
+        const barPct =
+          maxTotal > 0 ? Math.max(total / maxTotal, 0.02) * 100 : 0;
+        const isHovered = hoveredBank === bank.bankName;
+
+        return (
+          <div
+            key={bank.bankName}
+            className="group relative"
+            onMouseEnter={() => setHoveredBank(bank.bankName)}
+            onMouseLeave={() => setHoveredBank(null)}
+          >
+            <div className="flex items-center gap-3 mb-1.5">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate min-w-0 flex-1">
+                {bank.bankName}
+              </span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums shrink-0 w-24 text-right">
+                {formatCurrency(total)}
+              </span>
+            </div>
+            {/* Fondo de la barra (ancho completo); la barra coloreada mide barPct% = proporcional al capital */}
+            <div
+              className="h-2.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800"
+              role="presentation"
+            >
+              <div
+                className="h-full flex rounded-full overflow-hidden transition-all duration-300 ease-out"
+                style={{ width: `${barPct}%`, minWidth: total > 0 ? 8 : 0 }}
+              >
+                {subs.length > 0 ? (
+                  subs.map((sub, i) => {
+                    const segPct = total > 0 ? (sub.value || 0) / total : 0;
+                    const segColor = colors.variations[i] ?? colors.base;
+                    const isFirst = i === 0;
+                    const isLast = i === subs.length - 1;
+                    return (
+                      <div
+                        key={i}
+                        className="h-full transition-opacity duration-200"
+                        style={{
+                          width: `${segPct * 100}%`,
+                          minWidth: segPct > 0 ? 4 : 0,
+                          backgroundColor: segColor,
+                          opacity: isHovered ? 1 : 0.9,
+                          borderRadius:
+                            isFirst && isLast
+                              ? "9999px"
+                              : isFirst
+                                ? "9999px 0 0 9999px"
+                                : isLast
+                                  ? "0 9999px 9999px 0"
+                                  : 0,
+                        }}
+                        title={sub.name}
+                      />
+                    );
+                  })
+                ) : (
+                  <div
+                    className="h-full w-full rounded-full transition-opacity duration-200"
+                    style={{
+                      backgroundColor: colors.base,
+                      opacity: isHovered ? 1 : 0.85,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+            {isHovered && subs.length > 0 && (
+              <div
+                className={`absolute z-10 left-0 top-full mt-1 py-2 px-3 rounded-lg border shadow-lg text-sm min-w-[180px] ${
+                  isDark
+                    ? "bg-[#2c2c2e] border-[#404040]"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <p className="font-medium text-gray-900 dark:text-gray-100 mb-2 pb-1 border-b border-gray-200 dark:border-gray-600">
+                  {bank.bankName}
+                </p>
+                {subs.map((sub, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between gap-4 py-0.5 items-center"
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: colors.variations[i] ?? colors.base,
+                        }}
+                        aria-hidden
+                      />
+                      <span
+                        className="truncate"
+                        style={{ color: colors.variations[i] ?? colors.base }}
+                      >
+                        {sub.name}
+                      </span>
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums shrink-0">
+                      {formatCurrency(sub.value || 0)}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-4 mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-600 font-semibold text-gray-900 dark:text-gray-100">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatCurrency(total)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [stats, setStats] = useState(null);
   const [balanceChart, setBalanceChart] = useState([]);
   const [investmentsEvolution, setInvestmentsEvolution] = useState([]);
   const [distributionByAssetClass, setDistributionByAssetClass] = useState([]);
+  const [distributionByAssetType, setDistributionByAssetType] = useState([]);
   const [investmentsDetailed, setInvestmentsDetailed] = useState([]);
   const [distributionByBank, setDistributionByBank] = useState([]);
   const [performance, setPerformance] = useState(null);
@@ -147,39 +323,49 @@ const Dashboard = () => {
     Efectivo: "#f59e0b", // Amarillo/Naranja
   };
 
+  // Colores para tipo de renta (fija corto/medio, variable, alternativa)
+  const ASSET_TYPE_COLORS = {
+    fixed_short: "#0ea5e9", // sky
+    fixed_medium: "#3b82f6", // blue
+    variable: "#10b981", // emerald
+    alternative: "#8b5cf6", // violet
+  };
+
   // Generar colores para bancos y variaciones para subcuentas
   const generateBankColors = (bankName, subAccountCount, savedColor = null) => {
-    // Si hay un color guardado, usarlo SIEMPRE (prioridad máxima)
-    if (savedColor && savedColor.trim() !== "") {
-      const variations = generateColorVariations(savedColor, subAccountCount);
-      return {
-        base: savedColor,
-        variations: variations,
-      };
-    }
-
-    // Colores base para bancos comunes (solo si no hay color guardado)
-    const bankBaseColors = {
-      Santander: "#ec0000",
-      BBVA: "#004481",
-      CaixaBank: "#004481",
-      ING: "#ff6200",
-      MyInvestor: "#00a859",
-      Openbank: "#00a859",
-      N26: "#000000",
-      Revolut: "#0075eb",
-    };
-
-    // Si no hay color específico, generar uno basado en el nombre
+    const isRenta4 =
+      String(bankName || "")
+        .toLowerCase()
+        .replace(/\s/g, "") === "renta4";
     const baseColor =
-      bankBaseColors[bankName] || generateColorFromString(bankName);
+      savedColor && savedColor.trim() !== ""
+        ? savedColor
+        : (() => {
+            const bankBaseColors = {
+              Santander: "#ec0000",
+              BBVA: "#004481",
+              CaixaBank: "#004481",
+              ING: "#ff6200",
+              MyInvestor: "#00a859",
+              Openbank: "#00a859",
+              N26: "#000000",
+              Revolut: "#0075eb",
+              Renta4: "#e85d04",
+            };
+            return (
+              bankBaseColors[bankName] || generateColorFromString(bankName)
+            );
+          })();
 
-    // Generar variaciones del color base para las subcuentas
-    const variations = generateColorVariations(baseColor, subAccountCount);
+    // Renta4: variaciones muy sutiles (Efectivo / Inversiones) del mismo color
+    const variations =
+      isRenta4 && subAccountCount > 0
+        ? generateSubtleColorVariations(baseColor, subAccountCount)
+        : generateColorVariations(baseColor, subAccountCount);
 
     return {
       base: baseColor,
-      variations: variations,
+      variations,
     };
   };
 
@@ -283,6 +469,67 @@ const Dashboard = () => {
     });
   };
 
+  // Variaciones muy sutiles del mismo color (solo ±luminosidad pequeña): para Renta4 Efectivo/Inversiones
+  const generateSubtleColorVariations = (baseColor, count) => {
+    if (count === 0) return [];
+    // Recalcular con pasos de luminosidad mucho menores (±3% por paso)
+    let hue, saturation, lightness;
+    const bc = baseColor.replace(/\s/g, "");
+    if (bc.startsWith("hsl")) {
+      const match = bc.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+      if (match) {
+        hue = parseInt(match[1]);
+        saturation = parseInt(match[2]);
+        lightness = parseInt(match[3]);
+      } else {
+        hue = 200;
+        saturation = 70;
+        lightness = 50;
+      }
+    } else {
+      let hex = baseColor.replace("#", "");
+      if (hex.length === 3)
+        hex = hex
+          .split("")
+          .map((c) => c + c)
+          .join("");
+      const r = parseInt(hex.slice(0, 2), 16) / 255;
+      const g = parseInt(hex.slice(2, 4), 16) / 255;
+      const b = parseInt(hex.slice(4, 6), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      let h = 0;
+      let s = 0;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r:
+            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            break;
+          case g:
+            h = ((b - r) / d + 2) / 6;
+            break;
+          case b:
+            h = ((r - g) / d + 4) / 6;
+            break;
+          default:
+            break;
+        }
+      }
+      hue = Math.round(h * 360);
+      saturation = Math.round(s * 100);
+      lightness = Math.round(l * 100);
+    }
+    const step = 3;
+    const half = (count - 1) / 2;
+    return Array.from({ length: count }, (_, i) => {
+      const lightVariation = lightness + (i - half) * step;
+      return `hsl(${hue}, ${saturation}%, ${Math.max(20, Math.min(85, lightVariation))}%)`;
+    });
+  };
+
   // Preparar datos para el gráfico de barras apiladas
   const prepareBankChartData = () => {
     if (!distributionByBank || distributionByBank.length === 0) return [];
@@ -327,6 +574,7 @@ const Dashboard = () => {
         balanceRes,
         evolutionRes,
         assetClassRes,
+        assetTypeRes,
         detailedRes,
         bankRes,
         performanceRes,
@@ -335,6 +583,7 @@ const Dashboard = () => {
         api.get("/dashboard/balance-daily"),
         api.get("/investment-history/evolution?months=6"),
         api.get("/dashboard/distribution-by-asset-class"),
+        api.get("/dashboard/distribution-by-asset-type"),
         api.get("/dashboard/investments-detailed"),
         api.get("/dashboard/distribution-by-bank"),
         api.get("/dashboard/performance"),
@@ -352,6 +601,7 @@ const Dashboard = () => {
       setBalanceChart(sortedBalanceData);
       setInvestmentsEvolution(evolutionRes.data);
       setDistributionByAssetClass(assetClassRes.data);
+      setDistributionByAssetType(assetTypeRes.data);
       setInvestmentsDetailed(detailedRes.data);
       setDistributionByBank(bankRes.data);
       setPerformance(performanceRes.data);
@@ -393,177 +643,42 @@ const Dashboard = () => {
           ? stats.accumulatedReturnPercent
           : performance?.accumulatedReturnPercent) ?? 0);
 
-  // Función para renderizar el contenido del Treemap
-  const renderTreemapContent = ({
-    x,
-    y,
-    width,
-    height,
-    index,
-    payload,
-    root,
-  }) => {
-    // En recharts Treemap, los datos pueden estar en payload o en root.children
-    let dataItem = payload;
-    if (!dataItem && root && root.children && root.children[index]) {
-      dataItem = root.children[index];
+  // Datos para Nivo Treemap: jerarquía root -> inversiones (hojas)
+  const nivoTreemapData =
+    investmentsDetailed?.length > 0
+      ? {
+          id: "inversiones",
+          children: investmentsDetailed.map((inv) => ({
+            id: String(inv._id ?? inv.name),
+            value: Math.max(Number(inv.value) || 0, 0.01),
+            name: inv.name,
+            _id: inv._id,
+            totalReturnPercent: inv.totalReturnPercent,
+            totalReturn: inv.totalReturn,
+          })),
+        }
+      : null;
+
+  const handleTreemapClick = async (node) => {
+    if (!node?.data?._id || !node.isLeaf) return;
+    const dataItem = node.data;
+    try {
+      const res = await api.get(`/investments/${dataItem._id}`);
+      setSelectedTreemapInvestment(res.data);
+      const [hist, vars] = await Promise.all([
+        api.get(`/investment-history/investment/${dataItem._id}`),
+        api.get(
+          `/investment-history/investment/${dataItem._id}/daily-variations`,
+        ),
+      ]);
+      setDetailInvestmentHistory(hist.data || []);
+      setDetailDailyVariations(vars.data || []);
+      setShowInvestmentDetailModal(true);
+    } catch (err) {
+      console.error("Error al cargar detalles:", err);
+      setSelectedTreemapInvestment(dataItem);
+      setShowInvestmentDetailModal(true);
     }
-    // También puede estar directamente en el payload como un objeto con los datos
-    if (!dataItem && payload && typeof payload === "object") {
-      // Intentar acceder a los datos directamente
-      dataItem = investmentsDetailed[index];
-    }
-
-    // Si aún no tenemos datos, intentar desde el array original
-    if (!dataItem && investmentsDetailed && investmentsDetailed[index]) {
-      dataItem = investmentsDetailed[index];
-    }
-
-    if (
-      !dataItem ||
-      !dataItem.name ||
-      dataItem.value === undefined ||
-      dataItem.value === null
-    ) {
-      return null;
-    }
-
-    // Calcular color basado en la rentabilidad
-    const getReturnColor = (returnPercent) => {
-      if (!returnPercent && returnPercent !== 0) return "#9ca3af"; // Gris por defecto si no hay datos
-
-      // Si el rendimiento es exactamente 0%, usar gris
-      if (returnPercent === 0) {
-        return "#9ca3af"; // Gris neutro
-      }
-
-      const absPercent = Math.abs(returnPercent);
-      let intensity; // 0 = claro, 0.5 = intermedio, 1 = oscuro
-
-      // Tres rangos: 0-5% (claro), 5-20% (intermedio), 20%+ (oscuro)
-      if (absPercent < 5) {
-        intensity = 0; // Color claro
-      } else if (absPercent < 20) {
-        // Interpolar entre claro (0) e intermedio (0.5) en el rango 5-20%
-        intensity = 0.5 * ((absPercent - 5) / (20 - 5));
-      } else {
-        // Interpolar entre intermedio (0.5) y oscuro (1) a partir de 20%
-        // Para valores > 20%, usar una interpolación suave hasta llegar a 1
-        const excess = absPercent - 20;
-        intensity = 0.5 + Math.min(0.5 * (excess / 30), 0.5); // Llega a 1 en 50%
-      }
-
-      if (returnPercent >= 0) {
-        // Verde: claro (#4ade80), intermedio, oscuro (#166534)
-        // Verde claro: RGB(74, 222, 128)
-        // Verde intermedio: RGB(48, 161, 90)
-        // Verde oscuro: RGB(22, 101, 52)
-        const r = Math.round(22 + (74 - 22) * (1 - intensity));
-        const g = Math.round(101 + (222 - 101) * (1 - intensity));
-        const b = Math.round(52 + (128 - 52) * (1 - intensity));
-        return `rgb(${r}, ${g}, ${b})`;
-      } else {
-        // Rojo: claro (#f87171), intermedio, oscuro (#991b1b)
-        // Rojo claro: RGB(248, 113, 113)
-        // Rojo intermedio: RGB(200, 70, 70)
-        // Rojo oscuro: RGB(153, 27, 27)
-        const r = Math.round(153 + (248 - 153) * (1 - intensity));
-        const g = Math.round(27 + (113 - 27) * (1 - intensity));
-        const b = Math.round(27 + (113 - 27) * (1 - intensity));
-        return `rgb(${r}, ${g}, ${b})`;
-      }
-    };
-
-    const color = getReturnColor(dataItem.totalReturnPercent);
-
-    const total = investmentsDetailed.reduce(
-      (sum, item) => sum + (item.value || 0),
-      0,
-    );
-    const percent =
-      total > 0 ? ((dataItem.value / total) * 100).toFixed(1) : "0";
-    const displayName =
-      dataItem.name && dataItem.name.length > 20
-        ? dataItem.name.substring(0, 20) + "..."
-        : dataItem.name || "";
-    return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          style={{
-            fill: color,
-            stroke: "#fff",
-            strokeWidth: 2,
-            cursor: "pointer",
-          }}
-          onClick={async () => {
-            try {
-              // Obtener la inversión completa desde la API
-              const investmentRes = await api.get(
-                `/investments/${dataItem._id}`,
-              );
-              const fullInvestment = investmentRes.data;
-              setSelectedTreemapInvestment(fullInvestment);
-
-              // Cargar historial y variaciones diarias
-              const [historyRes, variationsRes] = await Promise.all([
-                api.get(`/investment-history/investment/${dataItem._id}`),
-                api.get(
-                  `/investment-history/investment/${dataItem._id}/daily-variations`,
-                ),
-              ]);
-              setDetailInvestmentHistory(historyRes.data || []);
-              setDetailDailyVariations(variationsRes.data || []);
-
-              setShowInvestmentDetailModal(true);
-            } catch (error) {
-              console.error("Error al cargar detalles de inversión:", error);
-              // Si falla, usar los datos básicos del Treemap
-              setSelectedTreemapInvestment(dataItem);
-              setShowInvestmentDetailModal(true);
-            }
-          }}
-        />
-        {width > 80 && height > 40 && (
-          <text
-            x={x + width / 2}
-            y={y + height / 2}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={14}
-            fontWeight="400"
-            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-          >
-            <tspan x={x + width / 2} dy="-8" fontWeight="400" fontSize={14}>
-              {displayName}
-            </tspan>
-            <tspan x={x + width / 2} dy="14" fontSize={15} fontWeight="400">
-              {dataItem.totalReturnPercent !== null &&
-              dataItem.totalReturnPercent !== undefined
-                ? `${dataItem.totalReturnPercent >= 0 ? "+" : ""}${dataItem.totalReturnPercent.toFixed(2)}%`
-                : "N/A"}
-            </tspan>
-            <tspan x={x + width / 2} dy="14" fontSize={12} fontWeight="400">
-              {dataItem.totalReturn !== null &&
-              dataItem.totalReturn !== undefined
-                ? `${dataItem.totalReturn >= 0 ? "+" : ""}${new Intl.NumberFormat(
-                    "es-ES",
-                    {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
-                      maximumFractionDigits: 0,
-                    },
-                  ).format(dataItem.totalReturn)}`
-                : "N/A"}
-            </tspan>
-          </text>
-        )}
-      </g>
-    );
   };
 
   return (
@@ -962,53 +1077,61 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Gráficas */}
+      {/* Fila 1: Gráficas de evolución (patrimonio total + inversiones) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfica de Evolución del Patrimonio Total */}
         {balanceChart.length > 0 && (
-          <div className="card">
+          <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               {t("dashboard.totalNetWorthEvolution")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={balanceChart.map((item, index) => {
+              <AreaChart
+                data={balanceChart.map((item) => {
                   const balanceValue = parseFloat(item.balance) || 0;
                   const dateStr = new Date(item.date).toLocaleDateString(
                     "es-ES",
                     { month: "short", day: "numeric" },
                   );
-
-                  // Verificar que los valores sean correctos en algunos puntos clave
-                  if (
-                    index === 0 ||
-                    index === Math.floor(balanceChart.length / 2) ||
-                    index === balanceChart.length - 1
-                  ) {
-                  }
-
-                  return {
-                    date: dateStr,
-                    balance: balanceValue,
-                  };
+                  return { date: dateStr, balance: balanceValue };
                 })}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
+                <defs>
+                  <linearGradient
+                    id="balanceGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.4} />
+                    <stop
+                      offset="100%"
+                      stopColor="#0ea5e9"
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#e5e7eb"
-                  className="dark:stroke-gray-700"
+                  stroke={
+                    isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
+                  }
+                  vertical={false}
                 />
                 <XAxis
                   dataKey="date"
-                  stroke="#6b7280"
-                  className="dark:stroke-gray-400"
+                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                  tickLine={false}
                   angle={-45}
                   textAnchor="end"
-                  height={80}
+                  height={60}
                 />
                 <YAxis
-                  stroke="#6b7280"
-                  className="dark:stroke-gray-400"
+                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
                   tickFormatter={(value) =>
                     new Intl.NumberFormat("es-ES", {
                       style: "currency",
@@ -1017,49 +1140,168 @@ const Dashboard = () => {
                       maximumFractionDigits: 0,
                     }).format(value)
                   }
+                  width={52}
                 />
                 <Tooltip
-                  formatter={(value) =>
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                    }).format(value)
-                  }
-                  labelFormatter={(label) => `Fecha: ${label}`}
+                  content={({ active, payload, label }) => (
+                    <ChartTooltip
+                      active={active}
+                      payload={payload}
+                      label={label}
+                      labelLabel="Fecha"
+                      valueFormatter={(v) =>
+                        new Intl.NumberFormat("es-ES", {
+                          style: "currency",
+                          currency: "EUR",
+                        }).format(v)
+                      }
+                      isDark={isDark}
+                    />
+                  )}
                 />
-                <Legend />
-                <Line
-                  type="linear"
+                <Area
+                  type="monotone"
                   dataKey="balance"
-                  stroke="#0ea5e9"
                   name={t("dashboard.totalNetWorth")}
+                  stroke="#0ea5e9"
                   strokeWidth={2}
+                  fill="url(#balanceGradient)"
                   dot={false}
-                  isAnimationActive={false}
-                  connectNulls={false}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                  isAnimationActive
+                  animationDuration={800}
+                  animationEasing="ease-out"
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        <div className="card">
+        {investmentsEvolution.length > 0 && (
+          <div className="card overflow-hidden">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Evolución de Inversiones
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart
+                data={investmentsEvolution.map((item) => ({
+                  date: new Date(item.date).toLocaleDateString("es-ES", {
+                    month: "short",
+                    day: "numeric",
+                  }),
+                  value: item.totalValue,
+                }))}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="investmentsGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                    <stop
+                      offset="100%"
+                      stopColor="#8b5cf6"
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={
+                    isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
+                  }
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(value) =>
+                    new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: "EUR",
+                      notation: "compact",
+                      maximumFractionDigits: 0,
+                    }).format(value)
+                  }
+                  width={52}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => (
+                    <ChartTooltip
+                      active={active}
+                      payload={payload}
+                      label={label}
+                      labelLabel="Fecha"
+                      valueFormatter={(v) =>
+                        new Intl.NumberFormat("es-ES", {
+                          style: "currency",
+                          currency: "EUR",
+                        }).format(v)
+                      }
+                      isDark={isDark}
+                    />
+                  )}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  name="Valor Total Inversiones"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  fill="url(#investmentsGradient)"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                  isAnimationActive
+                  animationDuration={800}
+                  animationEasing="ease-out"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Fila 2: Pie charts (clase de activo + tipo de renta) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t("dashboard.byAssetClass")}
           </h2>
           <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+            <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
               <Pie
                 data={distributionByAssetClass}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent, value }) =>
-                  `${name}: ${(percent * 100).toFixed(1)}%`
-                }
-                outerRadius={80}
-                fill="#8884d8"
+                innerRadius={60}
+                outerRadius={95}
+                paddingAngle={2}
                 dataKey="value"
+                stroke={isDark ? "#2c2c2e" : "#fff"}
+                strokeWidth={2}
+                label={({ name, percent }) =>
+                  percent >= 0.08
+                    ? `${name} ${(percent * 100).toFixed(0)}%`
+                    : ""
+                }
+                labelLine={{
+                  stroke: isDark ? "#525252" : "#d1d5db",
+                  strokeWidth: 1,
+                }}
+                isAnimationActive
+                animationDuration={600}
+                animationEasing="ease-out"
               >
                 {distributionByAssetClass.map((entry, index) => {
                   const color =
@@ -1069,170 +1311,312 @@ const Dashboard = () => {
                 })}
               </Pie>
               <Tooltip
-                formatter={(value) =>
-                  new Intl.NumberFormat("es-ES", {
-                    style: "currency",
-                    currency: "EUR",
-                  }).format(value)
-                }
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const entry = payload[0].payload;
+                  const total = distributionByAssetClass.reduce(
+                    (s, d) => s + d.value,
+                    0,
+                  );
+                  const pct = total > 0 ? (entry.value / total) * 100 : 0;
+                  const bg = isDark
+                    ? "bg-[#2c2c2e] border-[#404040]"
+                    : "bg-white border-gray-200";
+                  return (
+                    <div
+                      className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{
+                            backgroundColor:
+                              ASSET_CLASS_COLORS[entry.name] ||
+                              COLORS[
+                                distributionByAssetClass.indexOf(entry) %
+                                  COLORS.length
+                              ],
+                          }}
+                        />
+                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                          {entry.name}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Intl.NumberFormat("es-ES", {
+                          style: "currency",
+                          currency: "EUR",
+                        }).format(entry.value)}{" "}
+                        · {pct.toFixed(1)}%
+                      </div>
+                    </div>
+                  );
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* Segunda fila: Evolución de Inversiones y Distribución por Banco */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfica de evolución de inversiones */}
-        {investmentsEvolution.length > 0 && (
-          <div className="card">
+        {distributionByAssetType.length > 0 && (
+          <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Evolución de Inversiones
+              {t("dashboard.byAssetType")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={investmentsEvolution.map((item) => ({
-                  date: new Date(item.date).toLocaleDateString("es-ES", {
-                    month: "short",
-                    day: "numeric",
-                  }),
-                  value: item.totalValue,
-                }))}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e5e7eb"
-                  className="dark:stroke-gray-700"
-                />
-                <XAxis
-                  dataKey="date"
-                  stroke="#6b7280"
-                  className="dark:stroke-gray-400"
-                />
-                <YAxis stroke="#6b7280" className="dark:stroke-gray-400" />
-                <Tooltip
-                  formatter={(value) =>
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                    }).format(value)
-                  }
-                />
-                <Legend />
-                <Line
-                  type="monotone"
+              <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                <Pie
+                  data={distributionByAssetType}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={95}
+                  paddingAngle={2}
                   dataKey="value"
-                  stroke="#8b5cf6"
-                  name="Valor Total Inversiones"
+                  stroke={isDark ? "#2c2c2e" : "#fff"}
                   strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Gráfica de distribución por banco */}
-        {distributionByBank && distributionByBank.length > 0 && (
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              {t("dashboard.byBank")}
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={prepareBankChartData()}
-                layout="vertical"
-                margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e5e7eb"
-                  className="dark:stroke-gray-700"
-                />
-                <XAxis
-                  type="number"
-                  stroke="#6b7280"
-                  className="dark:stroke-gray-400"
-                />
-                <YAxis
-                  type="category"
-                  dataKey="bank"
-                  stroke="#6b7280"
-                  className="dark:stroke-gray-400"
-                  width={90}
-                />
+                  nameKey="id"
+                  label={({ id, percent }) =>
+                    percent >= 0.08
+                      ? `${t(`dashboard.assetType.${id}`)} ${(percent * 100).toFixed(0)}%`
+                      : ""
+                  }
+                  labelLine={{
+                    stroke: isDark ? "#525252" : "#d1d5db",
+                    strokeWidth: 1,
+                  }}
+                  isAnimationActive
+                  animationDuration={600}
+                  animationEasing="ease-out"
+                >
+                  {distributionByAssetType.map((entry, index) => {
+                    const color =
+                      ASSET_TYPE_COLORS[entry.id] ||
+                      COLORS[index % COLORS.length];
+                    return <Cell key={`asset-type-${entry.id}`} fill={color} />;
+                  })}
+                </Pie>
                 <Tooltip
-                  formatter={(value, name, props) => {
-                    // Encontrar el nombre de la subcuenta
-                    const subAccountName =
-                      props.payload[`${name}_name`] || "Subcuenta";
-                    return [
-                      new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                      }).format(value),
-                      subAccountName,
-                    ];
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const entry = payload[0].payload;
+                    const total = distributionByAssetType.reduce(
+                      (s, d) => s + d.value,
+                      0,
+                    );
+                    const pct = total > 0 ? (entry.value / total) * 100 : 0;
+                    const bg = isDark
+                      ? "bg-[#2c2c2e] border-[#404040]"
+                      : "bg-white border-gray-200";
+                    return (
+                      <div
+                        className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                ASSET_TYPE_COLORS[entry.id] ||
+                                COLORS[
+                                  distributionByAssetType.indexOf(entry) %
+                                    COLORS.length
+                                ],
+                            }}
+                          />
+                          <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                            {t(`dashboard.assetType.${entry.id}`)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: "EUR",
+                          }).format(entry.value)}{" "}
+                          · {pct.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
                   }}
                 />
-                {distributionByBank.map((bank, bankIndex) => {
-                  const bankColors = generateBankColors(
-                    bank.bankName,
-                    bank.subAccounts.length,
-                    bank.color,
-                  );
-                  return bank.subAccounts.map((subAccount, subIndex) => (
-                    <Bar
-                      key={`${bank.bankName}-${subIndex}`}
-                      dataKey={`${bank.bankName}_sub_${subIndex}`}
-                      stackId={bank.bankName}
-                      fill={bankColors.variations[subIndex] || bankColors.base}
-                      radius={
-                        subIndex === bank.subAccounts.length - 1
-                          ? [0, 4, 4, 0]
-                          : [0, 0, 0, 0]
-                      }
-                    />
-                  ));
-                })}
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      {/* Gráfica de inversiones detalladas */}
-      {investmentsDetailed && investmentsDetailed.length > 0 && (
-        <div className="card w-full overflow-hidden">
+      {/* Distribución por banco - 100% ancho */}
+      {distributionByBank && distributionByBank.length > 0 && (
+        <div className="card w-full">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("dashboard.byInvestment")}
+            {t("dashboard.byBank")}
           </h2>
-          <div
-            className="w-full overflow-hidden"
-            style={{ height: "500px", minHeight: "500px", maxWidth: "100%" }}
-            data-treemap-container
-          >
-            <ResponsiveContainer width="100%" height="100%" debounce={300}>
-              <Treemap
-                data={investmentsDetailed}
-                dataKey="value"
-                nameKey="name"
-                stroke="#fff"
-                fill="#8884d8"
-                isAnimationActive={false}
-                content={renderTreemapContent}
-              >
-                <Tooltip
-                  formatter={(value, name) => [
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                    }).format(value),
-                    name,
-                  ]}
+          <BankBarList
+            banks={distributionByBank}
+            generateBankColors={generateBankColors}
+            isDark={isDark}
+            formatCurrency={(v) =>
+              new Intl.NumberFormat("es-ES", {
+                style: "currency",
+                currency: "EUR",
+              }).format(v)
+            }
+          />
+        </div>
+      )}
+
+      {/* Distribución por inversión individual (Treemap) - 100% ancho */}
+      {nivoTreemapData && investmentsDetailed.length > 0 && (
+        <div className="card w-full overflow-visible">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {t("dashboard.byInvestment")}
+            </h2>
+            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-green-600" aria-hidden />
+                Beneficio
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: "#b91c1c" }}
+                  aria-hidden
                 />
-              </Treemap>
-            </ResponsiveContainer>
+                Pérdida
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-slate-500" aria-hidden />
+                Sin datos
+              </span>
+            </div>
+          </div>
+          <div
+            className="w-full overflow-visible rounded-lg bg-gray-50 dark:bg-gray-900/50"
+            style={{ height: "500px", minHeight: "500px" }}
+          >
+            <ResponsiveTreeMap
+              data={nivoTreemapData}
+              identity="id"
+              value="value"
+              valueFormat=".2s"
+              leavesOnly
+              tile="squarify"
+              innerPadding={4}
+              outerPadding={4}
+              margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+              nodeOpacity={1}
+              colors={(node) => {
+                const pct = node.data.totalReturnPercent;
+                if (pct == null) return "#64748b";
+                if (pct === 0) return "#64748b";
+                const abs = Math.abs(pct);
+                if (pct > 0) {
+                  if (abs >= 30) return "#047857";
+                  if (abs >= 15) return "#166534";
+                  if (abs >= 5) return "#15803d";
+                  return "#16a34a";
+                }
+                if (abs >= 30) return "#991b1b";
+                if (abs >= 15) return "#b91c1c";
+                if (abs >= 5) return "#dc2626";
+                return "#ef4444";
+              }}
+              borderWidth={1}
+              borderColor={{ from: "color", modifiers: [["darker", 0.15]] }}
+              enableParentLabel={false}
+              label={(node) => {
+                const name = String(node.data?.name ?? node.id ?? "");
+                const w = node.width ?? 0;
+                const h = node.height ?? 0;
+                const minSide = Math.min(w, h);
+                if (minSide < 36) return "";
+                const maxChars = Math.max(5, Math.floor(minSide / 8));
+                if (name.length <= maxChars) return name;
+                return name.slice(0, maxChars).trim() + "…";
+              }}
+              labelSkipSize={36}
+              labelTextColor="#ffffff"
+              orientLabel={false}
+              theme={{
+                labels: {
+                  text: {
+                    fill: "#ffffff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  },
+                },
+              }}
+              animate
+              motionConfig="gentle"
+              isInteractive
+              onClick={handleTreemapClick}
+              tooltip={({ node }) => {
+                const d = node.data;
+                const name = d.name ?? node.id;
+                const value = node.value ?? 0;
+                const returnPct = d.totalReturnPercent;
+                const returnAmt = d.totalReturn;
+                const bg = isDark
+                  ? "bg-[#2c2c2e] border-[#404040]"
+                  : "bg-white border-gray-200";
+                return (
+                  <div
+                    className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[220px]`}
+                    style={{ zIndex: 9999 }}
+                  >
+                    <p
+                      className="font-semibold text-gray-900 dark:text-gray-100 text-base mb-2 truncate"
+                      title={name}
+                    >
+                      {name}
+                    </p>
+                    <div className="space-y-2 text-base">
+                      <div className="flex justify-between gap-4">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Valor
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                          {new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: "EUR",
+                          }).format(value)}
+                        </span>
+                      </div>
+                      {(returnPct != null || returnAmt != null) && (
+                        <div className="flex justify-between gap-4 pt-1 border-t border-gray-200 dark:border-gray-600">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Rentabilidad
+                          </span>
+                          <span
+                            className={`font-medium tabular-nums ${
+                              returnPct != null && returnPct > 0
+                                ? "text-green-600 dark:text-green-400"
+                                : returnPct != null && returnPct < 0
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-gray-700 dark:text-gray-300"
+                            }`}
+                          >
+                            {returnPct != null
+                              ? `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`
+                              : "—"}
+                            {returnAmt != null && (
+                              <span className="ml-1.5 text-sm">
+                                ({returnAmt >= 0 ? "+" : ""}
+                                {new Intl.NumberFormat("es-ES", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                }).format(returnAmt)}
+                                )
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }}
+            />
           </div>
         </div>
       )}
@@ -1977,14 +2361,14 @@ const Dashboard = () => {
               {/* Columna derecha */}
               <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
                 {/* Gráfica de evolución del valor */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Evolución del Valor
                   </h3>
                   {detailInvestmentHistory.length > 0 ? (
                     <div style={{ height: "290px" }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
+                        <AreaChart
                           data={detailInvestmentHistory.map((h) => ({
                             date: new Date(h.date).toLocaleDateString("es-ES", {
                               day: "2-digit",
@@ -1993,40 +2377,73 @@ const Dashboard = () => {
                             value: h.totalValue,
                             dailyChange: h.dailyChangeAmount || 0,
                           }))}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
+                          <defs>
+                            <linearGradient
+                              id="detailValueGradient"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor="#0ea5e9"
+                                stopOpacity={0.35}
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#0ea5e9"
+                                stopOpacity={0.02}
+                              />
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
+                            stroke={
+                              isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "rgba(0,0,0,0.06)"
+                            }
+                            vertical={false}
                           />
                           <XAxis
                             dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={{
+                              stroke: isDark ? "#404040" : "#e5e7eb",
+                            }}
+                            tickLine={false}
                             angle={-45}
                             textAnchor="end"
-                            height={80}
+                            height={70}
                           />
                           <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat("es-ES", {
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(value) =>
+                              new Intl.NumberFormat("es-ES", {
                                 style: "currency",
                                 currency: selectedTreemapInvestment.currency,
                                 notation: "compact",
                                 maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
+                              }).format(value)
+                            }
+                            width={50}
                           />
                           <Tooltip
                             content={({ active, payload, label }) => {
-                              if (!active || !payload || !payload.length)
-                                return null;
-
+                              if (!active || !payload?.length) return null;
                               const data = payload[0]?.payload;
                               const totalValue = data?.value || 0;
-
                               const formattedValue = new Intl.NumberFormat(
                                 "es-ES",
                                 {
@@ -2034,36 +2451,42 @@ const Dashboard = () => {
                                   currency: selectedTreemapInvestment.currency,
                                 },
                               ).format(totalValue);
-
+                              const bg = isDark
+                                ? "bg-[#2c2c2e] border-[#404040]"
+                                : "bg-white border-gray-200";
                               return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                <div
+                                  className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
+                                >
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                                     {label}
                                   </p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                        Valor Total:
-                                      </span>
-                                      <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                        {formattedValue}
-                                      </span>
-                                    </div>
+                                  <div className="flex justify-between items-center gap-4">
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                      Valor total
+                                    </span>
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                      {formattedValue}
+                                    </span>
                                   </div>
                                 </div>
                               );
                             }}
                           />
-                          <Line
+                          <Area
                             type="monotone"
                             dataKey="value"
-                            stroke="#0ea5e9"
                             name="Valor Total"
+                            stroke="#0ea5e9"
                             strokeWidth={2}
+                            fill="url(#detailValueGradient)"
                             dot={false}
-                            activeDot={{ r: 5 }}
+                            activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                            isAnimationActive
+                            animationDuration={600}
+                            animationEasing="ease-out"
                           />
-                        </LineChart>
+                        </AreaChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
@@ -2080,7 +2503,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Gráfica de variación diaria */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Variación Diaria
                   </h3>
@@ -2111,37 +2534,52 @@ const Dashboard = () => {
                                 changeAmount < 0 ? changeAmount : 0,
                             };
                           })}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          barCategoryGap="20%"
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
+                            stroke={
+                              isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "rgba(0,0,0,0.06)"
+                            }
+                            vertical={false}
                           />
                           <XAxis
                             dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={{
+                              stroke: isDark ? "#404040" : "#e5e7eb",
+                            }}
+                            tickLine={false}
                             angle={-45}
                             textAnchor="end"
-                            height={80}
+                            height={70}
                           />
                           <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat("es-ES", {
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(value) =>
+                              new Intl.NumberFormat("es-ES", {
                                 style: "currency",
                                 currency: selectedTreemapInvestment.currency,
                                 notation: "compact",
                                 maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
+                              }).format(value)
+                            }
+                            width={50}
                           />
                           <Tooltip
                             content={({ active, payload, label }) => {
-                              if (!active || !payload || !payload.length)
-                                return null;
-
+                              if (!active || !payload?.length) return null;
                               const data = payload[0]?.payload;
                               const dailyChange =
                                 data?.dailyChange !== null &&
@@ -2150,7 +2588,6 @@ const Dashboard = () => {
                                   : 0;
                               const dailyChangePercent =
                                 data?.dailyChangePercent;
-
                               const formattedChange = new Intl.NumberFormat(
                                 "es-ES",
                                 {
@@ -2158,19 +2595,23 @@ const Dashboard = () => {
                                   currency: selectedTreemapInvestment.currency,
                                 },
                               ).format(Math.abs(dailyChange));
-
+                              const bg = isDark
+                                ? "bg-[#2c2c2e] border-[#404040]"
+                                : "bg-white border-gray-200";
                               return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                <div
+                                  className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[160px]`}
+                                >
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                                     {label}
                                   </p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                        Cambio Diario:
+                                  <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center gap-4">
+                                      <span className="text-gray-600 dark:text-gray-300">
+                                        Cambio diario
                                       </span>
                                       <span
-                                        className={`font-medium text-sm ${
+                                        className={`font-semibold ${
                                           dailyChange > 0
                                             ? "text-green-600 dark:text-green-400"
                                             : dailyChange < 0
@@ -2190,12 +2631,12 @@ const Dashboard = () => {
                                     </div>
                                     {dailyChangePercent !== null &&
                                     dailyChangePercent !== undefined ? (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                          Variación:
+                                      <div className="flex justify-between items-center gap-4">
+                                        <span className="text-gray-600 dark:text-gray-300">
+                                          Variación
                                         </span>
                                         <span
-                                          className={`font-medium text-sm ${
+                                          className={`font-semibold ${
                                             dailyChangePercent > 0
                                               ? "text-green-600 dark:text-green-400"
                                               : dailyChangePercent < 0
@@ -2208,11 +2649,9 @@ const Dashboard = () => {
                                         </span>
                                       </div>
                                     ) : (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                          Variación:
-                                        </span>
-                                        <span className="text-gray-500 dark:text-gray-400 text-sm">
+                                      <div className="flex justify-between items-center gap-4 text-gray-500 dark:text-gray-400">
+                                        <span>Variación</span>
+                                        <span className="text-xs">
                                           Sin datos previos
                                         </span>
                                       </div>
@@ -2226,13 +2665,19 @@ const Dashboard = () => {
                             dataKey="dailyChangePositive"
                             fill="#10b981"
                             name="Ganancia"
-                            radius={[4, 4, 0, 0]}
+                            radius={[6, 6, 0, 0]}
+                            isAnimationActive
+                            animationDuration={500}
+                            animationEasing="ease-out"
                           />
                           <Bar
                             dataKey="dailyChangeNegative"
                             fill="#ef4444"
                             name="Pérdida"
-                            radius={[4, 4, 0, 0]}
+                            radius={[6, 6, 0, 0]}
+                            isAnimationActive
+                            animationDuration={500}
+                            animationEasing="ease-out"
                           />
                         </BarChart>
                       </ResponsiveContainer>
