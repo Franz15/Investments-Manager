@@ -88,6 +88,14 @@
     "automaticUpdateActivateAllTooltip": "Activar l'actualització automàtica de preus a totes les inversions (amb símbol o ISIN)",
     "automaticUpdateDeactivateAllTooltip": "Desactivar l'actualització automàtica de preus a totes les inversions",
     "noInvestments": "No hi ha inversions registrades",
+    "noClosedInvestments": "No hi ha inversions tancades",
+    "views": {
+      "active": "Actives",
+      "closed": "Històric"
+    },
+    "badges": {
+      "closed": "Tancada"
+    },
     "investmentTypes": {
       "stock": "Acció",
       "bond": "Bó",
@@ -237,13 +245,16 @@
       "disabled": "Desactivada",
       "platform": "Plataforma:",
       "status": "Estat:",
-      "totalContributed": "Total aportat:"
+      "totalContributed": "Total aportat:",
+      "totalWithdrawn": "Total retirat:",
+      "closedDateLabel": "Data de tancament:"
     },
     "deleteConfirm": {
       "title": "Eliminar Inversió",
-      "message": "Estàs segur que vols eliminar aquesta inversió?",
+      "message": "Segur que vols eliminar la inversió {name}?",
       "returnMoney": "Tornar diners al compte",
-      "keepMoney": "Mantenir diners al compte"
+      "keepMoney": "Mantenir diners al compte",
+      "confirm": "Eliminar inversió"
     },
     "actions": {
       "edit": "Editar",
@@ -252,6 +263,8 @@
       "addCapitalTooltip": "Afegir capital a inversió",
       "sell": "Vendre",
       "sellTooltip": "Retirar d'inversió",
+      "close": "Tancar",
+      "closeTooltip": "Retirar tot el capital",
       "update": "Actualitzar",
       "updateValue": "Actualitzar Valor",
       "updateValueTooltip": "Actualitzar valor des de la plataforma",
@@ -303,13 +316,25 @@
     },
     "deleteConfirm": {
       "title": "Eliminar Inversió",
-      "message": "Estàs segur que vols eliminar aquesta inversió?",
+      "message": "Segur que vols eliminar la inversió {name}?",
       "returnMoney": "Tornar diners al compte",
       "keepMoney": "Mantenir diners al compte",
       "whatToDo": "Què vols fer amb la inversió {name}?",
       "originalAmount": "Import original invertit:",
       "deleteWithoutReturn": "Eliminar sense tornar diners",
-      "deleteAndReturn": "Eliminar i tornar diners a la subcompte"
+      "deleteAndReturn": "Eliminar i tornar diners a la subcompte",
+      "confirm": "Eliminar inversió"
+    },
+    "closeConfirm": {
+      "title": "Tancar Inversió",
+      "description": "Retiraràs tot el capital de {name}.",
+      "dateLabel": "Data de tancament",
+      "priceLabel": "Preu de tancament",
+      "notesLabel": "Notes (opcional)",
+      "notesPlaceholder": "Afegeix un comentari sobre el tancament...",
+      "totalToWithdraw": "Total a retirar:",
+      "cashDestination": "El capital es retornarà als subcomptes d'efectiu corresponents.",
+      "confirm": "Tancar inversió"
     },
     "modals": {
       "addCapital": {
@@ -338,7 +363,8 @@
         "pricePerUnit": "Preu per unitat",
         "returnToSubAccount": "Tornar diners a la subcompte",
         "returnToCashSingle": "Tornar diners a efectiu del compte",
-        "returnToCashMultiple": "Tornar diners a efectiu dels comptes assignats"
+        "returnToCashMultiple": "Tornar diners a efectiu dels comptes assignats",
+        "useClose": "Per retirar tot el capital, utilitza l'opció de tancar la inversió"
       },
       "updateValue": {
         "title": "Actualitzar Valor - {name}",
@@ -368,6 +394,8 @@
         "allocationsMismatch": "La suma d'assignacions ha de coincidir amb l'import invertit",
         "saveInvestment": "Error en guardar la inversió",
         "deleteInvestment": "Error en eliminar la inversió",
+        "closeInvestment": "Error en tancar la inversió",
+        "closedInvestment": "La inversió està tancada",
         "loadHistory": "Error en carregar l'historial: {error}",
         "editHistory": "Error en editar l'entrada de l'historial",
         "deleteHistory": "Error en eliminar l'entrada de l'historial",

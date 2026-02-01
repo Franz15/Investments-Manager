@@ -92,7 +92,10 @@ router.get("/stats", async (req, res) => {
         path: "account",
         match: { user: req.userId },
       });
-    const totalInvestments = investments.reduce((sum, inv) => {
+    const activeInvestments = investments.filter(
+      (inv) => inv.status !== "closed",
+    );
+    const totalInvestments = activeInvestments.reduce((sum, inv) => {
       const value = inv.isAutomatedPortfolio
         ? inv.currentPrice
         : inv.quantity * inv.currentPrice;
@@ -103,7 +106,7 @@ router.get("/stats", async (req, res) => {
     const totalBalance = totalCashSavings + totalInvestments;
 
     // Ganancias/pérdidas totales de inversiones
-    const totalProfitLoss = investments.reduce((sum, inv) => {
+    const totalProfitLoss = activeInvestments.reduce((sum, inv) => {
       if (inv.isAutomatedPortfolio) {
         return sum + (inv.currentPrice - inv.quantity);
       } else {
@@ -137,13 +140,13 @@ router.get("/stats", async (req, res) => {
     const startOfMonthDate = new Date(startOfMonth);
     startOfMonthDate.setHours(0, 0, 0, 0);
 
-    // IMPORTANTE: Solo considerar inversiones ACTIVAS (que existen actualmente)
-    const activeInvestmentIds = investments.map((inv) => inv._id);
+    // Considerar todas las inversiones (activas y cerradas) para el rendimiento del mes
+    const investmentIdsForReturns = investments.map((inv) => inv._id);
 
     // Obtener el historial más reciente antes o al inicio del mes (solo de inversiones activas)
     const historyAtMonthStart = await InvestmentHistory.find({
       user: req.userId,
-      investment: { $in: activeInvestmentIds }, // Solo inversiones activas
+      investment: { $in: investmentIdsForReturns },
       date: { $lte: startOfMonthDate },
     })
       .populate({
@@ -158,15 +161,12 @@ router.get("/stats", async (req, res) => {
     historyAtMonthStart.forEach((entry) => {
       if (entry.investment && entry.investment._id) {
         const invId = entry.investment._id.toString();
-        // Verificar que la inversión sigue siendo activa
-        if (activeInvestmentIds.some((id) => id.toString() === invId)) {
-          if (
-            !investmentsValueAtMonthStart[invId] ||
-            new Date(entry.date) >
-              new Date(investmentsValueAtMonthStart[invId].date)
-          ) {
-            investmentsValueAtMonthStart[invId] = entry;
-          }
+        if (
+          !investmentsValueAtMonthStart[invId] ||
+          new Date(entry.date) >
+            new Date(investmentsValueAtMonthStart[invId].date)
+        ) {
+          investmentsValueAtMonthStart[invId] = entry;
         }
       }
     });
@@ -188,7 +188,7 @@ router.get("/stats", async (req, res) => {
 
     const monthCapitalOperations = await InvestmentHistory.find({
       user: req.userId,
-      investment: { $in: activeInvestmentIds },
+      investment: { $in: investmentIdsForReturns },
       date: { $gte: startOfMonthDate, $lte: endOfMonthDate },
       operation: { $in: ["creation", "add", "sell", "withdraw"] },
     });
@@ -1307,7 +1307,11 @@ router.get("/investments-by-type", async (req, res) => {
   try {
     const investments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     }).populate({
       path: "subAccount",
       match: { user: req.userId },
@@ -1342,7 +1346,11 @@ router.get("/distribution-by-asset-class", async (req, res) => {
     // Obtener todas las inversiones del usuario
     const investments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     })
       .populate({
         path: "subAccount",
@@ -1400,7 +1408,14 @@ router.get("/distribution-by-asset-class", async (req, res) => {
 // GET distribución detallada por inversión individual
 router.get("/investments-detailed", async (req, res) => {
   try {
-    const investments = await Investment.find({ user: req.userId })
+    const investments = await Investment.find({
+      user: req.userId,
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
+    })
       .populate({
         path: "subAccount",
         select: "name type balance currency",
@@ -1512,7 +1527,11 @@ router.get("/distribution-by-bank", async (req, res) => {
     // Obtener todas las inversiones del usuario para calcular valores de subcuentas de inversión
     const investments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      status: { $ne: "closed" },
+      $or: [
+        { account: { $exists: true, $ne: null } },
+        { "allocations.0": { $exists: true } },
+      ],
     })
       .populate({
         path: "subAccount",
