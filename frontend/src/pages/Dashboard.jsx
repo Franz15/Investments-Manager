@@ -26,8 +26,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  Treemap,
 } from "recharts";
-import { ResponsiveTreeMap } from "@nivo/treemap";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
@@ -110,138 +110,6 @@ const ChartTooltip = ({
           </span>
         </div>
       ))}
-    </div>
-  );
-};
-
-// Lista de barras horizontales apiladas para distribución por banco (sub-colores por subcuenta)
-const BankBarList = ({ banks, generateBankColors, isDark, formatCurrency }) => {
-  const [hoveredBank, setHoveredBank] = useState(null);
-  const sorted = [...banks].sort((a, b) => (b.total || 0) - (a.total || 0));
-  const maxTotal = Math.max(...sorted.map((b) => b.total || 0), 1);
-
-  return (
-    <div className="flex-1 min-w-0 space-y-4">
-      {sorted.map((bank) => {
-        const colors = generateBankColors(
-          bank.bankName,
-          bank.subAccounts?.length || 0,
-          bank.color,
-        );
-        const subs = bank.subAccounts || [];
-        const total = bank.total || 0;
-        const barPct =
-          maxTotal > 0 ? Math.max(total / maxTotal, 0.02) * 100 : 0;
-        const isHovered = hoveredBank === bank.bankName;
-
-        return (
-          <div
-            key={bank.bankName}
-            className="group relative"
-            onMouseEnter={() => setHoveredBank(bank.bankName)}
-            onMouseLeave={() => setHoveredBank(null)}
-          >
-            <div className="flex items-center gap-3 mb-1.5">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate min-w-0 flex-1">
-                {bank.bankName}
-              </span>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums shrink-0 w-24 text-right">
-                {formatCurrency(total)}
-              </span>
-            </div>
-            {/* Fondo de la barra (ancho completo); la barra coloreada mide barPct% = proporcional al capital */}
-            <div
-              className="h-2.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800"
-              role="presentation"
-            >
-              <div
-                className="h-full flex rounded-full overflow-hidden transition-all duration-300 ease-out"
-                style={{ width: `${barPct}%`, minWidth: total > 0 ? 8 : 0 }}
-              >
-                {subs.length > 0 ? (
-                  subs.map((sub, i) => {
-                    const segPct = total > 0 ? (sub.value || 0) / total : 0;
-                    const segColor = colors.variations[i] ?? colors.base;
-                    const isFirst = i === 0;
-                    const isLast = i === subs.length - 1;
-                    return (
-                      <div
-                        key={i}
-                        className="h-full transition-opacity duration-200"
-                        style={{
-                          width: `${segPct * 100}%`,
-                          minWidth: segPct > 0 ? 4 : 0,
-                          backgroundColor: segColor,
-                          opacity: isHovered ? 1 : 0.9,
-                          borderRadius:
-                            isFirst && isLast
-                              ? "9999px"
-                              : isFirst
-                                ? "9999px 0 0 9999px"
-                                : isLast
-                                  ? "0 9999px 9999px 0"
-                                  : 0,
-                        }}
-                        title={sub.name}
-                      />
-                    );
-                  })
-                ) : (
-                  <div
-                    className="h-full w-full rounded-full transition-opacity duration-200"
-                    style={{
-                      backgroundColor: colors.base,
-                      opacity: isHovered ? 1 : 0.85,
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-            {isHovered && subs.length > 0 && (
-              <div
-                className={`absolute z-10 left-0 top-full mt-1 py-2 px-3 rounded-lg border shadow-lg text-sm min-w-[180px] ${
-                  isDark
-                    ? "bg-[#2c2c2e] border-[#404040]"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <p className="font-medium text-gray-900 dark:text-gray-100 mb-2 pb-1 border-b border-gray-200 dark:border-gray-600">
-                  {bank.bankName}
-                </p>
-                {subs.map((sub, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between gap-4 py-0.5 items-center"
-                  >
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{
-                          backgroundColor: colors.variations[i] ?? colors.base,
-                        }}
-                        aria-hidden
-                      />
-                      <span
-                        className="truncate"
-                        style={{ color: colors.variations[i] ?? colors.base }}
-                      >
-                        {sub.name}
-                      </span>
-                    </span>
-                    <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums shrink-0">
-                      {formatCurrency(sub.value || 0)}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex justify-between gap-4 mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-600 font-semibold text-gray-900 dark:text-gray-100">
-                  <span>Total</span>
-                  <span className="tabular-nums">{formatCurrency(total)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 };
@@ -530,38 +398,38 @@ const Dashboard = () => {
     });
   };
 
-  // Preparar datos para el gráfico de barras apiladas
-  const prepareBankChartData = () => {
-    if (!distributionByBank || distributionByBank.length === 0) return [];
-
-    return distributionByBank.map((bank) => {
-      const bankColors = generateBankColors(
-        bank.bankName,
-        bank.subAccounts.length,
-        bank.color,
-      );
-      const dataPoint = {
-        bank: bank.bankName,
-        total: bank.total,
-      };
-
-      // Agregar cada subcuenta como una propiedad separada con nombre único
-      bank.subAccounts.forEach((subAccount, index) => {
-        const subAccountKey = `${bank.bankName}_sub_${index}`;
-        dataPoint[subAccountKey] = subAccount.value;
-        dataPoint[`${subAccountKey}_name`] = subAccount.name;
-        dataPoint[`${subAccountKey}_type`] = subAccount.type;
-        dataPoint[`${subAccountKey}_color`] =
-          bankColors.variations[index] || bankColors.base;
-      });
-
-      dataPoint._bankColors = bankColors;
-      dataPoint._subAccounts = bank.subAccounts;
-      dataPoint._bankName = bank.bankName;
-
-      return dataPoint;
-    });
-  };
+  // Datos para Recharts BarChart (distribución por banco): barras horizontales apiladas por subcuenta
+  const bankChartData =
+    distributionByBank && distributionByBank.length > 0
+      ? (() => {
+          const maxSubs = Math.max(
+            ...distributionByBank.map((b) => (b.subAccounts || []).length),
+            1,
+          );
+          const sorted = [...distributionByBank].sort(
+            (a, b) => (b.total || 0) - (a.total || 0),
+          );
+          return sorted.map((bank) => {
+            const subs = bank.subAccounts || [];
+            const colors = generateBankColors(
+              bank.bankName,
+              subs.length,
+              bank.color,
+            );
+            const row = {
+              bankName: bank.bankName,
+              total: bank.total || 0,
+              _colors: colors,
+              _subAccounts: subs,
+            };
+            for (let i = 0; i < maxSubs; i++) {
+              row[`seg${i}`] =
+                subs[i]?.value ?? (i === 0 ? bank.total || 0 : 0);
+            }
+            return row;
+          });
+        })()
+      : null;
 
   useEffect(() => {
     fetchDashboardData();
@@ -643,20 +511,38 @@ const Dashboard = () => {
           ? stats.accumulatedReturnPercent
           : performance?.accumulatedReturnPercent) ?? 0);
 
-  // Datos para Nivo Treemap: jerarquía root -> inversiones (hojas)
-  const nivoTreemapData =
+  // Color de celda por rentabilidad (para Recharts Treemap)
+  const getTreemapCellColor = (pct) => {
+    if (pct == null) return "#64748b";
+    if (pct === 0) return "#64748b";
+    const abs = Math.abs(pct);
+    if (pct > 0) {
+      if (abs >= 30) return "#047857";
+      if (abs >= 15) return "#166534";
+      if (abs >= 5) return "#15803d";
+      return "#16a34a";
+    }
+    if (abs >= 30) return "#991b1b";
+    if (abs >= 15) return "#b91c1c";
+    if (abs >= 5) return "#dc2626";
+    return "#ef4444";
+  };
+
+  // Datos para Recharts Treemap: array con un root y children (inversiones)
+  const rechartsTreemapData =
     investmentsDetailed?.length > 0
-      ? {
-          id: "inversiones",
-          children: investmentsDetailed.map((inv) => ({
-            id: String(inv._id ?? inv.name),
-            value: Math.max(Number(inv.value) || 0, 0.01),
-            name: inv.name,
-            _id: inv._id,
-            totalReturnPercent: inv.totalReturnPercent,
-            totalReturn: inv.totalReturn,
-          })),
-        }
+      ? [
+          {
+            name: "Inversiones",
+            children: investmentsDetailed.map((inv) => ({
+              name: inv.name,
+              value: Math.max(Number(inv.value) || 0, 0.01),
+              _id: inv._id,
+              totalReturnPercent: inv.totalReturnPercent,
+              totalReturn: inv.totalReturn,
+            })),
+          },
+        ]
       : null;
 
   const handleTreemapClick = async (node) => {
@@ -1444,179 +1330,327 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Distribución por banco - 100% ancho */}
-      {distributionByBank && distributionByBank.length > 0 && (
+      {/* Distribución por banco (Recharts BarChart horizontal apilado) - 100% ancho */}
+      {bankChartData && bankChartData.length > 0 && (
         <div className="card w-full">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t("dashboard.byBank")}
           </h2>
-          <BankBarList
-            banks={distributionByBank}
-            generateBankColors={generateBankColors}
-            isDark={isDark}
-            formatCurrency={(v) =>
-              new Intl.NumberFormat("es-ES", {
-                style: "currency",
-                currency: "EUR",
-              }).format(v)
-            }
-          />
+          <ResponsiveContainer
+            width="100%"
+            height={Math.max(280, bankChartData.length * 56)}
+          >
+            <BarChart
+              data={bankChartData}
+              layout="vertical"
+              margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}
+                horizontal={false}
+              />
+              <XAxis
+                type="number"
+                tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                tickLine={false}
+                tickFormatter={(v) =>
+                  new Intl.NumberFormat("es-ES", {
+                    style: "currency",
+                    currency: "EUR",
+                    notation: "compact",
+                    maximumFractionDigits: 0,
+                  }).format(v)
+                }
+              />
+              <YAxis
+                type="category"
+                dataKey="bankName"
+                width={140}
+                tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) =>
+                  v && v.length > 18 ? v.slice(0, 17) + "…" : v
+                }
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const entry = payload[0].payload;
+                  const subs = entry._subAccounts || [];
+                  const colors = entry._colors;
+                  const bg = isDark
+                    ? "bg-[#2c2c2e] border-[#404040]"
+                    : "bg-white border-gray-200";
+                  return (
+                    <div
+                      className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[200px]`}
+                    >
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 pb-1 border-b border-gray-200 dark:border-gray-600">
+                        {entry.bankName}
+                      </p>
+                      {subs.length > 0 ? (
+                        subs.map((sub, i) => (
+                          <div
+                            key={i}
+                            className="flex justify-between gap-4 py-0.5 items-center text-sm"
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{
+                                  backgroundColor:
+                                    colors?.variations?.[i] ?? colors?.base,
+                                }}
+                              />
+                              <span className="truncate text-gray-700 dark:text-gray-300">
+                                {sub.name}
+                              </span>
+                            </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums shrink-0">
+                              {new Intl.NumberFormat("es-ES", {
+                                style: "currency",
+                                currency: "EUR",
+                              }).format(sub.value || 0)}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: "EUR",
+                          }).format(entry.total)}
+                        </p>
+                      )}
+                      <div className="flex justify-between gap-4 mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-600 font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                        <span>Total</span>
+                        <span className="tabular-nums">
+                          {new Intl.NumberFormat("es-ES", {
+                            style: "currency",
+                            currency: "EUR",
+                          }).format(entry.total)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+              {bankChartData[0] &&
+                Object.keys(bankChartData[0])
+                  .filter((k) => /^seg\d+$/.test(k))
+                  .sort(
+                    (a, b) =>
+                      parseInt(a.replace("seg", ""), 10) -
+                      parseInt(b.replace("seg", ""), 10),
+                  )
+                  .map((segKey) => (
+                    <Bar
+                      key={segKey}
+                      dataKey={segKey}
+                      stackId="bank"
+                      radius={0}
+                      minPointSize={4}
+                    >
+                      {bankChartData.map((entry, idx) => (
+                        <Cell
+                          key={idx}
+                          fill={
+                            entry._colors?.variations?.[
+                              parseInt(segKey.replace("seg", ""), 10)
+                            ] ?? entry._colors?.base
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  ))}
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
-      {/* Distribución por inversión individual (Treemap) - 100% ancho */}
-      {nivoTreemapData && investmentsDetailed.length > 0 && (
+      {/* Mapa de calor por inversión (estilo Recharts / Financial Hub) - 100% ancho */}
+      {rechartsTreemapData && investmentsDetailed.length > 0 && (
         <div className="card w-full overflow-visible">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {t("dashboard.byInvestment")}
+              Mapa de calor · {t("dashboard.byInvestment")}
             </h2>
-            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-green-600" aria-hidden />
-                Beneficio
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#047857" }}
+                  aria-hidden
+                />
+                ≥30%
               </span>
               <span className="flex items-center gap-1.5">
                 <span
-                  className="w-3 h-3 rounded-sm"
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#166534" }}
+                  aria-hidden
+                />
+                15-30%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#15803d" }}
+                  aria-hidden
+                />
+                5-15%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#16a34a" }}
+                  aria-hidden
+                />
+                0-5%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0 bg-slate-500"
+                  aria-hidden
+                />
+                0%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#ef4444" }}
+                  aria-hidden
+                />
+                0 a -5%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#dc2626" }}
+                  aria-hidden
+                />
+                -5 a -15%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
                   style={{ backgroundColor: "#b91c1c" }}
                   aria-hidden
                 />
-                Pérdida
+                -15 a -30%
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-slate-500" aria-hidden />
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: "#991b1b" }}
+                  aria-hidden
+                />
+                &lt;-30%
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0 bg-slate-500"
+                  aria-hidden
+                />
                 Sin datos
               </span>
             </div>
           </div>
           <div
-            className="w-full overflow-visible rounded-lg bg-gray-50 dark:bg-gray-900/50"
+            className="w-full overflow-visible rounded-lg bg-gray-100 dark:bg-gray-800/60"
             style={{ height: "500px", minHeight: "500px" }}
           >
-            <ResponsiveTreeMap
-              data={nivoTreemapData}
-              identity="id"
-              value="value"
-              valueFormat=".2s"
-              leavesOnly
-              tile="squarify"
-              innerPadding={4}
-              outerPadding={4}
-              margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
-              nodeOpacity={1}
-              colors={(node) => {
-                const pct = node.data.totalReturnPercent;
-                if (pct == null) return "#64748b";
-                if (pct === 0) return "#64748b";
-                const abs = Math.abs(pct);
-                if (pct > 0) {
-                  if (abs >= 30) return "#047857";
-                  if (abs >= 15) return "#166534";
-                  if (abs >= 5) return "#15803d";
-                  return "#16a34a";
-                }
-                if (abs >= 30) return "#991b1b";
-                if (abs >= 15) return "#b91c1c";
-                if (abs >= 5) return "#dc2626";
-                return "#ef4444";
-              }}
-              borderWidth={1}
-              borderColor={{ from: "color", modifiers: [["darker", 0.15]] }}
-              enableParentLabel={false}
-              label={(node) => {
-                const name = String(node.data?.name ?? node.id ?? "");
-                const w = node.width ?? 0;
-                const h = node.height ?? 0;
-                const minSide = Math.min(w, h);
-                if (minSide < 36) return "";
-                const maxChars = Math.max(5, Math.floor(minSide / 8));
-                if (name.length <= maxChars) return name;
-                return name.slice(0, maxChars).trim() + "…";
-              }}
-              labelSkipSize={36}
-              labelTextColor="#ffffff"
-              orientLabel={false}
-              theme={{
-                labels: {
-                  text: {
-                    fill: "#ffffff",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  },
-                },
-              }}
-              animate
-              motionConfig="gentle"
-              isInteractive
-              onClick={handleTreemapClick}
-              tooltip={({ node }) => {
-                const d = node.data;
-                const name = d.name ?? node.id;
-                const value = node.value ?? 0;
-                const returnPct = d.totalReturnPercent;
-                const returnAmt = d.totalReturn;
-                const bg = isDark
-                  ? "bg-[#2c2c2e] border-[#404040]"
-                  : "bg-white border-gray-200";
-                return (
-                  <div
-                    className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[220px]`}
-                    style={{ zIndex: 9999 }}
-                  >
-                    <p
-                      className="font-semibold text-gray-900 dark:text-gray-100 text-base mb-2 truncate"
-                      title={name}
-                    >
-                      {name}
-                    </p>
-                    <div className="space-y-2 text-base">
-                      <div className="flex justify-between gap-4">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Valor
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums">
-                          {new Intl.NumberFormat("es-ES", {
-                            style: "currency",
-                            currency: "EUR",
-                          }).format(value)}
-                        </span>
-                      </div>
-                      {(returnPct != null || returnAmt != null) && (
-                        <div className="flex justify-between gap-4 pt-1 border-t border-gray-200 dark:border-gray-600">
-                          <span className="text-gray-500 dark:text-gray-400">
-                            Rentabilidad
-                          </span>
-                          <span
-                            className={`font-medium tabular-nums ${
-                              returnPct != null && returnPct > 0
-                                ? "text-green-600 dark:text-green-400"
-                                : returnPct != null && returnPct < 0
-                                  ? "text-red-600 dark:text-red-400"
-                                  : "text-gray-700 dark:text-gray-300"
-                            }`}
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={rechartsTreemapData}
+                dataKey="value"
+                type="flat"
+                aspectRatio={0.5 * (1 + Math.sqrt(5))}
+                isAnimationActive
+                animationDuration={500}
+                onClick={(node) => {
+                  if (node.depth === 1 && node._id) {
+                    handleTreemapClick({ data: node, isLeaf: true });
+                  }
+                }}
+                content={(props) => {
+                  const {
+                    x,
+                    y,
+                    width,
+                    height,
+                    depth,
+                    name,
+                    value,
+                    totalReturnPercent,
+                    _id,
+                  } = props;
+                  if (depth === 0) return null;
+                  const color = getTreemapCellColor(totalReturnPercent);
+                  const minSide = Math.min(width, height);
+                  const fontSize = Math.max(
+                    10,
+                    Math.min(30, Math.floor(minSide / 8)),
+                  );
+                  const pctStr =
+                    totalReturnPercent != null &&
+                    !Number.isNaN(totalReturnPercent)
+                      ? `${totalReturnPercent >= 0 ? "+" : ""}${totalReturnPercent.toFixed(2)}%`
+                      : "";
+                  return (
+                    <g>
+                      <foreignObject
+                        x={x}
+                        y={y}
+                        width={Math.max(1, width)}
+                        height={Math.max(1, height)}
+                        style={{ overflow: "visible" }}
+                      >
+                        <div
+                          className="relative w-full h-full"
+                          xmlns="http://www.w3.org/1999/xhtml"
+                        >
+                          <div
+                            className="h-full w-full flex flex-col items-center justify-center p-1 text-center cursor-pointer select-none border border-black/10 transition-colors"
+                            style={{
+                              backgroundColor: color,
+                              backgroundImage:
+                                "linear-gradient(to right bottom, rgba(255,255,255,0.1), rgba(0,0,0,0.1))",
+                              opacity: 1,
+                            }}
                           >
-                            {returnPct != null
-                              ? `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`
-                              : "—"}
-                            {returnAmt != null && (
-                              <span className="ml-1.5 text-sm">
-                                ({returnAmt >= 0 ? "+" : ""}
-                                {new Intl.NumberFormat("es-ES", {
-                                  style: "currency",
-                                  currency: "EUR",
-                                }).format(returnAmt)}
-                                )
-                              </span>
-                            )}
-                          </span>
+                            <div className="flex flex-col items-center justify-center w-full h-full">
+                              <div
+                                className="font-bold text-white leading-none w-full px-0.5 truncate text-center"
+                                style={{
+                                  fontSize: `${fontSize}px`,
+                                  textShadow: "rgba(0,0,0,0.3) 0px 1px 2px",
+                                }}
+                              >
+                                {name}
+                              </div>
+                              {pctStr && (
+                                <div
+                                  className="font-medium text-white/90 mt-0.5"
+                                  style={{
+                                    fontSize: `${Math.max(10, Math.floor(fontSize * 0.6))}px`,
+                                  }}
+                                >
+                                  {pctStr}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }}
-            />
+                      </foreignObject>
+                    </g>
+                  );
+                }}
+              />
+            </ResponsiveContainer>
           </div>
         </div>
       )}
