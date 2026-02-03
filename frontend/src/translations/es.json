@@ -720,7 +720,8 @@
       "error": "Error al sincronizar fondos: {message}"
     },
     "errors": {
-      "loadExcel": "Error al cargar el archivo Excel"
+      "loadExcel": "Error al cargar el archivo Excel",
+      "loadConfig": "Error al cargar la configuración"
     },
     "categories": {
       "monetarios": "Monetarios",

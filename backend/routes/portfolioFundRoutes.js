@@ -103,39 +103,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// Sincronizar fondos desde Excel (reemplaza todos los fondos del usuario)
-router.post("/sync-from-excel", async (req, res) => {
-  try {
-    const { funds } = req.body; // Array de fondos desde el Excel
-
-    if (!Array.isArray(funds)) {
-      return res.status(400).json({ message: "Los fondos deben ser un array" });
-    }
-
-    // Eliminar todos los fondos existentes del usuario
-    await PortfolioFund.deleteMany({ user: req.userId });
-
-    // Crear nuevos fondos
-    const fundsToCreate = funds.map((fund) => ({
-      ...fund,
-      user: req.userId,
-    }));
-
-    const createdFunds = await PortfolioFund.insertMany(fundsToCreate);
-
-    res.json({
-      message: "Fondos sincronizados correctamente",
-      count: createdFunds.length,
-      funds: createdFunds,
-    });
-  } catch (error) {
-    console.error("Error al sincronizar fondos:", error);
-    res
-      .status(400)
-      .json({ message: "Error al sincronizar fondos", error: error.message });
-  }
-});
-
 // Obtener estadísticas de fondos por categoría
 router.get("/stats/by-category", async (req, res) => {
   try {
