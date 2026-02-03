@@ -16,13 +16,12 @@ import {
   Calendar,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -33,6 +32,7 @@ import { es } from "date-fns/locale";
 import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useTranslation } from "../contexts/TranslationContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -54,8 +54,48 @@ const formatPrice = (value, currency = "EUR") => {
   }).format(value);
 };
 
+// Tooltip común para gráficas (mismo estilo que Dashboard)
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+  labelLabel = "Fecha",
+  valueFormatter,
+  isDark,
+}) => {
+  if (!active || !payload?.length) return null;
+  const bg = isDark
+    ? "bg-[#2c2c2e] border-[#404040]"
+    : "bg-white border-gray-200";
+  return (
+    <div
+      className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[140px]`}
+    >
+      {label && (
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+          {labelLabel}: {label}
+        </p>
+      )}
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center justify-between gap-4">
+          <span
+            className="text-sm text-gray-600 dark:text-gray-300"
+            style={{ color: entry.color }}
+          >
+            ● {entry.name}
+          </span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {valueFormatter ? valueFormatter(entry.value) : entry.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const Investments = () => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [investments, setInvestments] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -155,6 +195,8 @@ const Investments = () => {
     dcaFrequency: "monthly",
     dcaStartDate: new Date().toISOString().split("T")[0],
     dcaEndDate: "",
+    entryMode: "by_units", // "by_units" = cantidad + precio | "by_total" = importe total + precio
+    totalInvested: 0,
   });
   const [investmentView, setInvestmentView] = useState("active");
   const [closeFormData, setCloseFormData] = useState({
@@ -285,6 +327,9 @@ const Investments = () => {
     if (data.isAutomatedPortfolio) {
       return quantity;
     }
+    if (data.entryMode === "by_total" && Number(data.totalInvested) > 0) {
+      return Number(data.totalInvested);
+    }
     const price = Number(data.purchasePrice) || 0;
     return quantity * price;
   };
@@ -383,6 +428,19 @@ const Investments = () => {
         account: normalizedAllocations[0].account,
         subAccount: normalizedAllocations[0].subAccount || undefined,
       };
+
+      // Si se introdujo por importe total, calcular cantidad a partir de total y precio
+      if (
+        !dataToSend.isAutomatedPortfolio &&
+        dataToSend.entryMode === "by_total" &&
+        Number(dataToSend.totalInvested) > 0 &&
+        Number(dataToSend.purchasePrice) > 0
+      ) {
+        dataToSend.quantity =
+          Number(dataToSend.totalInvested) / Number(dataToSend.purchasePrice);
+      }
+      delete dataToSend.entryMode;
+      delete dataToSend.totalInvested;
 
       if (dataToSend.assetClass === "alternative") {
         dataToSend.assetClass = "variable_income";
@@ -528,6 +586,8 @@ const Investments = () => {
 
   const handleEdit = (investment) => {
     setEditingInvestment(investment);
+    const qty = Number(investment.quantity) || 0;
+    const price = Number(investment.purchasePrice) || 0;
     setFormData({
       allocations: getAllocationsFromInvestment(investment),
       name: investment.name,
@@ -535,8 +595,10 @@ const Investments = () => {
       symbol: investment.symbol || "",
       isin: investment.isin || "",
       isAutomatedPortfolio: investment.isAutomatedPortfolio || false,
-      quantity: investment.quantity,
-      purchasePrice: investment.purchasePrice || 0,
+      quantity: qty,
+      purchasePrice: price,
+      entryMode: "by_units",
+      totalInvested: qty * price,
       currentPrice: investment.currentPrice,
       purchaseDate: new Date(investment.purchaseDate)
         .toISOString()
@@ -1083,6 +1145,8 @@ const Investments = () => {
       dcaFrequency: "monthly",
       dcaStartDate: new Date().toISOString().split("T")[0],
       dcaEndDate: "",
+      entryMode: "by_units",
+      totalInvested: 0,
     });
     setEditingInvestment(null);
   };
@@ -2377,192 +2441,266 @@ const Investments = () => {
                   </>
                 ) : (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t("investments.form.numberOfShares")}{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.0001"
-                        className="input-field"
-                        value={formData.quantity}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            quantity: parseFloat(e.target.value),
-                          })
-                        }
-                        required
-                        placeholder={t(
-                          "investments.form.numberOfSharesPlaceholder",
-                        )}
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t("investments.form.numberOfSharesDescription")}
-                      </p>
+                    {/* Modo de entrada: por participaciones+precio o por importe total */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {t("investments.form.howToEnterAmount")}
+                      </span>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="entryMode"
+                            checked={formData.entryMode === "by_units"}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                entryMode: "by_units",
+                                totalInvested:
+                                  formData.quantity * formData.purchasePrice ||
+                                  0,
+                              })
+                            }
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {t("investments.form.entryByUnits")}
+                          </span>
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="entryMode"
+                            checked={formData.entryMode === "by_total"}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                entryMode: "by_total",
+                                totalInvested:
+                                  formData.quantity * formData.purchasePrice ||
+                                  0,
+                              })
+                            }
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {t("investments.form.entryByTotal")}
+                          </span>
+                        </label>
+                      </div>
                     </div>
-                    {formData.isAutomatedPortfolio ? (
+
+                    {formData.entryMode === "by_units" ? (
                       <>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Monto Invertido{" "}
+                            {t("investments.form.unitsOrShares")}{" "}
                             <span className="text-red-500">*</span>
                           </label>
-                          <div className="grid grid-cols-4 gap-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input-field col-span-3"
-                              value={formData.purchasePrice}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  purchasePrice: parseFloat(e.target.value),
-                                })
-                              }
-                              required
-                              placeholder="0.00"
-                            />
-                            <select
-                              className="input-field"
-                              value={formData.currency}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  currency: e.target.value,
-                                })
-                              }
-                            >
-                              <option value="EUR">EUR</option>
-                              <option value="USD">USD</option>
-                              <option value="GBP">GBP</option>
-                            </select>
-                          </div>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            className="input-field"
+                            value={
+                              formData.quantity === 0 ? "" : formData.quantity
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                quantity: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            required={formData.entryMode === "by_units"}
+                            placeholder={t(
+                              "investments.form.unitsOrSharesPlaceholder",
+                            )}
+                          />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Cantidad total de dinero invertido
+                            {t("investments.form.unitsOrSharesDescription")}
                           </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Monto Actual <span className="text-red-500">*</span>
+                            {t("investments.form.purchasePricePerUnit")}{" "}
+                            <span className="text-red-500">*</span>
                           </label>
-                          <div className="grid grid-cols-4 gap-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input-field col-span-3"
-                              value={formData.currentPrice}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  currentPrice: parseFloat(e.target.value),
-                                })
-                              }
-                              required
-                              placeholder="0.00"
-                            />
-                            <select
-                              className="input-field"
-                              value={formData.currency}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  currency: e.target.value,
-                                })
-                              }
-                              disabled
-                            >
-                              <option value="EUR">EUR</option>
-                              <option value="USD">USD</option>
-                              <option value="GBP">GBP</option>
-                            </select>
-                          </div>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            className="input-field"
+                            value={
+                              formData.purchasePrice === 0
+                                ? ""
+                                : formData.purchasePrice
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                purchasePrice: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            required={formData.entryMode === "by_units"}
+                            placeholder="0.0000"
+                          />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Valor actual de la inversión
+                            {t(
+                              "investments.form.purchasePricePerUnitDescription",
+                            )}
                           </p>
                         </div>
                       </>
                     ) : (
-                      <div className="grid grid-cols-3 gap-4">
+                      <>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t("investments.form.purchasePrice")}{" "}
+                            {t("investments.form.totalAmountInvested")}{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="input-field col-span-3"
+                              value={
+                                formData.totalInvested === 0
+                                  ? ""
+                                  : formData.totalInvested
+                              }
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  totalInvested:
+                                    parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              required={formData.entryMode === "by_total"}
+                              placeholder="0.00"
+                            />
+                            <select
+                              className="input-field"
+                              value={formData.currency}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  currency: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {t(
+                              "investments.form.totalAmountInvestedDescription",
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t("investments.form.purchasePricePerUnit")}{" "}
                             <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
                             step="0.0001"
+                            min="0"
                             className="input-field"
-                            value={formData.purchasePrice}
+                            value={
+                              formData.purchasePrice === 0
+                                ? ""
+                                : formData.purchasePrice
+                            }
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                purchasePrice: parseFloat(e.target.value),
+                                purchasePrice: parseFloat(e.target.value) || 0,
                               })
                             }
-                            required
+                            required={formData.entryMode === "by_total"}
                             placeholder="0.0000"
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t("investments.form.purchasePriceDescription")}
+                            {t("investments.form.purchasePricePerUnitForTotal")}
                           </p>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t("investments.form.currentPriceRequired")}{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.0001"
-                            className="input-field"
-                            value={formData.currentPrice}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currentPrice: parseFloat(e.target.value),
-                              })
-                            }
-                            required
-                            placeholder="0.0000"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t("investments.form.currentPriceDescription")}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t("investments.form.currencyRequired")}{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            className="input-field"
-                            value={formData.currency}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currency: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                            <option value="GBP">GBP</option>
-                          </select>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Moneda de los precios
-                          </p>
-                        </div>
-                      </div>
+                      </>
                     )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t("investments.form.currentPriceRequired")}{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          className="input-field"
+                          value={
+                            formData.currentPrice === 0
+                              ? ""
+                              : formData.currentPrice
+                          }
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              currentPrice: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          required
+                          placeholder="0.0000"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t("investments.form.currentPriceDescription")}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t("investments.form.currencyRequired")}{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          className="input-field"
+                          value={formData.currency}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              currency: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="EUR">EUR</option>
+                          <option value="USD">USD</option>
+                          <option value="GBP">GBP</option>
+                        </select>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t("investments.form.currencyDescription")}
+                        </p>
+                      </div>
+                    </div>
                     {/* Resumen financiero */}
                     {(() => {
                       const isAutomated = formData.isAutomatedPortfolio;
+                      const effectiveQuantity =
+                        formData.entryMode === "by_total" &&
+                        formData.totalInvested > 0 &&
+                        formData.purchasePrice > 0
+                          ? formData.totalInvested / formData.purchasePrice
+                          : formData.quantity;
                       const hasValidData = isAutomated
                         ? formData.purchasePrice > 0 &&
                           formData.currentPrice > 0
-                        : formData.quantity > 0 && formData.currentPrice > 0;
+                        : formData.currentPrice > 0 &&
+                          (formData.entryMode === "by_total"
+                            ? formData.totalInvested > 0 &&
+                              formData.purchasePrice > 0
+                            : formData.quantity > 0);
 
                       if (!hasValidData) return null;
 
@@ -2581,7 +2719,7 @@ const Investments = () => {
                           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Monto Actual:
+                                {t("investments.form.summary.currentAmount")}:
                               </span>
                               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                 {new Intl.NumberFormat("es-ES", {
@@ -2593,7 +2731,8 @@ const Investments = () => {
                             <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
                               <div className="flex items-center justify-between text-xs">
                                 <span className="text-gray-600 dark:text-gray-400">
-                                  Monto Invertido:
+                                  {t("investments.form.summary.investedAmount")}
+                                  :
                                 </span>
                                 <span className="font-medium text-gray-700 dark:text-gray-300">
                                   {new Intl.NumberFormat("es-ES", {
@@ -2604,7 +2743,7 @@ const Investments = () => {
                               </div>
                               <div className="flex items-center justify-between text-xs mt-1">
                                 <span className="text-gray-600 dark:text-gray-400">
-                                  Ganancia/Pérdida:
+                                  {t("investments.detail.profitLoss")}:
                                 </span>
                                 <span
                                   className={`font-semibold ${profitLoss >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
@@ -2623,18 +2762,23 @@ const Investments = () => {
                         );
                       } else {
                         // Resumen para inversiones normales
+                        const investedCapital =
+                          formData.entryMode === "by_total" &&
+                          formData.totalInvested > 0
+                            ? formData.totalInvested
+                            : effectiveQuantity * formData.purchasePrice;
                         return (
                           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Valor Total Calculado:
+                                {t("investments.form.summary.calculatedTotal")}
                               </span>
                               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                 {new Intl.NumberFormat("es-ES", {
                                   style: "currency",
                                   currency: formData.currency || "EUR",
                                 }).format(
-                                  formData.quantity * formData.currentPrice,
+                                  effectiveQuantity * formData.currentPrice,
                                 )}
                               </span>
                             </div>
@@ -2642,23 +2786,41 @@ const Investments = () => {
                               <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="text-gray-600 dark:text-gray-400">
-                                    Capital Invertido:
+                                    {t(
+                                      "investments.form.summary.investedCapital",
+                                    )}
                                   </span>
                                   <span className="font-medium text-gray-700 dark:text-gray-300">
                                     {new Intl.NumberFormat("es-ES", {
                                       style: "currency",
                                       currency: formData.currency || "EUR",
-                                    }).format(
-                                      formData.quantity *
-                                        formData.purchasePrice,
-                                    )}
+                                    }).format(investedCapital)}
                                   </span>
                                 </div>
+                                {formData.entryMode === "by_total" &&
+                                  effectiveQuantity > 0 && (
+                                    <div className="flex items-center justify-between text-xs mt-0.5">
+                                      <span className="text-gray-600 dark:text-gray-400">
+                                        {t(
+                                          "investments.form.summary.unitsCalculated",
+                                        )}
+                                      </span>
+                                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {effectiveQuantity.toLocaleString(
+                                          "es-ES",
+                                          {
+                                            maximumFractionDigits: 4,
+                                          },
+                                        )}{" "}
+                                        {t("investments.form.summary.units")}
+                                      </span>
+                                    </div>
+                                  )}
                                 {(() => {
                                   const profitLoss =
                                     (formData.currentPrice -
                                       formData.purchasePrice) *
-                                    formData.quantity;
+                                    effectiveQuantity;
                                   const profitLossPercent =
                                     formData.purchasePrice > 0
                                       ? ((formData.currentPrice -
@@ -2669,7 +2831,7 @@ const Investments = () => {
                                   return (
                                     <div className="flex items-center justify-between text-xs mt-1">
                                       <span className="text-gray-600 dark:text-gray-400">
-                                        Ganancia/Pérdida:
+                                        {t("investments.detail.profitLoss")}:
                                       </span>
                                       <span
                                         className={`font-semibold ${profitLoss >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
@@ -3258,7 +3420,7 @@ const Investments = () => {
               <>
                 <div className="mb-6" style={{ height: "300px" }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
+                    <AreaChart
                       data={investmentHistory.map((h) => ({
                         date: new Date(h.date).toLocaleDateString("es-ES", {
                           day: "2-digit",
@@ -3267,44 +3429,97 @@ const Investments = () => {
                         value: h.totalValue,
                         price: h.currentPrice,
                       }))}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                     >
+                      <defs>
+                        <linearGradient
+                          id="historyValueGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#0ea5e9"
+                            stopOpacity={0.4}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#0ea5e9"
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="#e5e7eb"
-                        className="dark:stroke-gray-700"
+                        stroke={
+                          isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
+                        }
+                        vertical={false}
                       />
                       <XAxis
                         dataKey="date"
-                        stroke="#6b7280"
-                        className="dark:stroke-gray-400"
+                        tick={{
+                          fill: isDark ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
+                        }}
+                        axisLine={{
+                          stroke: isDark ? "#404040" : "#e5e7eb",
+                        }}
+                        tickLine={false}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
                       />
                       <YAxis
-                        stroke="#6b7280"
-                        className="dark:stroke-gray-400"
-                      />
-                      <Tooltip
-                        formatter={(value, name) => {
-                          if (name === "Precio Unitario" || name === "price") {
-                            return formatPrice(
-                              value,
-                              selectedInvestment.currency,
-                            );
-                          }
-                          return new Intl.NumberFormat("es-ES", {
+                        tick={{
+                          fill: isDark ? "#9ca3af" : "#6b7280",
+                          fontSize: 11,
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(value) =>
+                          new Intl.NumberFormat("es-ES", {
                             style: "currency",
                             currency: selectedInvestment.currency,
-                          }).format(value);
-                        }}
+                            notation: "compact",
+                            maximumFractionDigits: 0,
+                          }).format(value)
+                        }
+                        width={52}
                       />
-                      <Legend />
-                      <Line
+                      <Tooltip
+                        content={({ active, payload, label }) => (
+                          <ChartTooltip
+                            active={active}
+                            payload={payload}
+                            label={label}
+                            labelLabel={t("investments.detail.date")}
+                            valueFormatter={(v) =>
+                              new Intl.NumberFormat("es-ES", {
+                                style: "currency",
+                                currency: selectedInvestment.currency,
+                              }).format(v)
+                            }
+                            isDark={isDark}
+                          />
+                        )}
+                      />
+                      <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#0ea5e9"
                         name="Valor Total"
+                        stroke="#0ea5e9"
                         strokeWidth={2}
+                        fill="url(#historyValueGradient)"
+                        dot={false}
+                        activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                        isAnimationActive
+                        animationDuration={800}
+                        animationEasing="ease-out"
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
@@ -5301,7 +5516,7 @@ const Investments = () => {
                   {detailInvestmentHistory.length > 0 ? (
                     <div style={{ height: "290px" }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
+                        <AreaChart
                           data={detailInvestmentHistory.map((h) => ({
                             date: new Date(h.date).toLocaleDateString("es-ES", {
                               day: "2-digit",
@@ -5310,77 +5525,103 @@ const Investments = () => {
                             value: h.totalValue,
                             dailyChange: h.dailyChangeAmount || 0,
                           }))}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
+                          <defs>
+                            <linearGradient
+                              id="detailValueGradient"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor="#0ea5e9"
+                                stopOpacity={0.4}
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#0ea5e9"
+                                stopOpacity={0.02}
+                              />
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
+                            stroke={
+                              isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "rgba(0,0,0,0.06)"
+                            }
+                            vertical={false}
                           />
                           <XAxis
                             dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={{
+                              stroke: isDark ? "#404040" : "#e5e7eb",
+                            }}
+                            tickLine={false}
                             angle={-45}
                             textAnchor="end"
-                            height={80}
+                            height={60}
                           />
                           <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat("es-ES", {
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(value) =>
+                              new Intl.NumberFormat("es-ES", {
                                 style: "currency",
                                 currency: detailInvestment.currency,
                                 notation: "compact",
                                 maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
+                              }).format(value)
+                            }
+                            width={52}
                           />
                           <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload || !payload.length)
-                                return null;
-
-                              const data = payload[0]?.payload;
-                              const totalValue = data?.value || 0;
-
-                              const formattedValue = new Intl.NumberFormat(
-                                "es-ES",
-                                {
-                                  style: "currency",
-                                  currency: detailInvestment.currency,
-                                },
-                              ).format(totalValue);
-
-                              return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
-                                    {label}
-                                  </p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                        Valor Total:
-                                      </span>
-                                      <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                        {formattedValue}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }}
+                            content={({ active, payload, label }) => (
+                              <ChartTooltip
+                                active={active}
+                                payload={payload}
+                                label={label}
+                                labelLabel={t("investments.detail.date")}
+                                valueFormatter={(v) =>
+                                  new Intl.NumberFormat("es-ES", {
+                                    style: "currency",
+                                    currency: detailInvestment.currency,
+                                  }).format(v)
+                                }
+                                isDark={isDark}
+                              />
+                            )}
                           />
-                          <Line
+                          <Area
                             type="monotone"
                             dataKey="value"
-                            stroke="#0ea5e9"
                             name="Valor Total"
+                            stroke="#0ea5e9"
                             strokeWidth={2}
+                            fill="url(#detailValueGradient)"
                             dot={false}
-                            activeDot={{ r: 5 }}
+                            activeDot={{
+                              r: 4,
+                              strokeWidth: 2,
+                              fill: "white",
+                            }}
+                            isAnimationActive
+                            animationDuration={800}
+                            animationEasing="ease-out"
                           />
-                        </LineChart>
+                        </AreaChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
@@ -5428,31 +5669,47 @@ const Investments = () => {
                                 changeAmount < 0 ? changeAmount : 0,
                             };
                           })}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
+                            stroke={
+                              isDark
+                                ? "rgba(255,255,255,0.06)"
+                                : "rgba(0,0,0,0.06)"
+                            }
+                            vertical={false}
                           />
                           <XAxis
                             dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={{
+                              stroke: isDark ? "#404040" : "#e5e7eb",
+                            }}
+                            tickLine={false}
                             angle={-45}
                             textAnchor="end"
-                            height={80}
+                            height={60}
                           />
                           <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat("es-ES", {
+                            tick={{
+                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fontSize: 11,
+                            }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(value) =>
+                              new Intl.NumberFormat("es-ES", {
                                 style: "currency",
                                 currency: detailInvestment.currency,
                                 notation: "compact",
                                 maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
+                              }).format(value)
+                            }
+                            width={52}
                           />
                           <Tooltip
                             content={({ active, payload, label }) => {
@@ -5476,18 +5733,23 @@ const Investments = () => {
                                 },
                               ).format(Math.abs(dailyChange));
 
+                              const bg = isDark
+                                ? "bg-[#2c2c2e] border-[#404040]"
+                                : "bg-white border-gray-200";
                               return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
-                                    {label}
+                                <div
+                                  className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[160px]`}
+                                >
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                                    {t("investments.detail.date")}: {label}
                                   </p>
                                   <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                    <div className="flex justify-between items-center gap-4">
+                                      <span className="text-sm text-gray-600 dark:text-gray-300">
                                         Cambio Diario:
                                       </span>
                                       <span
-                                        className={`font-medium text-sm ${
+                                        className={`text-sm font-semibold ${
                                           dailyChange > 0
                                             ? "text-green-600 dark:text-green-400"
                                             : dailyChange < 0
@@ -5495,11 +5757,8 @@ const Investments = () => {
                                               : "text-gray-500 dark:text-gray-400"
                                         }`}
                                       >
-                                        {dailyChange > 0
-                                          ? "+"
-                                          : dailyChange < 0
-                                            ? "-"
-                                            : ""}
+                                        {dailyChange > 0 ? "+" : ""}
+                                        {dailyChange < 0 ? "-" : ""}
                                         {formattedChange}
                                         {dailyChange === 0 &&
                                           " (Sin variación)"}
@@ -5507,12 +5766,12 @@ const Investments = () => {
                                     </div>
                                     {dailyChangePercent !== null &&
                                     dailyChangePercent !== undefined ? (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                      <div className="flex justify-between items-center gap-4">
+                                        <span className="text-sm text-gray-600 dark:text-gray-300">
                                           Variación:
                                         </span>
                                         <span
-                                          className={`font-medium text-sm ${
+                                          className={`text-sm font-semibold ${
                                             dailyChangePercent > 0
                                               ? "text-green-600 dark:text-green-400"
                                               : dailyChangePercent < 0
@@ -5525,11 +5784,11 @@ const Investments = () => {
                                         </span>
                                       </div>
                                     ) : (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                      <div className="flex justify-between items-center gap-4">
+                                        <span className="text-sm text-gray-600 dark:text-gray-300">
                                           Variación:
                                         </span>
-                                        <span className="text-gray-500 dark:text-gray-400 text-sm">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">
                                           Sin datos previos
                                         </span>
                                       </div>
