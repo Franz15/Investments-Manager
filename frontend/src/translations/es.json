@@ -600,13 +600,13 @@
   },
   "login": {
     "title": "Iniciar Sesión",
-    "selectUser": "Selecciona un usuario",
-    "login": "Iniciar Sesión",
-    "enterPassword": "Ingresa tu contraseña",
+    "subtitle": "Introduce tu usuario y contraseña",
+    "username": "Usuario",
+    "usernamePlaceholder": "ej. sergio, ana, javier",
     "password": "Contraseña",
-    "passwordPlaceholder": "Ingresa tu contraseña",
-    "back": "Volver",
-    "error": "Error al iniciar sesión"
+    "passwordPlaceholder": "Tu contraseña",
+    "login": "Entrar",
+    "error": "Usuario o contraseña incorrectos"
   },
   "errors": {
     "generic": "Ha ocurrido un error",
