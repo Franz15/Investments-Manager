@@ -620,13 +620,13 @@
   },
   "login": {
     "title": "Iniciar Sessió",
-    "selectUser": "Selecciona un usuari",
-    "login": "Iniciar Sessió",
-    "enterPassword": "Introdueix la teva contrasenya",
+    "subtitle": "Introdueix el teu usuari i contrasenya",
+    "username": "Usuari",
+    "usernamePlaceholder": "p. ex. sergio, ana, javier",
     "password": "Contrasenya",
-    "passwordPlaceholder": "Introdueix la teva contrasenya",
-    "back": "Tornar",
-    "error": "Error en iniciar sessió"
+    "passwordPlaceholder": "La teva contrasenya",
+    "login": "Entrar",
+    "error": "Usuari o contrasenya incorrectes"
   },
   "errors": {
     "generic": "S'ha produït un error",
