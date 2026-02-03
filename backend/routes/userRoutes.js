@@ -49,6 +49,33 @@ router.get("/me", async (req, res) => {
   }
 });
 
+// PATCH actualizar idioma del usuario
+router.patch("/me/language", async (req, res) => {
+  try {
+    const { language } = req.body;
+
+    if (!language || !["es", "cat"].includes(language)) {
+      return res.status(400).json({
+        message: "Idioma no válido. Use 'es' o 'cat'.",
+      });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { id: req.userId },
+      { language },
+      { new: true },
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // PATCH actualizar color del usuario
 router.patch("/me/color", async (req, res) => {
   try {

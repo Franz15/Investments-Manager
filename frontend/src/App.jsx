@@ -102,15 +102,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <TranslationProvider>
+    <UserProvider>
       <ThemeProvider>
-        <UserProvider>
+        <TranslationProvider>
           <Router>
             <AppRoutes />
           </Router>
-        </UserProvider>
+        </TranslationProvider>
       </ThemeProvider>
-    </TranslationProvider>
+    </UserProvider>
   );
 }
 
