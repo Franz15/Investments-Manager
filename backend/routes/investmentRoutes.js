@@ -1673,15 +1673,21 @@ router.post("/:id/update-price", async (req, res) => {
       return res.status(404).json({ message: "Inversión no encontrada" });
     }
 
-    if (!investment.symbol) {
-      return res
-        .status(400)
-        .json({ message: "La inversión no tiene símbolo definido" });
+    const hasSymbol = investment.symbol && String(investment.symbol).trim();
+    const hasIsin =
+      investment.isin &&
+      String(investment.isin).trim() &&
+      ["fund", "bond"].includes(investment.type);
+    if (!hasSymbol && !hasIsin) {
+      return res.status(400).json({
+        message:
+          "La inversión no tiene símbolo ni ISIN definido (los fondos pueden actualizarse por ISIN)",
+      });
     }
 
-    // Obtener cotización actualizada
+    // Obtener cotización actualizada (símbolo o ISIN para fondos)
     const quote = await getQuote(
-      investment.symbol,
+      investment.symbol || null,
       investment.type,
       investment.currency,
       investment.isin,
