@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema(
       default: "#3b82f6",
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },
+    language: {
+      type: String,
+      default: "es",
+      enum: ["es", "cat"],
+    },
     password: {
       type: String,
       required: true,
