@@ -189,6 +189,91 @@ async function getStockEventsQuote(isin, symbol, currency = "EUR") {
 }
 
 /**
+ * Construye el slug que usa Finect en la URL (ej: Azvalor_internacional_fi)
+ */
+function buildFinectSlug(name) {
+  if (!name || typeof name !== "string") return "";
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/ñ/g, "n")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  return normalized;
+}
+
+/**
+ * Obtiene cotización de fondos desde Finect (por ISIN + nombre para construir la URL)
+ * Útil para fondos españoles que no están en Yahoo ni StockEvents (ej: ES0133668006)
+ */
+async function getFinectQuote(isin, name, currency = "EUR") {
+  if (!isin || !name) return null;
+  try {
+    const slug = buildFinectSlug(name);
+    if (!slug) return null;
+
+    const url = `https://www.finect.com/fondos-inversion/${encodeURIComponent(isin)}-${encodeURIComponent(slug)}`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        Referer: "https://www.finect.com/",
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const html = await response.text();
+
+    // Finect muestra el valor liquidativo como "314,32€" o "1.234,56€" (europeo: coma decimal, punto miles)
+    // Buscar patrón número + € (evitar matches en tablas de rentabilidad)
+    const priceMatch = html.match(
+      /(?:valor liquidativo|Útimo valor liquidativo)[^>]*>[\s\S]*?([\d.,]+)\s*€/i,
+    );
+    const fallbackMatch = html.match(
+      /#\s*[^#\n]+\n\n([\d.,]+)\s*€\s*\n\nFecha de valor liquidativo/i,
+    );
+    const genericMatch = html.match(
+      /(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*€/,
+    );
+
+    let priceStr = null;
+    if (priceMatch && priceMatch[1]) {
+      priceStr = priceMatch[1];
+    } else if (fallbackMatch && fallbackMatch[1]) {
+      priceStr = fallbackMatch[1];
+    } else if (genericMatch && genericMatch[1]) {
+      priceStr = genericMatch[1];
+    }
+
+    if (!priceStr) return null;
+
+    // Parsear formato europeo: 314,32 o 1.234,56
+    const normalized = priceStr.replace(/\./g, "").replace(",", ".");
+    const price = parseFloat(normalized);
+    if (Number.isNaN(price) || price <= 0) return null;
+
+    return {
+      price,
+      currency: currency || "EUR",
+      change: 0,
+      changePercent: 0,
+      source: "finect",
+    };
+  } catch (error) {
+    console.error("[Finect] Error obteniendo cotización:", error.message);
+    return null;
+  }
+}
+
+/**
  * Obtiene cotización de Yahoo Finance
  */
 async function getYahooQuote(symbol, currency) {
@@ -307,8 +392,43 @@ async function getFundQuote(isin, name, currency) {
   // Intentar primero con ISIN si está disponible
   if (isin) {
     try {
-      // Yahoo Finance puede buscar por ISIN en algunos casos
-      // Formato: ISIN puede funcionar directamente o con prefijos
+      // Yahoo a veces usa un símbolo interno (ej: 0P0001XOR2.F) en vez del ISIN.
+      // Buscar por ISIN para obtener ese símbolo y luego pedir la cotización.
+      try {
+        const searchByIsin = await yahooFinance.search(isin);
+        if (searchByIsin?.quotes?.length > 0) {
+          const fundFromSearch =
+            searchByIsin.quotes.find(
+              (q) =>
+                q.quoteType === "MUTUALFUND" ||
+                q.quoteType === "FUND" ||
+                (q.symbol &&
+                  (q.symbol.endsWith(".F") || q.symbol.startsWith("0P"))),
+            ) || searchByIsin.quotes[0];
+          if (fundFromSearch?.symbol) {
+            const quote = await yahooFinance.quote(fundFromSearch.symbol);
+            if (quote && quote.regularMarketPrice) {
+              const price = quote.regularMarketPrice;
+              const previousClose = quote.regularMarketPreviousClose || price;
+              const change = price - previousClose;
+              const changePercent = previousClose
+                ? (change / previousClose) * 100
+                : 0;
+              return {
+                price,
+                currency: quote.currency || currency,
+                change,
+                changePercent,
+                marketTime: quote.regularMarketTime,
+              };
+            }
+          }
+        }
+      } catch (searchErr) {
+        // Seguir con quote directo por ISIN
+      }
+
+      // Yahoo Finance: intentar quote directo por ISIN y variantes
       const isinVariants = [
         isin,
         `${isin}.F`, // Fondo
@@ -386,6 +506,30 @@ async function getFundQuote(isin, name, currency) {
       }
     } catch (error) {
       // Búsqueda por nombre falló
+    }
+  }
+
+  // Último intento: StockEvents por ISIN (útil para fondos europeos)
+  if (isin) {
+    try {
+      const stockEventsQuote = await getStockEventsQuote(isin, null, currency);
+      if (stockEventsQuote) {
+        return stockEventsQuote;
+      }
+    } catch (e) {
+      // ignorar y lanzar error final
+    }
+  }
+
+  // Finect (fondos españoles/europeos que no están en Yahoo ni StockEvents)
+  if (isin && name) {
+    try {
+      const finectQuote = await getFinectQuote(isin, name, currency);
+      if (finectQuote) {
+        return finectQuote;
+      }
+    } catch (e) {
+      // ignorar y lanzar error final
     }
   }
 
@@ -506,21 +650,35 @@ export async function updateMultipleQuotes(investments) {
     const investment = investments[i];
 
     try {
-      // Filtrar inversiones sin símbolo o que sean carteras automatizadas
-      if (!investment.symbol || investment.isAutomatedPortfolio) {
+      // Carteras automatizadas no se actualizan por API
+      if (investment.isAutomatedPortfolio) {
         results.push({
           investmentId: investment._id?.toString() || investment.id?.toString(),
-          symbol: investment.symbol || "N/A",
+          symbol: investment.symbol || investment.isin || "N/A",
           success: false,
-          error: investment.isAutomatedPortfolio
-            ? "Cartera automatizada (actualización manual)"
-            : "No tiene símbolo definido",
+          error: "Cartera automatizada (actualización manual)",
         });
-        continue; // No hacer delay para estas
+        continue;
+      }
+
+      // Procesar si tiene símbolo (acciones, ETF, etc.) o ISIN (fondos y bonos)
+      const hasSymbol = investment.symbol && String(investment.symbol).trim();
+      const hasIsin =
+        investment.isin &&
+        String(investment.isin).trim() &&
+        ["fund", "bond"].includes(investment.type);
+      if (!hasSymbol && !hasIsin) {
+        results.push({
+          investmentId: investment._id?.toString() || investment.id?.toString(),
+          symbol: investment.symbol || investment.isin || "N/A",
+          success: false,
+          error: "No tiene símbolo ni ISIN definido",
+        });
+        continue;
       }
 
       const quote = await getQuote(
-        investment.symbol,
+        investment.symbol || null,
         investment.type,
         investment.currency,
         investment.isin,
@@ -529,7 +687,7 @@ export async function updateMultipleQuotes(investments) {
 
       results.push({
         investmentId: investment._id?.toString() || investment.id?.toString(),
-        symbol: investment.symbol,
+        symbol: investment.symbol || investment.isin,
         success: true,
         price: quote.price,
         currency: quote.currency,
@@ -539,7 +697,7 @@ export async function updateMultipleQuotes(investments) {
     } catch (error) {
       results.push({
         investmentId: investment._id?.toString() || investment.id?.toString(),
-        symbol: investment.symbol || "N/A",
+        symbol: investment.symbol || investment.isin || "N/A",
         success: false,
         error: error.message,
       });
