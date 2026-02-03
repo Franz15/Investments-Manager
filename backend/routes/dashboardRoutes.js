@@ -670,8 +670,9 @@ router.get("/balance-chart", async (req, res) => {
   }
 });
 
-// GET balance total día a día
-// Enfoque acumulativo: calcula el balance histórico aplicando todas las operaciones en orden cronológico
+// GET balance total día a día — historial de patrimonio desde cero
+// Construye hacia adelante: efectivo se suma el día de initialDate; transacciones y operaciones de capital se aplican día a día.
+// Patrimonio = efectivo + saldos subcuentas inversión + valor inversiones - deudas.
 router.get("/balance-daily", async (req, res) => {
   try {
     const DailyVariation = (await import("../models/DailyVariation.js"))
@@ -679,607 +680,230 @@ router.get("/balance-daily", async (req, res) => {
     const SubAccount = (await import("../models/SubAccount.js")).default;
     const Debt = (await import("../models/Debt.js")).default;
 
-    // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
-    const perfInvestments = await Investment.find({
-      user: req.userId,
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
-    });
+    const getOpAmount = (op) => Math.abs(getOperationAmountForStats(op) || 0);
 
-    if (perfInvestments.length === 0) {
-      return res.json([]);
-    }
-
-    // IMPORTANTE: Solo considerar operaciones de inversiones ACTIVAS (que aún existen)
-    const activeInvestmentIds = perfInvestments.map((inv) => inv._id);
-
-    // Obtener operaciones de capital SOLO de inversiones activas
-    const [allCapitalOperations, allTransactions] = await Promise.all([
-      InvestmentHistory.find({
+    // Datos del usuario
+    const [
+      cashSubAccounts,
+      investmentSubAccounts,
+      perfInvestments,
+      allTransactions,
+      activeDebts,
+    ] = await Promise.all([
+      SubAccount.find({
         user: req.userId,
-        investment: { $in: activeInvestmentIds }, // Solo inversiones activas
-        operation: { $in: ["creation", "add", "withdraw", "sell"] },
-      }).sort({ date: 1 }),
-      Transaction.find({
+        type: { $in: ["cash", "savings"] },
+      }).lean(),
+      SubAccount.find({ user: req.userId, type: "investment" }).lean(),
+      Investment.find({
         user: req.userId,
-      }).sort({ date: 1 }),
+        status: { $ne: "closed" },
+        $or: [
+          { account: { $exists: true, $ne: null } },
+          { "allocations.0": { $exists: true } },
+        ],
+      }),
+      Transaction.find({ user: req.userId }).sort({ date: 1 }).lean(),
+      Debt.find({ user: req.userId, status: "active" }).lean(),
     ]);
 
-    // Encontrar la fecha más antigua de cualquier operación
-    const allDates = [
-      ...allCapitalOperations.map((op) => new Date(op.date)),
-      ...allTransactions.map((t) => new Date(t.date)),
-    ];
+    const activeInvestmentIds = perfInvestments.map((inv) => inv._id);
+    const allCapitalOperations = await InvestmentHistory.find({
+      user: req.userId,
+      investment: { $in: activeInvestmentIds },
+      operation: { $in: ["creation", "add", "withdraw", "sell"] },
+    })
+      .sort({ date: 1 })
+      .lean();
 
-    if (allDates.length === 0) {
+    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
+      (sum, s) => sum + (s.balance || 0),
+      0,
+    );
+    const currentTotalDebts = activeDebts.reduce(
+      (sum, d) => sum + (d.remainingAmount || 0),
+      0,
+    );
+
+    // Fechas que marcan inicio del rango: efectivo (initialDate), inversiones (creation), transacciones
+    const toDateKey = (d) => {
+      const x = new Date(d);
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+    };
+    const eventDates = [];
+    cashSubAccounts.forEach((s) => {
+      if (s.initialDate) eventDates.push(new Date(s.initialDate).getTime());
+    });
+    allCapitalOperations.forEach((op) =>
+      eventDates.push(new Date(op.date).getTime()),
+    );
+    allTransactions.forEach((t) => eventDates.push(new Date(t.date).getTime()));
+    perfInvestments.forEach((inv) => {
+      const creation = allCapitalOperations.find(
+        (h) =>
+          h.investment?.toString() === inv._id.toString() &&
+          h.operation === "creation",
+      );
+      const d = creation?.date || inv.purchaseDate || inv.createdAt;
+      if (d) eventDates.push(new Date(d).getTime());
+    });
+
+    if (eventDates.length === 0 && perfInvestments.length === 0) {
       return res.json([]);
     }
 
-    const startDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+    const startMs =
+      eventDates.length > 0
+        ? Math.min(...eventDates)
+        : Math.min(
+            ...perfInvestments
+              .map((inv) => inv.purchaseDate || inv.createdAt)
+              .filter(Boolean)
+              .map((d) => new Date(d).getTime()),
+            Date.now(),
+          );
+    const startDate = new Date(startMs);
     startDate.setHours(0, 0, 0, 0);
-
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // Obtener balance actual de cash
-    const cashSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: { $in: ["cash", "savings"] },
+    // Índices por fecha (YYYY-MM-DD)
+    const operationsByDate = new Map();
+    allCapitalOperations.forEach((op) => {
+      const key = toDateKey(op.date);
+      if (!operationsByDate.has(key)) operationsByDate.set(key, []);
+      operationsByDate.get(key).push(op);
     });
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: "investment",
+    const transactionsByDate = new Map();
+    allTransactions.forEach((t) => {
+      const key = toDateKey(t.date);
+      if (!transactionsByDate.has(key)) transactionsByDate.set(key, []);
+      transactionsByDate.get(key).push(t);
     });
-    const currentCashBalance = cashSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
-    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
 
-    // Log detallado de transacciones para debug
-    const incomeTransactions = allTransactions.filter(
-      (t) => t.type === "income",
-    );
-    const expenseTransactions = allTransactions.filter(
-      (t) => t.type === "expense",
-    );
-
-    // Calcular cash inicial: partir del cash actual y "deshacer" operaciones desde startDate
-    // Esto nos da el cash que había al inicio de startDate.
-    // Si no hay transacciones, usamos las operaciones de inversión como mejor aproximación.
-    let initialCash = 0;
-    const hasTransactions = allTransactions.length > 0;
-    const hasCashSubAccounts = cashSubAccounts.length > 0;
-    let useCashCalculation = hasCashSubAccounts || hasTransactions;
-
-    // Separar subcuentas: las que tienen initialDate y las que no
-    const cashSubAccountsWithDate = cashSubAccounts.filter(
-      (subAcc) =>
-        subAcc.initialDate &&
-        (subAcc.type === "cash" || subAcc.type === "savings"),
-    );
-    const cashSubAccountsWithoutDate = cashSubAccounts.filter(
-      (subAcc) =>
-        !subAcc.initialDate &&
-        (subAcc.type === "cash" || subAcc.type === "savings"),
-    );
-
-    // Variable para almacenar subcuentas que se crearon después de startDate (para aplicar en el loop)
-    let subAccountsAfterStart = [];
-    const getOpAmount = (op) => Math.abs(getOperationAmountForStats(op) || 0);
-
-    if (useCashCalculation) {
-      const startDateNormalized = new Date(startDate);
-      startDateNormalized.setHours(0, 0, 0, 0);
-
-      if (cashSubAccountsWithDate.length > 0) {
-        initialCash = currentCashBalance;
-
-        // Separar subcuentas por fecha: las que tienen initialDate antes/igual a startDate y las que tienen después
-        const subAccountsBeforeStart = [];
-        cashSubAccountsWithDate.forEach((subAcc) => {
-          const subAccInitialDate = new Date(subAcc.initialDate);
-          subAccInitialDate.setHours(0, 0, 0, 0);
-
-          if (subAccInitialDate <= startDateNormalized) {
-            // Esta subcuenta ya existía al inicio, su balance está incluido en initialCash
-            subAccountsBeforeStart.push(subAcc);
-          } else {
-            // Esta subcuenta se creó después de startDate, su balance NO debe estar en initialCash
-            subAccountsAfterStart.push(subAcc);
-            initialCash -= subAcc.balance;
-          }
-        });
-
-        const hasCashAtStart =
-          subAccountsBeforeStart.length > 0 ||
-          cashSubAccountsWithoutDate.length > 0;
-
-        if (hasCashAtStart) {
-          // Deshacer todas las operaciones de capital desde startDate
-          allCapitalOperations.forEach((op) => {
-            const opDate = new Date(op.date);
-            opDate.setHours(0, 0, 0, 0);
-
-            if (opDate >= startDateNormalized) {
-              const amount = getOpAmount(op);
-              if (op.operation === "creation" || op.operation === "add") {
-                initialCash += amount;
-              } else if (
-                op.operation === "withdraw" ||
-                op.operation === "sell"
-              ) {
-                initialCash -= amount;
-              }
-            }
-          });
-
-          // Deshacer todas las transacciones desde startDate
-          allTransactions.forEach((transaction) => {
-            const transDate = new Date(transaction.date);
-            transDate.setHours(0, 0, 0, 0);
-
-            if (transDate >= startDateNormalized) {
-              if (transaction.type === "income") {
-                initialCash -= transaction.amount;
-              } else if (transaction.type === "expense") {
-                initialCash += transaction.amount;
-              }
-            }
-          });
-        } else {
-          // Todas las subcuentas tienen initialDate después de startDate, el cash inicial es 0
-          initialCash = 0;
-        }
-      } else {
-        // No hay fechas iniciales: asumimos que el cash actual existe desde startDate
-        initialCash = currentCashBalance;
-
-        // Deshacer todas las operaciones de capital desde startDate
-        allCapitalOperations.forEach((op) => {
-          const opDate = new Date(op.date);
-          opDate.setHours(0, 0, 0, 0);
-
-          if (opDate >= startDateNormalized) {
-            const amount = getOpAmount(op);
-            if (op.operation === "creation" || op.operation === "add") {
-              initialCash += amount;
-            } else if (op.operation === "withdraw" || op.operation === "sell") {
-              initialCash -= amount;
-            }
-          }
-        });
-
-        // Deshacer todas las transacciones desde startDate
-        allTransactions.forEach((transaction) => {
-          const transDate = new Date(transaction.date);
-          transDate.setHours(0, 0, 0, 0);
-
-          if (transDate >= startDateNormalized) {
-            if (transaction.type === "income") {
-              initialCash -= transaction.amount;
-            } else if (transaction.type === "expense") {
-              initialCash += transaction.amount;
-            }
-          }
-        });
-      }
-
-      initialCash = Math.max(0, initialCash);
-    }
-
-    // Obtener deudas actuales (no tenemos histórico de deudas)
-    const activeDebts = await Debt.find({ user: req.userId, status: "active" });
-    const currentTotalDebts = activeDebts.reduce(
-      (sum, debt) => sum + debt.remainingAmount,
-      0,
-    );
-
-    // Obtener todas las variaciones diarias y entradas de historial SOLO de inversiones activas
+    // Historial y variaciones para valor de inversiones por fecha
     const [allDailyVariations, allHistoryEntries] = await Promise.all([
       DailyVariation.find({
         user: req.userId,
-        investment: { $in: activeInvestmentIds }, // Solo inversiones activas
+        investment: { $in: activeInvestmentIds },
         date: { $gte: startDate, $lte: endDate },
-      }).sort({ date: 1, investment: 1 }),
+      })
+        .sort({ date: 1, investment: 1 })
+        .lean(),
       InvestmentHistory.find({
         user: req.userId,
-        investment: { $in: activeInvestmentIds }, // Solo inversiones activas
+        investment: { $in: activeInvestmentIds },
         date: { $gte: startDate, $lte: endDate },
         $or: [
           { totalValue: { $exists: true, $ne: null, $gt: 0 } },
-          {
-            operation: { $in: ["creation", "add", "withdraw", "sell"] },
-          },
+          { operation: { $in: ["creation", "add", "withdraw", "sell"] } },
         ],
-      }).sort({ date: 1, investment: 1 }),
+      })
+        .sort({ date: 1, investment: 1 })
+        .lean(),
     ]);
 
-    // Generar todas las fechas desde startDate hasta hoy
+    const todayKey = toDateKey(new Date());
     const dates = [];
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      dates.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      dates.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
     }
 
-    // Calcular balance total día a día de forma acumulativa
+    // Efectivo actual: suma de todas las subcuentas cash/savings (mismo valor que /stats).
+    // Se usa en todos los días para que la gráfica cierre en el Balance Total y no dependa de reconstruir historial.
+    const currentCashBalance = cashSubAccounts.reduce(
+      (sum, s) => sum + (Number(s.balance) || 0),
+      0,
+    );
+
     const result = [];
-    let cash = initialCash; // Empezamos con el cash inicial calculado
-
-    // Crear mapas para acceso rápido a operaciones por fecha
-    const operationsByDate = new Map();
-    allCapitalOperations.forEach((op) => {
-      const opDate = new Date(op.date);
-      opDate.setHours(0, 0, 0, 0);
-      const dateKey = opDate.toISOString().split("T")[0];
-      if (!operationsByDate.has(dateKey)) {
-        operationsByDate.set(dateKey, []);
-      }
-      operationsByDate.get(dateKey).push(op);
-    });
-
-    const transactionsByDate = new Map();
-    allTransactions.forEach((t) => {
-      const tDate = new Date(t.date);
-      tDate.setHours(0, 0, 0, 0);
-      const dateKey = tDate.toISOString().split("T")[0];
-      if (!transactionsByDate.has(dateKey)) {
-        transactionsByDate.set(dateKey, []);
-      }
-      transactionsByDate.get(dateKey).push(t);
-    });
-
-    // Mapa para almacenar el valor de cada inversión por fecha
     const investmentValuesByDate = new Map();
 
     for (const date of dates) {
-      const dateKey = date.toISOString().split("T")[0];
-      const dateEndNormalized = new Date(date);
-      dateEndNormalized.setHours(23, 59, 59, 999);
+      const dateKey = toDateKey(date);
+      const dateEnd = new Date(date);
+      dateEnd.setHours(23, 59, 59, 999);
 
-      const cashBeforeDay = cash;
-
-      // Aplicar efectivo inicial de subcuentas si su initialDate es este día
-      // (solo para subcuentas que se crearon después de startDate)
-      if (useCashCalculation && subAccountsAfterStart.length > 0) {
-        const dateNormalized = new Date(date);
-        dateNormalized.setHours(0, 0, 0, 0);
-
-        subAccountsAfterStart.forEach((subAcc) => {
-          const subAccInitialDate = new Date(subAcc.initialDate);
-          subAccInitialDate.setHours(0, 0, 0, 0);
-
-          // Si la fecha inicial de la subcuenta es este día, aplicar su balance
-          if (subAccInitialDate.getTime() === dateNormalized.getTime()) {
-            cash += subAcc.balance;
-          }
-        });
-      }
-
-      // Solo aplicar transacciones y operaciones de capital si estamos calculando el cash
-      if (useCashCalculation) {
-        // Aplicar transacciones de este día
-        const transactionsToday = transactionsByDate.get(dateKey) || [];
-        let incomeToday = 0;
-        let expenseToday = 0;
-        transactionsToday.forEach((transaction) => {
-          if (transaction.type === "income") {
-            cash += transaction.amount;
-            incomeToday += transaction.amount;
-          } else if (transaction.type === "expense") {
-            cash -= transaction.amount;
-            expenseToday += transaction.amount;
-          }
-        });
-
-        // Aplicar operaciones de capital de este día
-        const operationsToday = operationsByDate.get(dateKey) || [];
-        let contributionsToday = 0;
-        let withdrawalsToday = 0;
-        operationsToday.forEach((op) => {
-          const amount = getOpAmount(op);
-          if (op.operation === "creation" || op.operation === "add") {
-            cash -= amount;
-            contributionsToday += amount;
-          } else if (op.operation === "withdraw" || op.operation === "sell") {
-            cash += amount;
-            withdrawalsToday += amount;
-          }
-        });
-
-        cash = Math.max(0, cash);
-
-        // Log detallado para días con operaciones importantes
-        if (transactionsToday.length > 0 || operationsToday.length > 0) {
-        }
-      }
-
-      // Verificar si es el día de hoy (último día)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isToday = dateKey === today.toISOString().split("T")[0];
-
-      // Calcular valor de inversiones hasta esta fecha
+      // 4) Valor de inversiones a cierre de este día
       let investmentsValue = 0;
-
       for (const inv of perfInvestments) {
-        // Buscar la fecha de creación de esta inversión
         const creationOp = allHistoryEntries.find(
           (h) =>
-            h.investment &&
-            h.investment.toString() === inv._id.toString() &&
+            h.investment?.toString() === inv._id.toString() &&
             h.operation === "creation",
         );
         const creationDateValue =
           creationOp?.date || inv.purchaseDate || inv.createdAt;
-        if (!creationDateValue) {
-          continue;
-        }
+        if (!creationDateValue) continue;
+        const creationEnd = new Date(creationDateValue);
+        creationEnd.setHours(23, 59, 59, 999);
+        if (creationEnd > dateEnd) continue;
 
-        const creationDate = new Date(creationDateValue);
-        creationDate.setHours(0, 0, 0, 0);
-        const creationDateEnd = new Date(creationDate);
-        creationDateEnd.setHours(23, 59, 59, 999);
-
-        // Solo incluir inversiones que existían hasta esta fecha
-        if (creationDateEnd > dateEndNormalized) {
-          continue;
-        }
-
-        // Buscar valor de esta inversión en esta fecha
         const cacheKey = `${inv._id.toString()}_${dateKey}`;
-
         if (investmentValuesByDate.has(cacheKey)) {
           investmentsValue += investmentValuesByDate.get(cacheKey);
+          continue;
+        }
+
+        let invValue = 0;
+        if (dateKey === todayKey) {
+          invValue = inv.isAutomatedPortfolio
+            ? inv.currentPrice || 0
+            : (inv.quantity || 0) * (inv.currentPrice || 0);
         } else {
-          let invValue = 0;
-
-          // Si es el día de hoy, usar el valor actual del modelo Investment (igual que /stats)
-          if (isToday) {
-            invValue = inv.isAutomatedPortfolio
-              ? inv.currentPrice || 0
-              : (inv.quantity || 0) * (inv.currentPrice || 0);
-          } else {
-            // Para días pasados, buscar en InvestmentHistory o DailyVariation
-            // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
-            const historyForThisInv = allHistoryEntries.filter(
+          const historyForInv = allHistoryEntries.filter(
+            (h) => h.investment?.toString() === inv._id.toString(),
+          );
+          const lastHistory = historyForInv
+            .filter(
               (h) =>
-                h.investment && h.investment.toString() === inv._id.toString(),
+                new Date(h.date) <= dateEnd &&
+                h.totalValue != null &&
+                h.totalValue > 0,
+            )
+            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+          if (lastHistory) {
+            invValue = lastHistory.totalValue;
+          } else {
+            const variationsForInv = allDailyVariations.filter(
+              (v) => v.investment?.toString() === inv._id.toString(),
             );
-
-            const lastHistory = historyForThisInv
-              .filter((h) => {
-                const hDate = new Date(h.date);
-                hDate.setHours(0, 0, 0, 0);
-                const hDateEnd = new Date(hDate);
-                hDateEnd.setHours(23, 59, 59, 999);
-                return (
-                  hDateEnd <= dateEndNormalized &&
-                  h.totalValue &&
-                  h.totalValue > 0
-                );
-              })
+            const lastVar = variationsForInv
+              .filter((v) => new Date(v.date) <= dateEnd)
               .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-            if (lastHistory && lastHistory.totalValue) {
-              invValue = lastHistory.totalValue;
-            } else {
-              // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
-              const variationsForThisInv = allDailyVariations.filter(
-                (v) =>
-                  v.investment &&
-                  v.investment.toString() === inv._id.toString(),
+            if (lastVar?.totalValue > 0) invValue = lastVar.totalValue;
+            else {
+              const caps = historyForInv.filter(
+                (h) =>
+                  new Date(h.date) <= dateEnd &&
+                  ["creation", "add", "withdraw", "sell"].includes(h.operation),
               );
-
-              const lastVariation = variationsForThisInv
-                .filter((v) => {
-                  const vDate = new Date(v.date);
-                  vDate.setHours(0, 0, 0, 0);
-                  const vDateEnd = new Date(vDate);
-                  vDateEnd.setHours(23, 59, 59, 999);
-                  return vDateEnd <= dateEndNormalized;
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-              if (
-                lastVariation &&
-                lastVariation.totalValue &&
-                lastVariation.totalValue > 0
-              ) {
-                invValue = lastVariation.totalValue;
-              } else {
-                // PRIORIDAD 3: Calcular capital acumulado
-                const capitalOperations = historyForThisInv.filter((h) => {
-                  const hDate = new Date(h.date);
-                  hDate.setHours(0, 0, 0, 0);
-                  const hDateEnd = new Date(hDate);
-                  hDateEnd.setHours(23, 59, 59, 999);
-                  return (
-                    hDateEnd <= dateEndNormalized &&
-                    ["creation", "add", "withdraw", "sell"].includes(
-                      h.operation,
-                    )
-                  );
-                });
-
-                let capital = 0;
-                capitalOperations.forEach((op) => {
-                  const amount = getOpAmount(op);
-                  if (op.operation === "creation" || op.operation === "add") {
-                    capital += amount;
-                  } else if (
-                    op.operation === "withdraw" ||
-                    op.operation === "sell"
-                  ) {
-                    capital -= amount;
-                  }
-                });
-
-                invValue = Math.max(0, capital);
-              }
+              let cap = 0;
+              caps.forEach((op) => {
+                const amt = getOpAmount(op);
+                if (op.operation === "creation" || op.operation === "add")
+                  cap += amt;
+                else cap -= amt;
+              });
+              invValue = Math.max(0, cap);
             }
           }
-
-          investmentValuesByDate.set(cacheKey, invValue);
-          investmentsValue += invValue;
         }
+        investmentValuesByDate.set(cacheKey, invValue);
+        investmentsValue += invValue;
       }
 
-      // Para el último día (hoy), usar el cash actual directamente (igual que /stats)
-      // Esto asegura que el balance del último día coincida con /stats
-      let cashForBalance = cash;
-      if (isToday && useCashCalculation) {
-        cashForBalance = currentCashBalance;
-      }
-
-      // Balance total = cash + subcuentas de inversión + inversiones - deudas
-      // Si no estamos calculando cash (sin datos suficientes), solo reflejamos inversiones - deudas
-      // IMPORTANTE: Las subcuentas de inversión se incluyen siempre (son dinero disponible para invertir)
-      // NOTA: Este cálculo debe coincidir con /stats que devuelve netWorth = totalBalance - totalDebts
       const balanceTotal =
-        (useCashCalculation ? cashForBalance : 0) +
+        currentCashBalance +
         currentInvestmentSubAccountBalance +
         investmentsValue -
         currentTotalDebts;
-
       result.push({
         date: dateKey,
         balance: parseFloat(balanceTotal.toFixed(2)),
       });
-    }
-
-    if (result.length > 0) {
-      const lastBalance = result[result.length - 1];
-
-      // Calcular valores del último día para comparar con /stats
-      const lastDateKey = lastBalance.date;
-      const lastDateNormalized = new Date(lastDateKey);
-      lastDateNormalized.setHours(0, 0, 0, 0);
-
-      // Calcular cash del último día
-      // Para el último día (hoy), usar el cash actual directamente (igual que /stats)
-      const todayForComparison = new Date();
-      todayForComparison.setHours(0, 0, 0, 0);
-      const isLastDayToday =
-        lastDateKey === todayForComparison.toISOString().split("T")[0];
-
-      let lastDayCash = 0;
-      if (useCashCalculation) {
-        if (isLastDayToday) {
-          // Para hoy, usar el cash actual directamente
-          lastDayCash = currentCashBalance;
-        } else {
-          // Para días pasados, calcular desde initialCash
-          lastDayCash = initialCash;
-
-          // Aplicar todas las operaciones hasta el último día
-          allCapitalOperations.forEach((op) => {
-            const opDate = new Date(op.date);
-            opDate.setHours(0, 0, 0, 0);
-            if (opDate <= lastDateNormalized) {
-              const amount = getOpAmount(op);
-              if (op.operation === "creation" || op.operation === "add") {
-                lastDayCash -= amount;
-              } else if (
-                op.operation === "withdraw" ||
-                op.operation === "sell"
-              ) {
-                lastDayCash += amount;
-              }
-            }
-          });
-
-          allTransactions.forEach((t) => {
-            const tDate = new Date(t.date);
-            tDate.setHours(0, 0, 0, 0);
-            if (tDate <= lastDateNormalized) {
-              if (t.type === "income") lastDayCash += t.amount;
-              else if (t.type === "expense") lastDayCash -= t.amount;
-            }
-          });
-
-          // Aplicar subcuentas con initialDate
-          if (subAccountsAfterStart.length > 0) {
-            subAccountsAfterStart.forEach((subAcc) => {
-              const subAccInitialDate = new Date(subAcc.initialDate);
-              subAccInitialDate.setHours(0, 0, 0, 0);
-              if (subAccInitialDate <= lastDateNormalized) {
-                lastDayCash += subAcc.balance;
-              }
-            });
-          }
-
-          lastDayCash = Math.max(0, lastDayCash);
-        }
-      }
-
-      // Calcular inversiones del último día (usar modelo Investment directamente para hoy)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isToday = lastDateKey === today.toISOString().split("T")[0];
-
-      let lastDayInvestments = 0;
-      if (isToday) {
-        // Para hoy, usar el modelo Investment directamente (igual que /stats)
-        lastDayInvestments = perfInvestments.reduce((sum, inv) => {
-          const value = inv.isAutomatedPortfolio
-            ? inv.currentPrice || 0
-            : (inv.quantity || 0) * (inv.currentPrice || 0);
-          return sum + value;
-        }, 0);
-      } else {
-        // Para días pasados, usar el valor calculado
-        const lastDateEnd = new Date(lastDateKey);
-        lastDateEnd.setHours(23, 59, 59, 999);
-
-        for (const inv of perfInvestments) {
-          const creationOp = allHistoryEntries.find(
-            (h) =>
-              h.investment &&
-              h.investment.toString() === inv._id.toString() &&
-              h.operation === "creation",
-          );
-          const creationDateValue =
-            creationOp?.date || inv.purchaseDate || inv.createdAt;
-          if (!creationDateValue) continue;
-
-          const creationDate = new Date(creationDateValue);
-          creationDate.setHours(0, 0, 0, 0);
-          const creationDateEnd = new Date(creationDate);
-          creationDateEnd.setHours(23, 59, 59, 999);
-          if (creationDateEnd > lastDateEnd) continue;
-
-          const cacheKey = `${inv._id.toString()}_${lastDateKey}`;
-          if (investmentValuesByDate.has(cacheKey)) {
-            lastDayInvestments += investmentValuesByDate.get(cacheKey);
-          }
-        }
-      }
-
-      // Comparar con /stats
-      const totalCashSavings = cashSubAccounts.reduce(
-        (sum, sa) => sum + sa.balance,
-        0,
-      );
-      const totalInvestmentsStats = perfInvestments.reduce((sum, inv) => {
-        const value = inv.isAutomatedPortfolio
-          ? inv.currentPrice || 0
-          : (inv.quantity || 0) * (inv.currentPrice || 0);
-        return sum + value;
-      }, 0);
-      const totalBalanceStats = totalCashSavings + totalInvestmentsStats;
-      const netWorthStats = totalBalanceStats - currentTotalDebts;
-
-      // Verificar valores únicos
-      const uniqueBalances = [
-        ...new Set(result.map((r) => r.balance.toFixed(2))),
-      ];
     }
 
     res.json(result);
