@@ -726,7 +726,8 @@
       "error": "Error en sincronitzar fons: {message}"
     },
     "errors": {
-      "loadExcel": "Error en carregar el fitxer Excel"
+      "loadExcel": "Error en carregar el fitxer Excel",
+      "loadConfig": "Error en carregar la configuració"
     },
     "categories": {
       "monetarios": "Monetaris",

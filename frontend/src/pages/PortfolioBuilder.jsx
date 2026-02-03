@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import * as XLSX from "xlsx";
 import { useTranslation } from "../contexts/TranslationContext";
 import { useTheme } from "../contexts/ThemeContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -19,15 +18,19 @@ import {
   ChevronRight,
   Layers,
 } from "lucide-react";
+import {
+  DEFAULT_PORTFOLIO_ALLOCATION,
+  DEFAULT_RV_DISTRIBUTION,
+  DEFAULT_SECTION_DESCRIPTIONS,
+  DEFAULT_SECTION_TIPS,
+  DEFAULT_SECTION_VIDEOS,
+} from "../data/portfolioBuilderData";
 
 const PortfolioBuilder = () => {
   const { t } = useTranslation();
   const { isDark } = useTheme();
-  const [excelData, setExcelData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState(null);
   const [portfolioData, setPortfolioData] = useState(null);
   const [expandedSections, setExpandedSections] = useState(
     new Set(["calculator"]),
@@ -71,942 +74,465 @@ const PortfolioBuilder = () => {
     ],
   });
 
-  // Cargar el archivo Excel al montar el componente
-  useEffect(() => {
-    const loadExcelFile = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/Fondos Javier.xlsx");
-        if (!response.ok) {
-          throw new Error("No se pudo cargar el archivo Excel");
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
+  const [addingExtra, setAddingExtra] = useState(null);
 
-        const sheets = {};
-        workbook.SheetNames.forEach((sheetName) => {
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            header: 1,
-            defval: null,
-            raw: false,
-          });
+  // Mapear un fondo de la API al formato que usa la UI
+  const mapFundToSection = (f) => ({
+    name: f.name,
+    isin: f.isin ?? null,
+    link: f.link ?? null,
+    volatility12M: f.volatility12M ?? null,
+    return12M: f.return12M ?? null,
+    notes: f.notes ?? null,
+  });
 
-          const formulas = {};
-          for (let cellAddress in worksheet) {
-            if (cellAddress.startsWith("!")) continue;
-            const cell = worksheet[cellAddress];
-            if (cell.f) {
-              formulas[cellAddress] = {
-                formula: cell.f,
-                value: cell.v,
-              };
-            }
-          }
+  // Construir datos del portfolio desde config (API: allocation, rvDistribution, funds con showInSection)
+  // Solo se muestran fondos "principales" (Cartera1) + los que el usuario ha añadido como extra.
+  const buildPortfolioDataFromConfig = (config, tFn) => {
+    const allocation = config?.allocation || DEFAULT_PORTFOLIO_ALLOCATION;
+    const rvDist = config?.rvDistribution || DEFAULT_RV_DISTRIBUTION;
+    const fundsList = config?.funds || [];
+    const rvDistributionIsins = new Set(
+      (rvDist || []).map((d) => (d.isin || "").trim()).filter(Boolean),
+    );
+    const byCategory = (cat, onlyShowInSection = true) =>
+      fundsList
+        .filter(
+          (f) =>
+            f.category === cat &&
+            (!onlyShowInSection || f.showInSection === true),
+        )
+        .map(mapFundToSection);
+    const rvFundsOnlyExtras = () =>
+      fundsList
+        .filter(
+          (f) =>
+            f.category === "Renta Variable" &&
+            f.showInSection === true &&
+            !rvDistributionIsins.has((f.isin || "").trim()),
+        )
+        .map(mapFundToSection);
 
-          sheets[sheetName] = {
-            data: jsonData,
-            formulas: formulas,
-            range: worksheet["!ref"],
-            merges: worksheet["!merges"] || [],
-          };
-        });
+    // Fallback para fondos conocidos que pueden no estar en fundsList (p. ej. Heptagon en configs antiguas)
+    const KNOWN_RV_FUND_FALLBACKS = {
+      Heptagon: {
+        name: "Heptagon Fund ICAV - Kopernik Global All-Cap Equity Fund AE EUR Acc",
+        isin: "IE00BH6XSF26",
+        link: "https://www.finect.com/fondos-inversion/IE00BH6XSF26-Heptagon_kopernik_glb_allcp_eq_ae__acc",
+        volatility12M: "9.87%",
+        return12M: "54.87%",
+      },
+    };
 
-        setExcelData({
-          workbook,
-          sheets,
-          sheetNames: workbook.SheetNames,
-        });
-
-        // Procesar y estructurar los datos de Cartera1
-        const processedData = processCarteraData(sheets["Cartera1"]);
-        setPortfolioData(processedData);
-
-        // Inicializar calculadora con datos del Excel
-        if (processedData && processedData.portfolioAllocation) {
-          const allocation = processedData.portfolioAllocation;
-          const totalAmount = allocation.totalAmountCalculated || 120000;
-
-          const categories = allocation.categories.map((cat) => ({
-            name: cat.name,
-            expectedReturn: cat.expectedReturn
-              ? parseFloat(cat.expectedReturn.replace("%", ""))
-              : 0,
-            weight: cat.weight ? parseFloat(cat.weight.replace("%", "")) : 0,
-            description: cat.description || "",
-          }));
-
-          setCalculatorData({
-            totalAmount: totalAmount,
-            categories:
-              categories.length > 0 ? categories : calculatorData.categories,
-          });
-        }
-
-        // Sincronizar fondos con MongoDB
-        syncFundsToDatabase(sheets);
-      } catch (err) {
-        setError(`${t("portfolioBuilder.errors.loadExcel")}: ${err.message}`);
-      } finally {
-        setLoading(false);
+    // Enriquecer cada ítem de la distribución RV con datos de fundsList (p. ej. Heptagon con ISIN, link, volatilidad, rentabilidad)
+    const enrichDistributionItem = (d) => {
+      const isin = (d.isin || "").trim();
+      let fund =
+        (isin && fundsList.find((f) => (f.isin || "").trim() === isin)) ||
+        (d.name &&
+          fundsList.find((f) =>
+            (f.name || "").toLowerCase().includes((d.name || "").toLowerCase()),
+          )) ||
+        (d.name &&
+          fundsList.find((f) =>
+            (d.name || "")
+              .toLowerCase()
+              .includes((f.name || "").split(" ")[0].toLowerCase()),
+          ));
+      if (!fund && d.name && KNOWN_RV_FUND_FALLBACKS[d.name.trim()]) {
+        fund = KNOWN_RV_FUND_FALLBACKS[d.name.trim()];
       }
+      if (fund) {
+        return {
+          amount: null,
+          percentage: d.percentage,
+          name: d.name || fund.name,
+          isin: isin || (fund.isin || "").trim() || null,
+          link: d.link || fund.link || null,
+          volatility12M: d.volatility12M ?? fund.volatility12M ?? null,
+          return12M: d.return12M ?? fund.return12M ?? null,
+          calculatedAmount: d.calculatedAmount ?? null,
+        };
+      }
+      return {
+        amount: null,
+        percentage: d.percentage,
+        name: d.name,
+        isin: d.isin ?? null,
+        link: d.link ?? null,
+        volatility12M: d.volatility12M ?? null,
+        return12M: d.return12M ?? null,
+        calculatedAmount: d.calculatedAmount ?? null,
+      };
     };
 
-    loadExcelFile();
-  }, []);
-
-  // Función para procesar y estructurar los datos de Cartera1
-  const processCarteraData = (sheet) => {
-    if (!sheet || !sheet.data) return null;
-
-    const data = {
-      sections: [],
-      portfolioAllocation: null,
-      detailedAllocation: {},
-    };
-
-    let currentSection = null;
-    let inAllocationTable = false;
-
-    for (let i = 0; i < sheet.data.length; i++) {
-      const row = sheet.data[i];
-      if (!row) continue;
-
-      const rowText = row.join(" ").trim();
-
-      // Detectar secciones principales
-      if (row[2] && typeof row[2] === "string") {
-        const cellValue = row[2].trim();
-
-        // Sección 2: Ahorro remunerado / Fondo Monetarios
-        if (
-          cellValue.includes("2. Ahorro remunerado") ||
-          cellValue.includes("Fondo Monetarios")
-        ) {
-          currentSection = {
-            number: 2,
-            title: t("portfolioBuilder.sections.monetarios.title"),
-            icon: PiggyBank,
-            description: "",
-            funds: [],
-            tips: [],
-            videos: [],
-          };
-          data.sections.push(currentSection);
-        }
-        // Sección 3: Inversión a largo plazo
-        else if (
-          cellValue.includes("3. Inversión a largo plazo") ||
-          cellValue.includes("Fondos Indexados")
-        ) {
-          currentSection = {
-            number: 3,
-            title: t("portfolioBuilder.sections.rentaVariable.title"),
-            icon: TrendingUp,
-            description: "",
-            totalAmount: null,
-            distribution: [],
-            funds: [],
-            tips: [],
-            videos: [],
-          };
-          data.sections.push(currentSection);
-        }
-        // Sección 4: Renta Fija
-        else if (
-          cellValue.includes("4. Renta Fija") ||
-          cellValue.includes("Bonos")
-        ) {
-          currentSection = {
-            number: 4,
-            title: t("portfolioBuilder.sections.rentaFija.title"),
-            icon: DollarSign,
-            description: "",
-            note: "",
-            subsections: [],
-            videos: [],
-          };
-          data.sections.push(currentSection);
-        }
-        // Subsección RF Corto Plazo
-        else if (cellValue === "RF Corto Plazo") {
-          if (currentSection && currentSection.number === 4) {
-            currentSection.subsections = currentSection.subsections || [];
-            currentSection.subsections.push({
-              name: t(
+    return {
+      sections: [
+        {
+          number: 2,
+          title: tFn("portfolioBuilder.sections.monetarios.title"),
+          icon: PiggyBank,
+          description: DEFAULT_SECTION_DESCRIPTIONS[2] || "",
+          funds: byCategory("Monetarios"),
+          categoryKey: "Monetarios",
+          tips: DEFAULT_SECTION_TIPS[2] || [],
+          videos: DEFAULT_SECTION_VIDEOS[2] || [],
+        },
+        {
+          number: 3,
+          title: tFn("portfolioBuilder.sections.rentaVariable.title"),
+          icon: TrendingUp,
+          description: DEFAULT_SECTION_DESCRIPTIONS[3] || "",
+          totalAmount:
+            allocation.categories?.find((c) => c.name === "RV")?.amount ??
+            30000,
+          distribution: (rvDist || []).map(enrichDistributionItem),
+          funds: rvFundsOnlyExtras(),
+          categoryKey: "Renta Variable",
+          tips: DEFAULT_SECTION_TIPS[3] || [],
+          videos: DEFAULT_SECTION_VIDEOS[3] || [],
+        },
+        {
+          number: 4,
+          title: tFn("portfolioBuilder.sections.rentaFija.title"),
+          icon: DollarSign,
+          description: "",
+          note: "",
+          subsections: [
+            {
+              name: tFn(
                 "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
               ),
-              description: t(
+              description: tFn(
                 "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
               ),
-              funds: [],
-            });
-          }
-        }
-        // Subsección RF Medio Plazo
-        else if (cellValue === "RF Medio Plazo") {
-          if (currentSection && currentSection.number === 4) {
-            currentSection.subsections = currentSection.subsections || [];
-            currentSection.subsections.push({
-              name: t(
+              funds: byCategory("RF corto plazo"),
+              categoryKey: "RF corto plazo",
+            },
+            {
+              name: tFn(
                 "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
               ),
-              description: t(
+              description: tFn(
                 "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
               ),
-              funds: [],
-            });
-          }
-        }
-        // Sección 5: Alternativos
-        else if (cellValue === "Alternativos" && !inAllocationTable) {
-          // Verificar que no estamos en la tabla de asignación
-          const prevRow = i > 0 ? sheet.data[i - 1] : null;
-          if (!prevRow || !prevRow[3] || prevRow[3] !== "Retorno esperado") {
-            currentSection = {
-              number: 5,
-              title: t("portfolioBuilder.sections.alternativos.title"),
-              icon: Layers,
-              description: t(
-                "portfolioBuilder.sections.alternativos.description",
-              ),
-              funds: [],
-              videos: [],
-            };
-            data.sections.push(currentSection);
-          }
-        }
-        // Tabla de asignación de cartera
-        else if (
-          cellValue === "Retorno esperado" ||
-          cellValue === "Monetarios"
-        ) {
-          inAllocationTable = true;
-        }
-        // Procesar contenido según la sección actual
-        else if (currentSection) {
-          // Videos
-          if (isUrl(cellValue)) {
-            if (cellValue.includes("youtu")) {
-              currentSection.videos = currentSection.videos || [];
-              currentSection.videos.push({
-                url: cellValue,
-                description: row[4] || row[5] || "",
-              });
-            } else if (currentSection.funds) {
-              // Link de fondo
-              const fundIndex = currentSection.funds.length - 1;
-              if (fundIndex >= 0 && !currentSection.funds[fundIndex].link) {
-                currentSection.funds[fundIndex].link = cellValue;
-              }
-            }
-          }
-          // Descripciones y tips
-          else if (cellValue.length > 50 && !isUrl(cellValue)) {
-            if (
-              cellValue.includes("Máxima rentabilidad") ||
-              cellValue.includes("Inversión en empresas")
-            ) {
-              // Guardar el texto original, se traducirá al mostrar
-              currentSection.description = cellValue;
-            } else if (
-              cellValue.includes("En caso de caidas") ||
-              cellValue.includes("Siempre y cuando")
-            ) {
-              // Guardar el texto original, se traducirá al mostrar
-              currentSection.tips = currentSection.tips || [];
-              currentSection.tips.push(cellValue);
-            } else if (
-              currentSection.number === 4 &&
-              cellValue.includes("Deja de ser")
-            ) {
-              // Guardar el texto original, se traducirá al mostrar
-              currentSection.note = cellValue;
-            }
-          }
-          // Fondos monetarios (estructura: Nombre en col 2, ISIN en col 3, Link en col 4, Vol en col 5, R en col 6, Notes en col 7)
-          else if (
-            currentSection.number === 2 &&
-            cellValue &&
-            !isUrl(cellValue) &&
-            cellValue.length > 10
-          ) {
-            const isin = row[3];
-            const link = row[4];
-            const vol = row[5];
-            const ret = row[6];
-            const notes = row[7];
-
-            // Verificar que tenga ISIN o link para confirmar que es un fondo
-            if (
-              (isin &&
-                typeof isin === "string" &&
-                (isin.length === 12 || isin.length === 15)) ||
-              (link && isUrl(link))
-            ) {
-              currentSection.funds = currentSection.funds || [];
-              currentSection.funds.push({
-                name: cellValue,
-                isin: isin || null,
-                link: link || null,
-                volatility12M: vol || null,
-                return12M: ret || null,
-                notes: notes || null,
-              });
-            }
-          }
-          // Fondos de RV
-          else if (currentSection.number === 3) {
-            // Total amount
-            if (row[0] && !isNaN(parseFloat(row[0]))) {
-              currentSection.totalAmount = parseFloat(row[0]);
-            }
-            // Distribución (tabla con porcentajes)
-            // Los porcentajes pueden venir como "20%" o como decimal 0.2
-            const col0 = row[0];
-            const col1 = row[1];
-            const col1Num =
-              col1 !== null && col1 !== undefined ? parseFloat(col1) : NaN;
-            const col1Str =
-              col1 !== null && col1 !== undefined ? String(col1) : "";
-            const isPercentage =
-              col1Str.includes("%") ||
-              (!isNaN(col1Num) && col1Num > 0 && col1Num <= 1);
-
-            if (col0 && col1 && !isNaN(parseFloat(col0)) && isPercentage) {
-              currentSection.distribution = currentSection.distribution || [];
-              const fundName = row[2];
-              const isin = row[3];
-              const link = row[4];
-              const vol = row[5];
-              const ret = row[6];
-              const amount = getCellValueFromFormula(sheet, i, 7) || row[7];
-
-              if (fundName) {
-                // Convertir decimal a porcentaje si es necesario (0.2 -> "20%")
-                let percentage = col1Str;
-                if (!col1Str.includes("%") && !isNaN(col1Num) && col1Num <= 1) {
-                  percentage = `${(col1Num * 100).toFixed(0)}%`;
-                }
-
-                currentSection.distribution.push({
-                  amount: parseFloat(col0),
-                  percentage: percentage,
-                  name: fundName,
-                  isin: isin || null,
-                  link: link || null,
-                  volatility12M: vol || null,
-                  return12M: ret || null,
-                  calculatedAmount: amount,
-                });
-              }
-            }
-            // Fondos individuales de RV (no en tabla de distribución)
-            else if (cellValue && !isUrl(cellValue) && cellValue.length > 5) {
-              const isHeader = [
-                "Distribución",
-                "Total",
-                "RV",
-                "Monetarios",
-                "RF Corto",
-                "RF Medio",
-                "Alternativos",
-              ].includes(cellValue);
-
-              if (!isHeader) {
-                const isin = row[3] || row[4];
-                const link = row[4] || row[5];
-                const vol = row[5] || row[6];
-                const ret = row[6] || row[7];
-
-                const hasIsin =
-                  isin &&
-                  typeof isin === "string" &&
-                  (isin.length === 12 || isin.length === 15);
-                const hasLink = link && isUrl(link);
-                const hasData = vol || ret;
-
-                // Agregar si tiene ISIN, link, o datos relacionados
-                if (hasIsin || hasLink || hasData) {
-                  // Verificar si el fondo ya existe (en distribution o funds) para evitar duplicados
-                  const existsInDistribution =
-                    currentSection.distribution?.some(
-                      (f) => f.name === cellValue,
-                    );
-                  const existsInFunds = currentSection.funds?.some(
-                    (f) => f.name === cellValue,
-                  );
-
-                  if (!existsInDistribution && !existsInFunds) {
-                    currentSection.funds = currentSection.funds || [];
-                    currentSection.funds.push({
-                      name: cellValue,
-                      isin: hasIsin ? isin : null,
-                      link: hasLink ? link : null,
-                      volatility12M: vol || null,
-                      return12M: ret || null,
-                    });
-                  }
-                }
-              }
-            }
-          }
-          // Fondos de Alternativos
-          // Pueden estar en columna 2 (cellValue) o en columna 3 (tabla de asignación detallada)
-          else if (currentSection.number === 5) {
-            let fundAdded = false;
-
-            // Buscar en columna 2
-            if (cellValue && !isUrl(cellValue) && cellValue.length > 10) {
-              const isin = row[4] || row[3];
-              const link = row[5] || row[4];
-              const vol = row[6] || row[5];
-              const ret = row[7] || row[6];
-              const amount =
-                getCellValueFromFormula(sheet, i, 8) || row[8] || row[7];
-
-              // Limpiar ISIN antes de verificar
-              const isinClean =
-                isin && typeof isin === "string" ? String(isin).trim() : null;
-              const hasIsin =
-                isinClean &&
-                (isinClean.length === 12 || isinClean.length === 15);
-
-              if (hasIsin || (link && isUrl(link))) {
-                // Verificar que no exista ya
-                const exists = currentSection.funds?.some(
-                  (f) => f.name === cellValue,
-                );
-                if (!exists) {
-                  currentSection.funds = currentSection.funds || [];
-                  currentSection.funds.push({
-                    name: cellValue,
-                    isin: hasIsin ? isinClean : null,
-                    link: link || null,
-                    volatility12M: vol || null,
-                    return12M: ret || null,
-                    amount: amount
-                      ? typeof amount === "string"
-                        ? parseFloat(amount.replace(/[^\d.-]/g, ""))
-                        : parseFloat(amount)
-                      : null,
-                  });
-                  fundAdded = true;
-                }
-              }
-            }
-
-            // También buscar en columna 3 (tabla de asignación detallada) si no se agregó en columna 2
-            if (
-              !fundAdded &&
-              row[3] &&
-              typeof row[3] === "string" &&
-              row[3].length > 10 &&
-              !isUrl(row[3])
-            ) {
-              const fundName = row[3];
-              const isin = row[4];
-              const link = row[5];
-              const vol = row[6];
-              const ret = row[7];
-              const amount = getCellValueFromFormula(sheet, i, 8) || row[8];
-
-              // Verificar que no sea un header
-              const isHeader = [
-                "Alternativos",
-                "Monetarios",
-                "RF Corto",
-                "RF Medio",
-                "RV",
-                "Distribución",
-                "Total",
-              ].includes(fundName);
-
-              if (!isHeader) {
-                // Limpiar ISIN antes de verificar
-                const isinClean =
-                  isin && typeof isin === "string" ? String(isin).trim() : null;
-                const hasIsin =
-                  isinClean &&
-                  (isinClean.length === 12 || isinClean.length === 15);
-                const hasLink = link && isUrl(link);
-
-                if (hasIsin || hasLink) {
-                  // Verificar que no exista ya
-                  const exists = currentSection.funds?.some(
-                    (f) => f.name === fundName,
-                  );
-                  if (!exists) {
-                    currentSection.funds = currentSection.funds || [];
-                    currentSection.funds.push({
-                      name: fundName,
-                      isin: hasIsin ? isinClean : null,
-                      link: hasLink ? link : null,
-                      volatility12M: vol || null,
-                      return12M: ret || null,
-                      amount: amount
-                        ? typeof amount === "string"
-                          ? parseFloat(amount.replace(/[^\d.-]/g, ""))
-                          : parseFloat(amount)
-                        : null,
-                    });
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Procesar tabla de asignación de cartera
-      if (inAllocationTable && row[3]) {
-        const category = row[3];
-        if (category && typeof category === "string") {
-          if (!data.portfolioAllocation) {
-            data.portfolioAllocation = {
-              totalAmount: null,
-              categories: [],
-              totalReturn: null,
-              totalAmountCalculated: null,
-            };
-          }
-
-          // Detectar categorías válidas
-          if (
-            [
-              "Monetarios",
-              "RF Corto",
-              "RF Medio",
-              "RV",
-              "Alternativos",
-            ].includes(category)
-          ) {
-            const expectedReturn = row[4];
-            const weight = row[5];
-            const portfolioReturn = row[6];
-            const amount = getCellValueFromFormula(sheet, i, 7) || row[7];
-            const description = row[8];
-
-            data.portfolioAllocation.categories.push({
-              name: category,
-              expectedReturn: expectedReturn || null,
-              weight: weight || null,
-              portfolioReturn: portfolioReturn || null,
-              amount: amount
-                ? typeof amount === "string"
-                  ? parseFloat(amount.replace(/[^\d.-]/g, ""))
-                  : parseFloat(amount)
-                : null,
-              description: description || null,
-            });
-          }
-          // Detectar total (fila con porcentaje alto en columna 6)
-          else if (
-            row[6] &&
-            typeof row[6] === "string" &&
-            row[6].includes("%") &&
-            parseFloat(row[6].replace("%", "")) > 1
-          ) {
-            const totalReturn = row[6];
-            const totalAmount = getCellValueFromFormula(sheet, i, 7);
-            if (totalReturn) {
-              data.portfolioAllocation.totalReturn = totalReturn;
-              if (totalAmount) {
-                data.portfolioAllocation.totalAmountCalculated =
-                  typeof totalAmount === "string"
-                    ? parseFloat(totalAmount.replace(/[^\d.-]/g, ""))
-                    : parseFloat(totalAmount);
-              }
-            }
-          }
-        }
-      }
-
-      // Procesar asignación detallada por categorías (buscar patrones específicos)
-      if (row[3] && typeof row[3] === "string") {
-        const categoryNames = [
-          "Monetarios",
-          "RF Corto",
-          "RF Medio",
-          "RV",
-          "Alternativos",
-        ];
-        const isCategoryHeader = categoryNames.includes(row[3]);
-
-        if (isCategoryHeader) {
-          const category = row[3];
-          if (!data.detailedAllocation[category]) {
-            data.detailedAllocation[category] = {
-              totalAmount: null,
-              funds: [],
-            };
-          }
-          // Total de la categoría (siguiente fila, columna 4)
-          const nextRow = sheet.data[i + 1];
-          if (
-            nextRow &&
-            nextRow[4] &&
-            !isNaN(parseFloat(nextRow[4])) &&
-            parseFloat(nextRow[4]) > 1000
-          ) {
-            data.detailedAllocation[category].totalAmount = parseFloat(
-              nextRow[4],
-            );
-          }
-
-          // También agregar fondos a las subsecciones de Renta Fija
-          if (
-            (category === "RF Corto" || category === "RF Medio") &&
-            data.sections.length > 0
-          ) {
-            const rentaFijaSection = data.sections.find((s) => s.number === 4);
-            if (rentaFijaSection) {
-              rentaFijaSection.subsections = rentaFijaSection.subsections || [];
-              let subsection = rentaFijaSection.subsections.find(
-                (sub) =>
-                  sub.name ===
-                  (category === "RF Corto"
-                    ? "Renta Fija Corto Plazo"
-                    : "Renta Fija Medio Plazo"),
-              );
-              if (!subsection) {
-                subsection = {
-                  name:
-                    category === "RF Corto"
-                      ? t(
-                          "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
-                        )
-                      : t(
-                          "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
-                        ),
-                  description:
-                    category === "RF Corto"
-                      ? t(
-                          "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
-                        )
-                      : t(
-                          "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
-                        ),
-                  funds: [],
-                };
-                rentaFijaSection.subsections.push(subsection);
-              } else if (
-                category === "RF Corto" &&
-                subsection.description &&
-                subsection.description.length < 100
-              ) {
-                // Actualizar la descripción si ya existe pero es corta
-                subsection.description = t(
-                  "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
-                );
-              }
-            }
-          }
-
-          // También agregar fondos a la sección de Alternativos
-          if (category === "Alternativos" && data.sections.length > 0) {
-            let alternativosSection = data.sections.find((s) => s.number === 5);
-            if (!alternativosSection) {
-              alternativosSection = {
-                number: 5,
-                title: t("portfolioBuilder.sections.alternativos.title"),
-                icon: Layers,
-                description: t(
-                  "portfolioBuilder.sections.alternativos.description",
-                ),
-                funds: [],
-                videos: [],
-              };
-              data.sections.push(alternativosSection);
-            }
-          }
-        }
-
-        // Fondos individuales (tienen ISIN o link en columnas específicas)
-        // Para RF Corto/RF Medio: col 2 = riesgo, col 3 = nombre, col 4 = ISIN, col 5 = link
-        // Para otros: col 3 = nombre, col 4 = ISIN/link, col 5 = link/ISIN
-        const hasRisk =
-          row[2] && typeof row[2] === "string" && row[2].includes("riesgo");
-        const fundNameRF = hasRisk ? row[3] : row[3];
-        // Limpiar ISIN antes de verificar (eliminar espacios)
-        const isinCol4 =
-          row[4] && typeof row[4] === "string" ? String(row[4]).trim() : null;
-        const hasIsin =
-          isinCol4 && (isinCol4.length === 12 || isinCol4.length === 15);
-        const hasLink = row[4] && isUrl(row[4]);
-        const fundName = fundNameRF;
-
-        if (
-          fundName &&
-          typeof fundName === "string" &&
-          fundName.length > 10 &&
-          !categoryNames.includes(fundName) &&
-          !fundName.includes("riesgo") &&
-          (hasIsin || hasLink || (row[4] && isUrl(row[4])) || hasRisk)
-        ) {
-          // Determinar categoría por contexto (buscar hacia atrás)
-          let category = null;
-          for (let j = i; j >= Math.max(0, i - 20); j--) {
-            const prevRow = sheet.data[j];
-            if (prevRow && prevRow[3] && categoryNames.includes(prevRow[3])) {
-              category = prevRow[3];
-              break;
-            }
-          }
-
-          if (category) {
-            if (!data.detailedAllocation[category]) {
-              data.detailedAllocation[category] = {
-                totalAmount: null,
-                funds: [],
-              };
-            }
-
-            // Para RF Corto y RF Medio, la estructura puede variar
-            let isin, link, vol, ret, amount, risk;
-
-            if (category === "RF Corto" || category === "RF Medio") {
-              // Estructura: col 2 = riesgo, col 3 = nombre, col 4 = ISIN, col 5 = link, col 6 = vol, col 7 = ret, col 8 = amount
-              risk =
-                row[2] &&
-                typeof row[2] === "string" &&
-                row[2].includes("riesgo")
-                  ? row[2]
-                  : null;
-              isin =
-                row[4] &&
-                typeof row[4] === "string" &&
-                (row[4].length === 12 || row[4].length === 15)
-                  ? row[4]
-                  : null;
-              link = row[5] && isUrl(row[5]) ? row[5] : null;
-              vol = row[6] || null;
-              ret = row[7] || null;
-              amount = getCellValueFromFormula(sheet, i, 8) || row[8] || null;
-            } else {
-              // Estructura estándar
-              // Limpiar ISINs antes de verificar
-              const isinCol4 =
-                row[4] && typeof row[4] === "string"
-                  ? String(row[4]).trim()
-                  : null;
-              const isinCol5 =
-                row[5] && typeof row[5] === "string"
-                  ? String(row[5]).trim()
-                  : null;
-              const hasIsinCol4 =
-                isinCol4 && (isinCol4.length === 12 || isinCol4.length === 15);
-              const hasIsinCol5 =
-                isinCol5 && (isinCol5.length === 12 || isinCol5.length === 15);
-
-              isin = hasIsinCol4 ? isinCol4 : hasIsinCol5 ? isinCol5 : null;
-              link = hasLink
-                ? row[4]
-                : row[5] && isUrl(row[5])
-                  ? row[5]
-                  : row[6] && isUrl(row[6])
-                    ? row[6]
-                    : null;
-              vol = row[6] || row[7] || null;
-              ret = row[7] || row[8] || null;
-              amount =
-                getCellValueFromFormula(sheet, i, 8) ||
-                getCellValueFromFormula(sheet, i, 7) ||
-                row[8] ||
-                row[7] ||
-                null;
-              risk =
-                row[2] &&
-                typeof row[2] === "string" &&
-                row[2].includes("riesgo")
-                  ? row[2]
-                  : null;
-            }
-
-            const fundData = {
-              name: fundName,
-              isin: isin || null,
-              link: link || null,
-              volatility12M: vol || null,
-              return12M: ret || null,
-              amount: amount
-                ? typeof amount === "string"
-                  ? parseFloat(amount.replace(/[^\d.-]/g, ""))
-                  : parseFloat(amount)
-                : null,
-              risk: risk || null,
-            };
-
-            data.detailedAllocation[category].funds.push(fundData);
-
-            // También agregar a las subsecciones de Renta Fija
-            if (
-              (category === "RF Corto" || category === "RF Medio") &&
-              data.sections.length > 0
-            ) {
-              const rentaFijaSection = data.sections.find(
-                (s) => s.number === 4,
-              );
-              if (rentaFijaSection && rentaFijaSection.subsections) {
-                const subsection = rentaFijaSection.subsections.find(
-                  (sub) =>
-                    sub.name ===
-                    (category === "RF Corto"
-                      ? "Renta Fija Corto Plazo"
-                      : "Renta Fija Medio Plazo"),
-                );
-                if (subsection) {
-                  subsection.funds.push(fundData);
-                }
-              }
-            }
-
-            // También agregar a la sección de RV
-            if (category === "RV" && data.sections.length > 0) {
-              const rvSection = data.sections.find((s) => s.number === 3);
-              if (rvSection) {
-                rvSection.funds = rvSection.funds || [];
-                // Verificar si el fondo ya existe para evitar duplicados
-                const fundExists =
-                  rvSection.funds.some((f) => f.name === fundData.name) ||
-                  rvSection.distribution?.some((f) => f.name === fundData.name);
-                if (!fundExists) {
-                  rvSection.funds.push(fundData);
-                }
-              }
-            }
-
-            // También agregar a la sección de Alternativos
-            if (category === "Alternativos" && data.sections.length > 0) {
-              const alternativosSection = data.sections.find(
-                (s) => s.number === 5,
-              );
-              if (alternativosSection) {
-                alternativosSection.funds = alternativosSection.funds || [];
-                // Verificar que no exista ya para evitar duplicados
-                const fundExists = alternativosSection.funds.some(
-                  (f) => f.name === fundData.name,
-                );
-                if (!fundExists) {
-                  alternativosSection.funds.push(fundData);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return data;
+              funds: byCategory("RF medio plazo"),
+              categoryKey: "RF medio plazo",
+            },
+          ],
+          videos: DEFAULT_SECTION_VIDEOS[4] || [],
+        },
+        {
+          number: 5,
+          title: tFn("portfolioBuilder.sections.alternativos.title"),
+          icon: Layers,
+          description: tFn(
+            "portfolioBuilder.sections.alternativos.description",
+          ),
+          funds: byCategory("Alternativos"),
+          categoryKey: "Alternativos",
+          videos: DEFAULT_SECTION_VIDEOS[5] || [],
+        },
+      ],
+      portfolioAllocation: allocation,
+      detailedAllocation: {},
+      fundsList: fundsList,
+      extraFundIsinsByCategory: config?.extraFundIsinsByCategory || {},
+      excludedFundIsinsByCategory: config?.excludedFundIsinsByCategory || {},
+    };
   };
 
-  // Función auxiliar para obtener valor de celda con fórmula
-  const getCellValueFromFormula = (sheet, rowIndex, colIndex) => {
-    const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
-    const formula = sheet.formulas[cellAddress];
-    if (formula) {
-      return formula.value;
-    }
-    if (sheet.data[rowIndex] && sheet.data[rowIndex][colIndex] !== null) {
-      return sheet.data[rowIndex][colIndex];
-    }
-    return null;
-  };
+  const loadConfig = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return api
+      .get("/portfolio-builder/config")
+      .then((res) => {
+        const config = res.data;
+        const processedData = buildPortfolioDataFromConfig(config, t);
+        setPortfolioData(processedData);
 
-  // Verificar si es URL
-  const isUrl = (value) => {
-    if (typeof value !== "string") return false;
-    const str = value.trim();
-    return (
-      str.startsWith("http://") ||
-      str.startsWith("https://") ||
-      str.includes("youtu.be/") ||
-      str.includes("youtube.com/") ||
-      str.includes("finect.com") ||
-      str.includes("justetf.com") ||
-      str.includes("moneychimp.com")
-    );
-  };
+        const allocation = config.allocation || DEFAULT_PORTFOLIO_ALLOCATION;
+        const totalAmount = allocation.totalAmountCalculated ?? 120000;
+        const categories = (allocation.categories || []).map((cat) => ({
+          name: cat.name,
+          expectedReturn: cat.expectedReturn
+            ? parseFloat(String(cat.expectedReturn).replace("%", ""))
+            : 0,
+          weight: cat.weight
+            ? parseFloat(String(cat.weight).replace("%", ""))
+            : 0,
+          description: cat.description || "",
+        }));
 
-  // Función para extraer y sincronizar fondos
-  const syncFundsToDatabase = async (sheets) => {
+        setCalculatorData((prev) => ({
+          totalAmount,
+          categories: categories.length > 0 ? categories : prev.categories,
+        }));
+      })
+      .catch((err) => {
+        console.error("Error cargando config Portfolio Builder:", err);
+        setError(
+          err.response?.data?.message ||
+            t("portfolioBuilder.errors.loadConfig") +
+              ": " +
+              (err.message || "Sin conexión"),
+        );
+        const fallback = buildPortfolioDataFromConfig(null, t);
+        setPortfolioData(fallback);
+        const allocation = DEFAULT_PORTFOLIO_ALLOCATION;
+        setCalculatorData({
+          totalAmount: allocation.totalAmountCalculated || 120000,
+          categories: allocation.categories.map((cat) => ({
+            name: cat.name,
+            expectedReturn: cat.expectedReturn
+              ? parseFloat(String(cat.expectedReturn).replace("%", ""))
+              : 0,
+            weight: cat.weight
+              ? parseFloat(String(cat.weight).replace("%", ""))
+              : 0,
+            description: cat.description || "",
+          })),
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [t]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const addExtraFund = async (category, isin = null) => {
+    if (!category) return;
+    setAddingExtra(category);
     try {
-      setSyncing(true);
-      setSyncStatus(t("portfolioBuilder.sync.extracting"));
-
-      const fundCategories = [
-        "Monetarios",
-        "RF corto plazo",
-        "RF medio plazo",
-        "Renta Variable",
-        "Renta Fija largo plazo",
-        "ETFs",
-        "Mixtos",
-        "Alternativos",
-        "Revisar",
-      ];
-
-      const fundsToSync = [];
-
-      fundCategories.forEach((category) => {
-        const sheet = sheets[category];
-        if (!sheet || !sheet.data) return;
-
-        for (let i = 1; i < sheet.data.length; i++) {
-          const row = sheet.data[i];
-          if (!row || row.every((cell) => cell === null)) continue;
-
-          const name = row[0];
-          const isin = row[1];
-          const link = row[2];
-          const volatility12M = row[3];
-          const return12M = row[4];
-          const notes = row[6] || row[5] || null;
-
-          if (name && name.trim()) {
-            fundsToSync.push({
-              name: name.trim(),
-              isin: isin ? isin.trim() : null,
-              link: link ? link.trim() : null,
-              volatility12M: volatility12M ? volatility12M.trim() : null,
-              return12M: return12M ? return12M.trim() : null,
-              category: category,
-              notes: notes ? notes.trim() : null,
-            });
-          }
-        }
+      const res = await api.post("/portfolio-builder/config/extra-fund", {
+        category,
+        ...(isin ? { isin: (isin || "").trim() } : {}),
       });
-
-      setSyncStatus(
-        t("portfolioBuilder.sync.syncing", { count: fundsToSync.length }),
-      );
-
-      const response = await api.post("/portfolio-funds/sync-from-excel", {
-        funds: fundsToSync,
+      const {
+        extraFundIsinsByCategory,
+        excludedFundIsinsByCategory,
+        addedIsin,
+      } = res.data || {};
+      if (!addedIsin && !res.data) {
+        setAddingExtra(null);
+        return;
+      }
+      const isinNorm = (addedIsin || "").trim();
+      const catKey = String(category).trim();
+      setPortfolioData((prev) => {
+        if (!prev?.fundsList) return prev;
+        const updatedFundsList = prev.fundsList.map((f) =>
+          (f.isin || "").trim() === isinNorm && f.category === catKey
+            ? { ...f, showInSection: true }
+            : f,
+        );
+        const rvSection = prev.sections?.find((s) => s.number === 3);
+        const syntheticConfig = {
+          allocation: prev.portfolioAllocation,
+          rvDistribution: rvSection?.distribution ?? [],
+          funds: updatedFundsList,
+          extraFundIsinsByCategory:
+            extraFundIsinsByCategory || prev.extraFundIsinsByCategory || {},
+          excludedFundIsinsByCategory:
+            excludedFundIsinsByCategory ??
+            prev.excludedFundIsinsByCategory ??
+            {},
+        };
+        return buildPortfolioDataFromConfig(syntheticConfig, t);
       });
-
-      setSyncStatus({
-        type: "success",
-        message: t("portfolioBuilder.sync.success", {
-          count: response.data.count,
-        }),
-      });
-
-      setTimeout(() => {
-        setSyncStatus(null);
-      }, 5000);
     } catch (err) {
-      console.error("Error al sincronizar fondos:", err);
-      setSyncStatus({
+      console.error("Error al añadir fondo extra:", err);
+    } finally {
+      setAddingExtra(null);
+    }
+  };
+
+  const removeExtraFund = async (category, isin) => {
+    if (!category || !isin) return;
+    const catKey = String(category).trim();
+    const isinNorm = (isin || "").trim();
+    try {
+      const res = await api.delete("/portfolio-builder/config/extra-fund", {
+        params: { category: catKey, isin: isinNorm },
+      });
+      const { extraFundIsinsByCategory, excludedFundIsinsByCategory } =
+        res.data || {};
+      setPortfolioData((prev) => {
+        if (!prev?.fundsList) return prev;
+        const updatedFundsList = prev.fundsList.map((f) =>
+          f.category === catKey && (f.isin || "").trim() === isinNorm
+            ? { ...f, showInSection: false }
+            : f,
+        );
+        const syntheticConfig = {
+          allocation: prev.portfolioAllocation,
+          rvDistribution:
+            prev.sections?.find((s) => s.number === 3)?.distribution ?? [],
+          funds: updatedFundsList,
+          extraFundIsinsByCategory:
+            extraFundIsinsByCategory ?? prev.extraFundIsinsByCategory ?? {},
+          excludedFundIsinsByCategory:
+            excludedFundIsinsByCategory ??
+            prev.excludedFundIsinsByCategory ??
+            {},
+        };
+        return buildPortfolioDataFromConfig(syntheticConfig, t);
+      });
+    } catch (err) {
+      console.error("Error al eliminar fondo extra:", err);
+    }
+  };
+
+  // Guardar config en la API (asignación + distribución RV)
+  const savePortfolioConfig = async () => {
+    if (!portfolioData) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const rvSection = portfolioData.sections?.find((s) => s.number === 3);
+      const rvDistribution = (rvSection?.distribution || []).map((d) => ({
+        percentage: d.percentage,
+        name: d.name,
+        isin: d.isin ?? null,
+        link: d.link ?? null,
+        volatility12M: d.volatility12M ?? null,
+        return12M: d.return12M ?? null,
+        calculatedAmount: d.calculatedAmount ?? null,
+      }));
+
+      const allocation = {
+        totalAmountCalculated: calculatorData.totalAmount,
+        totalReturn: portfolioData.portfolioAllocation?.totalReturn ?? "5.73%",
+        categories: calculatorData.categories.map((cat) => ({
+          name: cat.name,
+          expectedReturn: `${cat.expectedReturn}%`,
+          weight: `${cat.weight}%`,
+          portfolioReturn: `${((cat.expectedReturn * cat.weight) / 100).toFixed(2)}%`,
+          amount: Math.round((calculatorData.totalAmount * cat.weight) / 100),
+          description: cat.description || null,
+        })),
+      };
+
+      await api.put("/portfolio-builder/config", {
+        allocation,
+        rvDistribution,
+      });
+      setSaveMessage({ type: "success", text: "Configuración guardada" });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      setSaveMessage({
         type: "error",
-        message: t("portfolioBuilder.sync.error", {
-          message: err.response?.data?.message || err.message,
-        }),
+        text: err.response?.data?.message || err.message || "Error al guardar",
       });
     } finally {
-      setSyncing(false);
+      setSaving(false);
     }
+  };
+
+  // Parsear porcentaje "20%" o "20" -> número
+  const parsePct = (p) => {
+    if (p == null) return 0;
+    const s = String(p).replace("%", "").trim();
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  // Redistribuir % para que sumen 100% manteniendo proporciones (array de números)
+  const redistributePercentages = (values) => {
+    if (!values.length) return [];
+    const sum = values.reduce((a, b) => a + b, 0);
+    if (sum <= 0) return values.map(() => 100 / values.length);
+    const scaled = values.map((v) => (v / sum) * 100);
+    const rounded = scaled.map((v) => Math.round(v));
+    let diff = 100 - rounded.reduce((a, b) => a + b, 0);
+    if (diff !== 0) {
+      const byError = rounded.map((r, i) => ({ i, err: scaled[i] - r }));
+      byError.sort((a, b) => Math.abs(b.err) - Math.abs(a.err));
+      for (let j = 0; j < Math.abs(diff); j++) {
+        rounded[byError[j % byError.length].i] += diff > 0 ? 1 : -1;
+      }
+    }
+    return rounded;
+  };
+
+  // Añadir un fondo a la distribución RV; se ajustan % manteniendo proporción (nuevo recibe parte, el resto se escala)
+  const addRvFundToDistribution = () => {
+    setPortfolioData((prev) => {
+      if (!prev?.sections) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map((s) => {
+          if (s.number !== 3) return s;
+          const dist = s.distribution || [];
+          const currentPcts = dist.map((d) => parsePct(d.percentage));
+          const defaultNewPct = 10;
+          const sumExisting = currentPcts.reduce((a, b) => a + b, 0) || 100;
+          const scale =
+            sumExisting > 0 ? (100 - defaultNewPct) / sumExisting : 1;
+          const newPcts = redistributePercentages([
+            ...currentPcts.map((p) => p * scale),
+            defaultNewPct,
+          ]);
+          const newDist = newPcts.map((pct, i) =>
+            i < dist.length
+              ? { ...dist[i], percentage: `${newPcts[i]}%` }
+              : {
+                  percentage: `${newPcts[i]}%`,
+                  name: "",
+                  isin: null,
+                  link: null,
+                  volatility12M: null,
+                  return12M: null,
+                  calculatedAmount: null,
+                },
+          );
+          return { ...s, distribution: newDist };
+        }),
+      };
+    });
+  };
+
+  // Actualizar un fondo en la distribución RV
+  const updateRvFundInDistribution = (idx, updates) => {
+    setPortfolioData((prev) => {
+      if (!prev?.sections) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map((s) => {
+          if (s.number !== 3 || !s.distribution) return s;
+          const nextDist = [...s.distribution];
+          if (idx < 0 || idx >= nextDist.length) return s;
+          nextDist[idx] = { ...nextDist[idx], ...updates };
+          return { ...s, distribution: nextDist };
+        }),
+      };
+    });
+  };
+
+  // Eliminar un fondo de la distribución RV; se reparten su % entre el resto manteniendo proporción
+  const removeRvFundFromDistribution = (idx) => {
+    setPortfolioData((prev) => {
+      if (!prev?.sections) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map((s) => {
+          if (s.number !== 3 || !s.distribution) return s;
+          const dist = s.distribution.filter((_, i) => i !== idx);
+          if (dist.length === 0) return { ...s, distribution: [] };
+          const currentPcts = dist.map((d) => parsePct(d.percentage));
+          const newPcts = redistributePercentages(currentPcts);
+          const nextDist = dist.map((d, i) => ({
+            ...d,
+            percentage: `${newPcts[i]}%`,
+          }));
+          return { ...s, distribution: nextDist };
+        }),
+      };
+    });
   };
 
   // Formatear moneda
@@ -1336,66 +862,6 @@ const PortfolioBuilder = () => {
         </p>
       </div>
 
-      {/* Estado de sincronización */}
-      {syncStatus && (
-        <div className="card">
-          <div
-            className={`p-4 rounded-lg flex items-center gap-3 min-h-[3rem] ${
-              syncStatus.type === "error"
-                ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-                : syncStatus.type === "success"
-                  ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-                  : ""
-            }`}
-            style={
-              syncStatus.type !== "error" && syncStatus.type !== "success"
-                ? isDark
-                  ? {
-                      backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.1)`,
-                      borderColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.3)`,
-                    }
-                  : {
-                      backgroundColor: "var(--user-color-50)",
-                      borderColor: "var(--user-color-200)",
-                    }
-                : {}
-            }
-          >
-            {syncing && (
-              <div
-                className="flex-shrink-0 w-4 h-4 border-2 rounded-full animate-spin"
-                style={{
-                  borderColor: "var(--user-color-500)",
-                  borderTopColor: "transparent",
-                }}
-              ></div>
-            )}
-            <p
-              className={`text-sm font-medium ${
-                syncStatus.type === "error"
-                  ? "text-red-800 dark:text-red-200"
-                  : syncStatus.type === "success"
-                    ? "text-green-800 dark:text-green-200"
-                    : ""
-              }`}
-              style={
-                syncStatus.type !== "error" && syncStatus.type !== "success"
-                  ? isDark
-                    ? {
-                        color: "var(--user-color-300)",
-                      }
-                    : {
-                        color: "var(--user-color-800)",
-                      }
-                  : {}
-              }
-            >
-              {typeof syncStatus === "string" ? syncStatus : syncStatus.message}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Tabla de Cálculos Interactiva - Asignación de Cartera */}
       <div className="card">
         <div className="flex items-center justify-between">
@@ -1645,6 +1111,33 @@ const PortfolioBuilder = () => {
                 </tbody>
               </table>
             </div>
+            {/* Guardar configuración en BBDD */}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={savePortfolioConfig}
+                disabled={saving || !portfolioData}
+                className="px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50"
+                style={
+                  isDark
+                    ? { backgroundColor: "var(--user-color-600)" }
+                    : { backgroundColor: "var(--user-color-600)" }
+                }
+              >
+                {saving ? "Guardando…" : "Guardar cambios"}
+              </button>
+              {saveMessage && (
+                <span
+                  className={`text-sm ${
+                    saveMessage.type === "success"
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {saveMessage.text}
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1710,6 +1203,9 @@ const PortfolioBuilder = () => {
           // Si es una subsección de Renta Fija, usar datos de la subsección
           const isSubsection = section.isSubsection;
           const subsection = isSubsection ? section.subsectionData : null;
+          // categoryKey para fondos extra / eliminar: en subsecciones viene de subsection, si no de section
+          const currentCategoryKey =
+            (isSubsection && subsection?.categoryKey) || section?.categoryKey;
           // Función para formatear títulos con nombres completos
           const formatDisplayTitle = (title) => {
             if (title.includes("RF Corto Plazo")) {
@@ -2005,9 +1501,9 @@ const PortfolioBuilder = () => {
                                   className="p-4 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700"
                                 >
                                   <div className="flex items-center justify-between mb-2">
-                                    <div className="flex-1">
+                                    <div className="flex-1 min-w-0">
                                       <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {item.name}
+                                        {item.name || "(Sin nombre)"}
                                       </h4>
                                       {item.isin && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -2029,7 +1525,7 @@ const PortfolioBuilder = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                                     {item.link && (
                                       <a
                                         href={item.link}
@@ -2052,10 +1548,34 @@ const PortfolioBuilder = () => {
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
+                                    {section.number === 3 && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeRvFundFromDistribution(idx)
+                                        }
+                                        className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+
+                        {/* Añadir fondo a la distribución RV (solo sección 3) */}
+                        {section.number === 3 && (
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              onClick={addRvFundToDistribution}
+                              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                            >
+                              + Añadir fondo
+                            </button>
                           </div>
                         )}
 
@@ -2156,7 +1676,7 @@ const PortfolioBuilder = () => {
                                           </div>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         {fund.link && (
                                           <a
                                             href={fund.link}
@@ -2180,6 +1700,20 @@ const PortfolioBuilder = () => {
                                             )}
                                             <ExternalLink className="h-3 w-3" />
                                           </a>
+                                        )}
+                                        {currentCategoryKey && fund.isin && (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              removeExtraFund(
+                                                currentCategoryKey,
+                                                fund.isin,
+                                              )
+                                            }
+                                            className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                          >
+                                            Eliminar
+                                          </button>
                                         )}
                                       </div>
                                     </div>
@@ -2334,11 +1868,52 @@ const PortfolioBuilder = () => {
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
+                                    {currentCategoryKey && fund.isin && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeExtraFund(
+                                            currentCategoryKey,
+                                            fund.isin,
+                                          )
+                                        }
+                                        className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
+                        </div>
+                      );
+                    })()}
+
+                  {/* Añadir más: añade el siguiente fondo de la lista (mejor R12M) */}
+                  {portfolioData?.fundsList &&
+                    currentCategoryKey &&
+                    (() => {
+                      const availableToAdd = portfolioData.fundsList.filter(
+                        (f) =>
+                          f.category === currentCategoryKey &&
+                          f.showInSection !== true,
+                      );
+                      if (availableToAdd.length === 0) return null;
+                      const isAdding = addingExtra === currentCategoryKey;
+                      return (
+                        <div className="mt-3 mb-4">
+                          <button
+                            type="button"
+                            onClick={() => addExtraFund(currentCategoryKey)}
+                            disabled={isAdding}
+                            className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+                          >
+                            {isAdding
+                              ? "Añadiendo…"
+                              : "+ Añadir más (siguiente de la lista)"}
+                          </button>
                         </div>
                       );
                     })()}
