@@ -105,12 +105,18 @@
     },
     "investmentTypes": {
       "stock": "Acció",
+      "index": "Índex",
       "bond": "Bó",
       "crypto": "Cripto",
       "fund": "Fons",
       "etf": "ETF",
       "automatedPortfolio": "Cartera Automatitzada",
       "other": "Altres"
+    },
+    "indexPresets": {
+      "label": "Índex predefinit (opcional)",
+      "none": "Cap (personalitzat)",
+      "help": "Si tries un índex, emplenarem automàticament el símbol intern necessari per obtenir-ne la cotització."
     },
     "form": {
       "location": "Ubicació",

@@ -105,12 +105,18 @@
     },
     "investmentTypes": {
       "stock": "Acción",
+      "index": "Índice",
       "bond": "Bono",
       "crypto": "Cripto",
       "fund": "Fondo",
       "etf": "ETF",
       "automatedPortfolio": "Cartera Automatizada",
       "other": "Otro"
+    },
+    "indexPresets": {
+      "label": "Índice predefinido (opcional)",
+      "none": "Ninguno (personalizado)",
+      "help": "Si eliges un índice, rellenaremos automáticamente el símbolo interno necesario para obtener su cotización."
     },
     "actions": {
       "edit": "Editar",
