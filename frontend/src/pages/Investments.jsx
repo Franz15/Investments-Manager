@@ -33,6 +33,7 @@ import api from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useTranslation } from "../contexts/TranslationContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { indexPresets } from "../data/indexPresets";
 
 /**
  * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
@@ -138,6 +139,7 @@ const Investments = () => {
   const [detailInvestment, setDetailInvestment] = useState(null);
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
+  const [selectedIndexPreset, setSelectedIndexPreset] = useState("");
   const [updatingPrices, setUpdatingPrices] = useState(false);
   const [updatingAutoUpdateAll, setUpdatingAutoUpdateAll] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState(null);
@@ -2210,17 +2212,25 @@ const Investments = () => {
                       const selectedValue = e.target.value;
                       const isAutomated =
                         selectedValue === "automated_portfolio";
+                      // Si cambiamos a índice, reseteamos preset seleccionado
+                      const nextType = isAutomated ? "fund" : selectedValue;
                       setFormData({
                         ...formData,
-                        type: isAutomated ? "fund" : selectedValue,
+                        type: nextType,
                         isAutomatedPortfolio: isAutomated,
                         purchasePrice: isAutomated ? 0 : formData.purchasePrice,
                       });
+                      if (nextType !== "index") {
+                        setSelectedIndexPreset("");
+                      }
                     }}
                     required
                   >
                     <option value="stock">
                       {t("investments.investmentTypes.stock")}
+                    </option>
+                    <option value="index">
+                      {t("investments.investmentTypes.index")}
                     </option>
                     <option value="bond">
                       {t("investments.investmentTypes.bond")}
@@ -2242,6 +2252,43 @@ const Investments = () => {
                     </option>
                   </select>
                 </div>
+                {formData.type === "index" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("investments.indexPresets.label")}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={selectedIndexPreset}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedIndexPreset(id);
+                        const preset = indexPresets.find((p) => p.id === id);
+                        if (preset) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            type: "index",
+                            name: prev.name || preset.label,
+                            symbol: preset.symbol,
+                            currency: preset.currency || prev.currency,
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">
+                        {t("investments.indexPresets.none")}
+                      </option>
+                      {indexPresets.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t("investments.indexPresets.help")}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Símbolo <span className="text-gray-400">(opcional)</span>
