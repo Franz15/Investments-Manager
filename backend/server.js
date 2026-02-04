@@ -12,6 +12,7 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import portfolioFundRoutes from "./routes/portfolioFundRoutes.js";
+import portfolioBuilderRoutes from "./routes/portfolioBuilderRoutes.js";
 
 dotenv.config();
 
@@ -66,6 +67,7 @@ app.use("/api/debts", debtRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/portfolio-funds", portfolioFundRoutes);
+app.use("/api/portfolio-builder", portfolioBuilderRoutes);
 
 // Root route
 app.get("/", (req, res) => {
