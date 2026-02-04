@@ -10,6 +10,7 @@ import {
   User,
   LogOut,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useUser } from "../contexts/UserContext";
@@ -39,6 +40,13 @@ const Layout = ({ children }) => {
     navigate("/login");
   };
 
+  const isAdmin = currentUser?.role === "admin" || currentUser?.id === "javier";
+
+  const hasPortfolioBuilderAccess =
+    isAdmin ||
+    (currentUser?.permissions?.portfolioBuilder &&
+      currentUser?.id !== "test-dca");
+
   const navigation = [
     { name: t("sidebar.dashboard"), href: "/", icon: LayoutDashboard },
     { name: t("sidebar.accounts"), href: "/accounts", icon: Wallet },
@@ -49,11 +57,24 @@ const Layout = ({ children }) => {
     },
     { name: t("sidebar.investments"), href: "/investments", icon: TrendingUp },
     { name: t("sidebar.debts"), href: "/debts", icon: AlertCircle },
-    {
-      name: t("sidebar.portfolioBuilder"),
-      href: "/portfolio-builder",
-      icon: Building2,
-    },
+    ...(hasPortfolioBuilderAccess
+      ? [
+          {
+            name: t("sidebar.portfolioBuilder"),
+            href: "/portfolio-builder",
+            icon: Building2,
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            name: t("sidebar.adminAccess") || "Gestión accesos",
+            href: "/admin/access",
+            icon: ShieldCheck,
+          },
+        ]
+      : []),
     {
       name: currentUser?.name || t("sidebar.profile"),
       href: "/profile",

@@ -31,6 +31,7 @@ const PortfolioBuilder = () => {
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [forbidden, setForbidden] = useState(false);
   const [portfolioData, setPortfolioData] = useState(null);
   const [expandedSections, setExpandedSections] = useState(
     new Set(["calculator"]),
@@ -247,6 +248,7 @@ const PortfolioBuilder = () => {
   const loadConfig = React.useCallback(() => {
     setLoading(true);
     setError(null);
+    setForbidden(false);
     return api
       .get("/portfolio-builder/config")
       .then((res) => {
@@ -274,28 +276,40 @@ const PortfolioBuilder = () => {
       })
       .catch((err) => {
         console.error("Error cargando config Portfolio Builder:", err);
-        setError(
-          err.response?.data?.message ||
-            t("portfolioBuilder.errors.loadConfig") +
-              ": " +
-              (err.message || "Sin conexión"),
-        );
-        const fallback = buildPortfolioDataFromConfig(null, t);
-        setPortfolioData(fallback);
-        const allocation = DEFAULT_PORTFOLIO_ALLOCATION;
-        setCalculatorData({
-          totalAmount: allocation.totalAmountCalculated || 120000,
-          categories: allocation.categories.map((cat) => ({
-            name: cat.name,
-            expectedReturn: cat.expectedReturn
-              ? parseFloat(String(cat.expectedReturn).replace("%", ""))
-              : 0,
-            weight: cat.weight
-              ? parseFloat(String(cat.weight).replace("%", ""))
-              : 0,
-            description: cat.description || "",
-          })),
-        });
+        const status = err.response?.status;
+        const message = err.response?.data?.message;
+
+        if (status === 403) {
+          setForbidden(true);
+          setError(
+            message ||
+              "No tienes permisos para acceder al Portfolio Builder con esta cuenta.",
+          );
+        } else {
+          setError(
+            message ||
+              t("portfolioBuilder.errors.loadConfig") +
+                ": " +
+                (err.message || "Sin conexión"),
+          );
+
+          const fallback = buildPortfolioDataFromConfig(null, t);
+          setPortfolioData(fallback);
+          const allocation = DEFAULT_PORTFOLIO_ALLOCATION;
+          setCalculatorData({
+            totalAmount: allocation.totalAmountCalculated || 120000,
+            categories: allocation.categories.map((cat) => ({
+              name: cat.name,
+              expectedReturn: cat.expectedReturn
+                ? parseFloat(String(cat.expectedReturn).replace("%", ""))
+                : 0,
+              weight: cat.weight
+                ? parseFloat(String(cat.weight).replace("%", ""))
+                : 0,
+              description: cat.description || "",
+            })),
+          });
+        }
       })
       .finally(() => setLoading(false));
   }, [t]);
@@ -842,6 +856,32 @@ const PortfolioBuilder = () => {
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div
+          className={`max-w-xl w-full rounded-2xl border px-6 py-8 text-center ${
+            isDark
+              ? "bg-[#18181b] border-[#27272a] text-gray-100"
+              : "bg-white border-gray-200 text-gray-900"
+          }`}
+        >
+          <div className="flex justify-center mb-4">
+            <AlertCircle className="w-10 h-10 text-amber-500" />
+          </div>
+          <h1 className="text-xl font-semibold mb-2">
+            {t("portfolioBuilder.accessDeniedTitle") ||
+              "Acceso a Portfolio Builder restringido"}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {error ||
+              "Esta cuenta no tiene acceso al Portfolio Builder. Contacta con Javier para que te otorgue permisos si lo considera necesario."}
+          </p>
         </div>
       </div>
     );

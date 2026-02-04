@@ -127,6 +127,9 @@ const Profile = () => {
     return <LoadingSpinner />;
   }
 
+  const canChangePassword =
+    currentUser?.permissions?.canChangePassword !== false;
+
   return (
     <div className="space-y-6">
       <div>
@@ -355,172 +358,191 @@ const Profile = () => {
 
           {/* Cambio de Contraseña */}
           <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-            <button
-              onClick={() => {
-                setShowChangePassword(!showChangePassword);
-                setCurrentPassword("");
-                setNewPassword("");
-                setConfirmPassword("");
-                setPasswordError("");
-                setPasswordSuccess("");
-              }}
-              className="flex items-center gap-3 mb-4 w-full text-left"
-            >
+            <div className="flex items-center gap-3 mb-4 w-full text-left">
               <Lock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t("profile.changePassword")}
               </span>
-              {showChangePassword ? (
-                <ChevronUp className="h-4 w-4 ml-auto text-gray-400" />
-              ) : (
-                <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />
-              )}
-            </button>
+            </div>
 
-            {showChangePassword && (
-              <form onSubmit={handleChangePassword} className="space-y-4 mt-4">
-                <div>
-                  <label
-                    htmlFor="currentPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    {t("profile.currentPassword")}
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      id="currentPassword"
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full input-field pl-10 pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowCurrentPassword(!showCurrentPassword)
-                      }
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      {showCurrentPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="newPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    {t("profile.newPassword")}
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      id="newPassword"
-                      type={showNewPassword ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full input-field pl-10 pr-10"
-                      required
-                      minLength={4}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    {t("profile.confirmPassword")}
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full input-field pl-10 pr-10"
-                      required
-                      minLength={4}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {passwordError && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                    {passwordError}
-                  </div>
-                )}
-
-                {passwordSuccess && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
-                    {passwordSuccess}
-                  </div>
-                )}
-
+            {!canChangePassword ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("profile.changePasswordDisabled") ||
+                  "El cambio de contraseña está deshabilitado para esta cuenta. Contacta con el administrador."}
+              </p>
+            ) : (
+              <>
                 <button
-                  type="submit"
-                  disabled={
-                    isChangingPassword ||
-                    !currentPassword ||
-                    !newPassword ||
-                    !confirmPassword
-                  }
-                  className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: "var(--user-color-600)" }}
-                  onMouseEnter={(e) =>
-                    !e.currentTarget.disabled &&
-                    (e.currentTarget.style.backgroundColor =
-                      "var(--user-color-700)")
-                  }
-                  onMouseLeave={(e) =>
-                    !e.currentTarget.disabled &&
-                    (e.currentTarget.style.backgroundColor =
-                      "var(--user-color-600)")
-                  }
+                  onClick={() => {
+                    setShowChangePassword(!showChangePassword);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordError("");
+                    setPasswordSuccess("");
+                  }}
+                  className="flex items-center gap-3 mb-4 w-full text-left text-xs text-gray-600 dark:text-gray-400"
                 >
-                  {isChangingPassword ? (
-                    <>
-                      <LoadingSpinner message="" />
-                      <span>{t("common.loading")}</span>
-                    </>
+                  <span>
+                    {t("profile.changePasswordToggle") ||
+                      "Mostrar/ocultar formulario de cambio de contraseña"}
+                  </span>
+                  {showChangePassword ? (
+                    <ChevronUp className="h-4 w-4 ml-auto text-gray-400" />
                   ) : (
-                    t("common.save")
+                    <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />
                   )}
                 </button>
-              </form>
+
+                {showChangePassword && (
+                  <form
+                    onSubmit={handleChangePassword}
+                    className="space-y-4 mt-4"
+                  >
+                    <div>
+                      <label
+                        htmlFor="currentPassword"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        {t("profile.currentPassword")}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          id="currentPassword"
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full input-field pl-10 pr-10"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowCurrentPassword(!showCurrentPassword)
+                          }
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          {showCurrentPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="newPassword"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        {t("profile.newPassword")}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          id="newPassword"
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full input-field pl-10 pr-10"
+                          required
+                          minLength={4}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          {showNewPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="confirmPassword"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                      >
+                        {t("profile.confirmPassword")}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full input-field pl-10 pr-10"
+                          required
+                          minLength={4}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {passwordError && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                        {passwordError}
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
+                        {passwordSuccess}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={
+                        isChangingPassword ||
+                        !currentPassword ||
+                        !newPassword ||
+                        !confirmPassword
+                      }
+                      className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: "var(--user-color-600)" }}
+                      onMouseEnter={(e) =>
+                        !e.currentTarget.disabled &&
+                        (e.currentTarget.style.backgroundColor =
+                          "var(--user-color-700)")
+                      }
+                      onMouseLeave={(e) =>
+                        !e.currentTarget.disabled &&
+                        (e.currentTarget.style.backgroundColor =
+                          "var(--user-color-600)")
+                      }
+                    >
+                      {isChangingPassword ? (
+                        <>
+                          <LoadingSpinner message="" />
+                          <span>{t("common.loading")}</span>
+                        </>
+                      ) : (
+                        t("common.save")
+                      )}
+                    </button>
+                  </form>
+                )}
+              </>
             )}
           </div>
         </div>
