@@ -1,12 +1,62 @@
 import YahooFinance from "yahoo-finance2";
 import fetch from "node-fetch";
+import investingApi from "investing-com-api";
 
+const { getHistoricalData: getInvestingHistoricalData } = investingApi;
 const yahooFinance = new YahooFinance();
+
+/**
+ * Obtiene la cotización de un índice desde Investing.com usando investing-com-api.
+ * IMPORTANTE: para índices, el campo symbol debe ser el pairId numérico de Investing.com (ej: "46925").
+ */
+async function getInvestingIndexQuote(pairId, currency = "EUR") {
+  if (!pairId) return null;
+  try {
+    const to = new Date();
+    const from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000); // última semana, por si hay días sin datos
+
+    const data = await getInvestingHistoricalData({
+      input: String(pairId),
+      resolution: "D",
+      from,
+      to,
+    });
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return null;
+    }
+
+    const last = data[data.length - 1];
+    const prev = data.length > 1 ? data[data.length - 2] : null;
+
+    const price = last.price_close ?? last.price_open;
+    if (!price || price <= 0) return null;
+
+    let change = 0;
+    let changePercent = 0;
+    if (prev) {
+      const prevClose = prev.price_close ?? prev.price_open ?? price;
+      change = price - prevClose;
+      changePercent = prevClose ? (change / prevClose) * 100 : 0;
+    }
+
+    return {
+      price,
+      currency,
+      change,
+      changePercent,
+      source: "investing",
+    };
+  } catch (error) {
+    console.error("[Investing] Error obteniendo índice:", error.message);
+    return null;
+  }
+}
 
 /**
  * Obtiene la cotización en tiempo real de una inversión
  * @param {string} symbol - Símbolo de la inversión (ej: "AAPL", "BTC-USD")
- * @param {string} type - Tipo de inversión: 'stock', 'etf', 'bond', 'crypto', 'fund', 'other'
+ * @param {string} type - Tipo de inversión: 'stock', 'index', 'etf', 'bond', 'crypto', 'fund', 'other'
  * @param {string} currency - Moneda de la inversión
  * @returns {Promise<{price: number, currency: string, change: number, changePercent: number}>}
  */
@@ -34,6 +84,14 @@ export async function getQuote(
       return await getCryptoQuote(symbol, currency);
     }
 
+    // Para índices, intentar primero Investing.com (investing-com-api) usando el ID (pairId) como symbol
+    if (type === "index" && symbol) {
+      const investingQuote = await getInvestingIndexQuote(symbol, currency);
+      if (investingQuote) {
+        return investingQuote;
+      }
+    }
+
     // Para fondos de inversión, intentar primero con StockEvents si hay ISIN
     if (type === "fund" && isin) {
       try {
@@ -53,8 +111,8 @@ export async function getQuote(
       }
     }
 
-    // Para acciones, ETFs, bonos, fondos, usar Yahoo Finance
-    if (["stock", "etf", "bond", "fund"].includes(type)) {
+    // Para acciones, índices, ETFs, bonos, fondos, usar Yahoo Finance
+    if (["stock", "index", "etf", "bond", "fund"].includes(type)) {
       return await getYahooQuote(symbol || isin, currency);
     }
 

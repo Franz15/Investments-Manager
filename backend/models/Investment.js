@@ -52,6 +52,7 @@ const investmentSchema = new mongoose.Schema(
       required: true,
       enum: [
         "stock",
+        "index",
         "bond",
         "crypto",
         "fund",
@@ -75,30 +76,6 @@ const investmentSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
       // Si true, se actualiza automáticamente cuando se ejecuta la actualización masiva
-    },
-    status: {
-      type: String,
-      enum: ["active", "closed"],
-      default: "active",
-    },
-    closedAt: {
-      type: Date,
-    },
-    closeSummary: {
-      totalContributed: {
-        type: Number,
-        min: 0,
-      },
-      totalWithdrawn: {
-        type: Number,
-        min: 0,
-      },
-      resultAmount: {
-        type: Number,
-      },
-      resultPercent: {
-        type: Number,
-      },
     },
     quantity: {
       type: Number,
@@ -209,9 +186,6 @@ const investmentSchema = new mongoose.Schema(
 
 // Virtual para calcular el valor total
 investmentSchema.virtual("totalValue").get(function () {
-  if (this.status === "closed") {
-    return 0;
-  }
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas, currentPrice es el valor total actual
     return this.currentPrice;
@@ -222,9 +196,6 @@ investmentSchema.virtual("totalValue").get(function () {
 
 // Virtual para calcular la ganancia/pérdida
 investmentSchema.virtual("profitLoss").get(function () {
-  if (this.status === "closed" && this.closeSummary) {
-    return this.closeSummary.resultAmount || 0;
-  }
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas: valor actual - monto invertido
     return this.currentPrice - this.quantity;
@@ -236,9 +207,6 @@ investmentSchema.virtual("profitLoss").get(function () {
 
 // Virtual para calcular el porcentaje de ganancia/pérdida
 investmentSchema.virtual("profitLossPercentage").get(function () {
-  if (this.status === "closed" && this.closeSummary) {
-    return this.closeSummary.resultPercent || 0;
-  }
   if (this.isAutomatedPortfolio) {
     // Para carteras automatizadas: (valor actual - monto invertido) / monto invertido * 100
     if (this.quantity === 0) return 0;
