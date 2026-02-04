@@ -1897,19 +1897,34 @@ router.post("/execute-dca", async (req, res) => {
           continue;
         }
 
-        // Obtener precio actual
+        // Obtener precio actual (usando símbolo o ISIN según el tipo)
         let currentPrice = investment.currentPrice;
-        if (investment.symbol && investment.autoUpdate !== false) {
+        const hasSymbol = investment.symbol && String(investment.symbol).trim();
+        const hasIsin =
+          investment.isin &&
+          String(investment.isin).trim() &&
+          ["fund", "bond"].includes(investment.type);
+
+        if ((hasSymbol || hasIsin) && investment.autoUpdate !== false) {
           try {
-            const quote = await getQuote(investment.symbol, investment.isin);
+            const quote = await getQuote(
+              hasSymbol ? investment.symbol : null,
+              investment.type,
+              investment.currency,
+              hasIsin ? investment.isin : null,
+              investment.name,
+            );
             if (quote && quote.price) {
               currentPrice = quote.price;
               investment.currentPrice = currentPrice;
+              if (quote.currency) {
+                investment.currency = quote.currency;
+              }
             }
           } catch (error) {
             // Si falla la obtención de cotización, usar el precio actual
             console.error(
-              `Error obteniendo cotización para ${investment.symbol}:`,
+              `Error obteniendo cotización para inversión ${investment._id} (${investment.name}):`,
               error,
             );
           }

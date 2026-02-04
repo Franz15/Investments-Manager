@@ -145,6 +145,30 @@ export async function getQuote(
  */
 async function getStockEventsQuote(isin, symbol, currency = "EUR") {
   try {
+    const parseNumberFromString = (value) => {
+      if (value === null || value === undefined) return null;
+      const str = String(value).trim();
+      if (!str) return null;
+
+      // Caso 1: tiene punto y coma -> asumir coma como separador de miles y punto como decimal (ej: 4,082.18)
+      if (str.includes(".") && str.includes(",")) {
+        const normalized = str.replace(/,/g, "");
+        const num = parseFloat(normalized);
+        return Number.isNaN(num) ? null : num;
+      }
+
+      // Caso 2: solo comas -> formato europeo (ej: 4.082,18 o 4082,18)
+      if (!str.includes(".") && str.includes(",")) {
+        const normalized = str.replace(/\./g, "").replace(",", ".");
+        const num = parseFloat(normalized);
+        return Number.isNaN(num) ? null : num;
+      }
+
+      // Caso 3: solo puntos o solo dígitos
+      const num = parseFloat(str);
+      return Number.isNaN(num) ? null : num;
+    };
+
     // StockEvents usa formato: https://stockevents.app/es/stock/ISIN.FUND
     // O también puede ser: https://stockevents.app/es/stock/SYMBOL
     let url;
@@ -183,28 +207,37 @@ async function getStockEventsQuote(isin, symbol, currency = "EUR") {
     let changePercent = 0;
 
     // Patrón 1: Buscar en JSON embebido (común en aplicaciones React/Next.js)
-    const jsonPattern = /"price":\s*([\d,]+\.?\d*)/i;
+    const jsonPattern = /"price":\s*([\d.,]+\.?\d*)/i;
     const jsonMatch = html.match(jsonPattern);
     if (jsonMatch && jsonMatch[1]) {
-      price = parseFloat(jsonMatch[1].replace(",", "."));
+      price = parseNumberFromString(jsonMatch[1]);
     }
 
     // Patrón 2: Buscar en atributos data-*
     if (!price) {
-      const dataPricePattern = /data-price=["']([\d,]+\.?\d*)["']/i;
+      const dataPricePattern = /data-price=["']([\d.,]+\.?\d*)["']/i;
       const dataMatch = html.match(dataPricePattern);
       if (dataMatch && dataMatch[1]) {
-        price = parseFloat(dataMatch[1].replace(",", "."));
+        price = parseNumberFromString(dataMatch[1]);
       }
     }
 
     // Patrón 3: Buscar en elementos con clases comunes de precio
     if (!price) {
       const classPricePattern =
-        /class="[^"]*price[^"]*"[^>]*>[\s€$]*([\d,]+\.?\d*)/i;
+        /class="[^"]*price[^"]*"[^>]*>[\s€$]*([\d.,]+\.?\d*)/i;
       const classMatch = html.match(classPricePattern);
       if (classMatch && classMatch[1]) {
-        price = parseFloat(classMatch[1].replace(",", "."));
+        price = parseNumberFromString(classMatch[1]);
+      }
+    }
+
+    // Patrón 4: buscar cualquier número con símbolo € cercano en el contenido (fallback genérico)
+    if (!price) {
+      const euroPattern = /€\s*([\d.,]+)/;
+      const euroMatch = html.match(euroPattern);
+      if (euroMatch && euroMatch[1]) {
+        price = parseNumberFromString(euroMatch[1]);
       }
     }
 

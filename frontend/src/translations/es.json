@@ -37,7 +37,8 @@
     "portfolioBuilder": "Portfolio Builder",
     "profile": "Perfil",
     "logout": "Cerrar Sesión",
-    "developmentVersion": "Desarrollo en curso"
+    "developmentVersion": "Desarrollo en curso",
+    "adminAccess": "Gestión de accesos"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -616,7 +617,9 @@
     "passwordChanged": "Contraseña cambiada correctamente",
     "changePasswordError": "Error al cambiar la contraseña",
     "showPassword": "Mostrar contraseña",
-    "hidePassword": "Ocultar contraseña"
+    "hidePassword": "Ocultar contraseña",
+    "changePasswordDisabled": "El cambio de contraseña está deshabilitado para esta cuenta. Contacta con el administrador.",
+    "changePasswordToggle": "Mostrar/ocultar formulario de cambio de contraseña"
   },
   "login": {
     "title": "Iniciar Sesión",
@@ -671,87 +674,113 @@
         "unassigned": "Sin asignar"
       }
     },
-    "sections": {
-      "ratios": {
-        "title": "Ratios Mínimos Compra/Alquiler",
-        "price": "Precio",
-        "rent": "Alquiler",
-        "ratio": "Ratio"
-      },
-      "financing": {
-        "title": "Financiación"
-      },
-      "capitalDistribution": {
-        "title": "Distribución de Capital",
-        "total": "(Total: {amount})",
-        "isin": "ISIN:",
-        "viewFinect": "Ver en Finect",
-        "viewDetails": "Ver detalles",
-        "vol12M": "Vol 12M:",
-        "r12M": "R 12M:",
-        "vol": "Vol:"
-      },
-      "videos": {
-        "title": "Videos y Recursos",
-        "viewVideo": "Ver video"
-      },
-      "monetarios": {
-        "title": "Ahorro Remunerado / Fondos Monetarios"
-      },
-      "rentaVariable": {
-        "title": "Inversión a Largo Plazo / Fondos Indexados de Renta Variable"
-      },
-      "rentaFija": {
-        "title": "Renta Fija / Bonos / Inversión de Medio Plazo"
-      },
-      "alternativos": {
-        "title": "Inversiones Alternativas",
-        "description": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
-      },
-      "subsections": {
-        "rfCortoPlazo": {
-          "name": "Renta Fija Corto Plazo",
-          "description": "Hermano mayor del Fondo Monetario, para buscar retornos del 5%-6% con bajo riesgo. Inversión de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
-        },
-        "rfMedioPlazo": {
-          "name": "Renta Fija Medio Plazo",
-          "description": "Renta Fija con riesgo medio, para buscar retornos del 7%-8%"
-        }
-      }
-    },
-    "sync": {
-      "extracting": "Extrayendo fondos del Excel...",
-      "syncing": "Sincronizando {count} fondos con la base de datos...",
-      "success": "✓ {count} fondos sincronizados correctamente",
-      "error": "Error al sincronizar fondos: {message}"
-    },
+    "accessDeniedTitle": "Acceso a Portfolio Builder restringido",
+    "accessDeniedDescription": "Esta cuenta no tiene acceso al Portfolio Builder. Contacta con Javier para que te otorgue permisos si lo considera necesario.",
     "errors": {
-      "loadExcel": "Error al cargar el archivo Excel",
-      "loadConfig": "Error al cargar la configuración"
-    },
-    "categories": {
-      "monetarios": "Monetarios",
-      "rfCorto": "Renta Fija Corto Plazo",
-      "rfMedio": "Renta Fija Medio Plazo",
-      "rv": "Renta Variable",
-      "alternativos": "Alternativos",
-      "descriptions": {
-        "monetarios": "Liquidez sin riesgo, ideal para sacar dinero",
-        "rfCorto": "Inversión de bajo riesgo, ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
-        "rfMedio": "Ganar dinero con la mitad de volatilidad que la Renta Variable",
-        "rv": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
-        "alternativos": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
-      }
-    },
-    "tips": {
-      "enCasoDeCaidas": "En caso de caidas fuertes en la RV, utilizar parte del dinero de monetarios para compras adicionales",
-      "siempreYCuando": "Siempre y cuando tengas un fondo de emergencia suficiente",
-      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo",
-      "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar"
-    },
-    "descriptions": {
-      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
-      "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar el riesgo"
+      "loadConfig": "Error al cargar la configuración del Portfolio Builder"
     }
+  },
+  "adminAccess": {
+    "forbiddenTitle": "Solo Javier o un administrador puede acceder a este panel",
+    "forbiddenDescription": "No tienes permisos suficientes para gestionar accesos.",
+    "title": "Gestión de accesos",
+    "subtitle": "Activa o desactiva el acceso a las distintas partes de la aplicación para cada usuario.",
+    "usersHeader": "Usuarios",
+    "loading": "Cargando usuarios...",
+    "roleLabel": "Rol",
+    "roleAdmin": "admin",
+    "roleUser": "usuario",
+    "testAccount": "Cuenta de test",
+    "portfolioBuilderLabel": "Portfolio Builder",
+    "canChangePasswordLabel": "Permitir cambio de contraseña",
+    "mainAdminLabel": "Administrador principal (permisos fijos)",
+    "resetPasswordLabel": "Resetear contraseña",
+    "resetPasswordButton": "Resetear",
+    "resetPasswordSuccess": "Contraseña reseteada correctamente.",
+    "resetPasswordGenerated": "Contraseña reseteada. Nueva contraseña: {password}",
+    "resetPasswordError": "No se ha podido resetear la contraseña del usuario.",
+    "empty": "No se han encontrado usuarios."
+  },
+  "sections": {
+    "ratios": {
+      "title": "Ratios Mínimos Compra/Alquiler",
+      "price": "Precio",
+      "rent": "Alquiler",
+      "ratio": "Ratio"
+    },
+    "financing": {
+      "title": "Financiación"
+    },
+    "capitalDistribution": {
+      "title": "Distribución de Capital",
+      "total": "(Total: {amount})",
+      "isin": "ISIN:",
+      "viewFinect": "Ver en Finect",
+      "viewDetails": "Ver detalles",
+      "vol12M": "Vol 12M:",
+      "r12M": "R 12M:",
+      "vol": "Vol:"
+    },
+    "videos": {
+      "title": "Videos y Recursos",
+      "viewVideo": "Ver video"
+    },
+    "monetarios": {
+      "title": "Ahorro Remunerado / Fondos Monetarios"
+    },
+    "rentaVariable": {
+      "title": "Inversión a Largo Plazo / Fondos Indexados de Renta Variable"
+    },
+    "rentaFija": {
+      "title": "Renta Fija / Bonos / Inversión de Medio Plazo"
+    },
+    "alternativos": {
+      "title": "Inversiones Alternativas",
+      "description": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
+    },
+    "subsections": {
+      "rfCortoPlazo": {
+        "name": "Renta Fija Corto Plazo",
+        "description": "Hermano mayor del Fondo Monetario, para buscar retornos del 5%-6% con bajo riesgo. Inversión de bajo riesgo. Ideal para superar la inflación y moverte a otras cosas en caso de que lo desees"
+      },
+      "rfMedioPlazo": {
+        "name": "Renta Fija Medio Plazo",
+        "description": "Renta Fija con riesgo medio, para buscar retornos del 7%-8%"
+      }
+    }
+  },
+  "sync": {
+    "extracting": "Extrayendo fondos del Excel...",
+    "syncing": "Sincronizando {count} fondos con la base de datos...",
+    "success": "✓ {count} fondos sincronizados correctamente",
+    "error": "Error al sincronizar fondos: {message}"
+  },
+  "errors": {
+    "loadExcel": "Error al cargar el archivo Excel",
+    "loadConfig": "Error al cargar la configuración"
+  },
+  "categories": {
+    "monetarios": "Monetarios",
+    "rfCorto": "Renta Fija Corto Plazo",
+    "rfMedio": "Renta Fija Medio Plazo",
+    "rv": "Renta Variable",
+    "alternativos": "Alternativos",
+    "descriptions": {
+      "monetarios": "Liquidez sin riesgo, ideal para sacar dinero",
+      "rfCorto": "Inversión de bajo riesgo, ideal para superar la inflación y moverte a otras cosas en caso de que lo desees",
+      "rfMedio": "Ganar dinero con la mitad de volatilidad que la Renta Variable",
+      "rv": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+      "alternativos": "Ganar dinero mientras bajas el riesgo de la cartera. Máxima diversificación"
+    }
+  },
+  "tips": {
+    "enCasoDeCaidas": "En caso de caidas fuertes en la RV, utilizar parte del dinero de monetarios para compras adicionales",
+    "siempreYCuando": "Siempre y cuando tengas un fondo de emergencia suficiente",
+    "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo",
+    "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar"
+  },
+  "descriptions": {
+    "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
+    "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar el riesgo"
   }
 }

@@ -670,6 +670,12 @@ router.get("/balance-chart", async (req, res) => {
   }
 });
 
+// Clave de fecha en hora local (YYYY-MM-DD) para comparar días sin errores de timezone
+function getLocalDateKey(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
 // GET balance total día a día
 // Enfoque acumulativo: calcula el balance histórico aplicando todas las operaciones en orden cronológico
 router.get("/balance-daily", async (req, res) => {
@@ -781,12 +787,14 @@ router.get("/balance-daily", async (req, res) => {
         initialCash = currentCashBalance;
 
         // Separar subcuentas por fecha: las que tienen initialDate antes/igual a startDate y las que tienen después
+        // Usar clave local (YYYY-MM-DD) para evitar que timezone haga que una subcuenta no se aplique ningún día
+        const startDateKey = getLocalDateKey(startDateNormalized);
         const subAccountsBeforeStart = [];
         cashSubAccountsWithDate.forEach((subAcc) => {
           const subAccInitialDate = new Date(subAcc.initialDate);
-          subAccInitialDate.setHours(0, 0, 0, 0);
+          const subAccDateKey = getLocalDateKey(subAccInitialDate);
 
-          if (subAccInitialDate <= startDateNormalized) {
+          if (subAccDateKey <= startDateKey) {
             // Esta subcuenta ya existía al inicio, su balance está incluido en initialCash
             subAccountsBeforeStart.push(subAcc);
           } else {
@@ -912,12 +920,10 @@ router.get("/balance-daily", async (req, res) => {
     const result = [];
     let cash = initialCash; // Empezamos con el cash inicial calculado
 
-    // Crear mapas para acceso rápido a operaciones por fecha
+    // Crear mapas por fecha en hora local (YYYY-MM-DD) para que operaciones/transacciones caigan en el día correcto
     const operationsByDate = new Map();
     allCapitalOperations.forEach((op) => {
-      const opDate = new Date(op.date);
-      opDate.setHours(0, 0, 0, 0);
-      const dateKey = opDate.toISOString().split("T")[0];
+      const dateKey = getLocalDateKey(op.date);
       if (!operationsByDate.has(dateKey)) {
         operationsByDate.set(dateKey, []);
       }
@@ -926,9 +932,7 @@ router.get("/balance-daily", async (req, res) => {
 
     const transactionsByDate = new Map();
     allTransactions.forEach((t) => {
-      const tDate = new Date(t.date);
-      tDate.setHours(0, 0, 0, 0);
-      const dateKey = tDate.toISOString().split("T")[0];
+      const dateKey = getLocalDateKey(t.date);
       if (!transactionsByDate.has(dateKey)) {
         transactionsByDate.set(dateKey, []);
       }
@@ -939,7 +943,7 @@ router.get("/balance-daily", async (req, res) => {
     const investmentValuesByDate = new Map();
 
     for (const date of dates) {
-      const dateKey = date.toISOString().split("T")[0];
+      const dateKey = getLocalDateKey(date);
       const dateEndNormalized = new Date(date);
       dateEndNormalized.setHours(23, 59, 59, 999);
 
@@ -947,16 +951,13 @@ router.get("/balance-daily", async (req, res) => {
 
       // Aplicar efectivo inicial de subcuentas si su initialDate es este día
       // (solo para subcuentas que se crearon después de startDate)
+      // Comparar por clave local (YYYY-MM-DD) para que el efectivo aparezca el día correcto y no se pierda por timezone
       if (useCashCalculation && subAccountsAfterStart.length > 0) {
-        const dateNormalized = new Date(date);
-        dateNormalized.setHours(0, 0, 0, 0);
-
+        const dateKeyLocal = getLocalDateKey(date);
         subAccountsAfterStart.forEach((subAcc) => {
           const subAccInitialDate = new Date(subAcc.initialDate);
-          subAccInitialDate.setHours(0, 0, 0, 0);
-
-          // Si la fecha inicial de la subcuenta es este día, aplicar su balance
-          if (subAccInitialDate.getTime() === dateNormalized.getTime()) {
+          const subAccDateKey = getLocalDateKey(subAccInitialDate);
+          if (subAccDateKey === dateKeyLocal) {
             cash += subAcc.balance;
           }
         });
@@ -1000,10 +1001,8 @@ router.get("/balance-daily", async (req, res) => {
         }
       }
 
-      // Verificar si es el día de hoy (último día)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isToday = dateKey === today.toISOString().split("T")[0];
+      // Verificar si es el día de hoy (último día), usando clave local
+      const isToday = dateKey === getLocalDateKey(new Date());
 
       // Calcular valor de inversiones hasta esta fecha
       let investmentsValue = 0;
@@ -1131,12 +1130,9 @@ router.get("/balance-daily", async (req, res) => {
         }
       }
 
-      // Para el último día (hoy), usar el cash actual directamente (igual que /stats)
-      // Esto asegura que el balance del último día coincida con /stats
-      let cashForBalance = cash;
-      if (isToday && useCashCalculation) {
-        cashForBalance = currentCashBalance;
-      }
+      // Usar siempre el efectivo acumulado día a día (incl. hoy). No sustituir por currentCashBalance
+      // en el último día, para que los ingresos/efectivo añadido aparezcan en la fecha real, no al final.
+      const cashForBalance = cash;
 
       // Balance total = cash + subcuentas de inversión + inversiones - deudas
       // Si no estamos calculando cash (sin datos suficientes), solo reflejamos inversiones - deudas
@@ -1164,10 +1160,7 @@ router.get("/balance-daily", async (req, res) => {
 
       // Calcular cash del último día
       // Para el último día (hoy), usar el cash actual directamente (igual que /stats)
-      const todayForComparison = new Date();
-      todayForComparison.setHours(0, 0, 0, 0);
-      const isLastDayToday =
-        lastDateKey === todayForComparison.toISOString().split("T")[0];
+      const isLastDayToday = lastDateKey === getLocalDateKey(new Date());
 
       let lastDayCash = 0;
       if (useCashCalculation) {
@@ -1204,12 +1197,11 @@ router.get("/balance-daily", async (req, res) => {
             }
           });
 
-          // Aplicar subcuentas con initialDate
+          // Aplicar subcuentas con initialDate (comparar por clave local)
           if (subAccountsAfterStart.length > 0) {
             subAccountsAfterStart.forEach((subAcc) => {
-              const subAccInitialDate = new Date(subAcc.initialDate);
-              subAccInitialDate.setHours(0, 0, 0, 0);
-              if (subAccInitialDate <= lastDateNormalized) {
+              const subAccDateKey = getLocalDateKey(subAcc.initialDate);
+              if (subAccDateKey <= lastDateKey) {
                 lastDayCash += subAcc.balance;
               }
             });
@@ -1220,12 +1212,10 @@ router.get("/balance-daily", async (req, res) => {
       }
 
       // Calcular inversiones del último día (usar modelo Investment directamente para hoy)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const isToday = lastDateKey === today.toISOString().split("T")[0];
+      const isTodayForInvestments = lastDateKey === getLocalDateKey(new Date());
 
       let lastDayInvestments = 0;
-      if (isToday) {
+      if (isTodayForInvestments) {
         // Para hoy, usar el modelo Investment directamente (igual que /stats)
         lastDayInvestments = perfInvestments.reduce((sum, inv) => {
           const value = inv.isAutomatedPortfolio
