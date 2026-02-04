@@ -1,0 +1,1082 @@
+[
+  {
+    "name": "La Francaise Tresorerie",
+    "isin": "FR0000991390",
+    "link": "https://www.finect.com/fondos-inversion/FR0000991390-La_francaise_tresorerie_isr_r",
+    "volatility12M": "0.08%",
+    "return12M": "4.02%",
+    "notes": "Monetario Myinvestor",
+    "category": "Monetarios"
+  },
+  {
+    "name": "AXA Tresor Court Terme C",
+    "isin": "FR0000447823",
+    "link": "https://www.finect.com/fondos-inversion/FR0000447823-Axa_tresor_court_terme_c",
+    "volatility12M": "0.09%",
+    "return12M": "4.09%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Groupama Tresorerie",
+    "isin": "FR0000989626",
+    "link": "https://www.finect.com/fondos-inversion/FR0000989626-Groupama_tresorerie_ic",
+    "volatility12M": "0.08%",
+    "return12M": "4.16%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Renta 4 Renta Fija 6M",
+    "isin": "ES0128520006",
+    "link": "https://www.finect.com/fondos-inversion/ES0128520006-Renta_4_renta_fija_6_meses_fi",
+    "volatility12M": "0.10%",
+    "return12M": "3.96%",
+    "notes": "Monetario R4",
+    "category": "Monetarios"
+  },
+  {
+    "name": "Blackrock Global Funds Euro Reserve Fund A2 Eur",
+    "isin": "LU0432365988",
+    "link": "https://www.finect.com/fondos-inversion/LU0432365988-Bgf_euro_reserve_a2_eur",
+    "volatility12M": "0.09%",
+    "return12M": "3.53%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Santander Rendimiento Cartera FI",
+    "isin": "ES0138534054",
+    "link": "https://www.finect.com/fondos-inversion/ES0138534054-Santander_rendimiento_cartera_fi",
+    "volatility12M": "0.10%",
+    "return12M": "4.04%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Pictet-Short-Term Money Market JPY P",
+    "isin": "LU0309035441",
+    "link": "https://www.finect.com/fondos-inversion/LU0309035441-Pictetshortterm_money_market_jpy_p",
+    "volatility12M": "-",
+    "return12M": "-",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Caixabank Monetario Rendimiento Institucional FI",
+    "isin": "ES0138045002",
+    "link": "https://www.finect.com/fondos-inversion/ES0138045051-Caixabank_monetario_rend_instituc_fi",
+    "volatility12M": "0.07%",
+    "return12M": "4.04%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "Lyxor Smart Overnight Return UCITS ETF C-EUR",
+    "isin": "LU1190417599",
+    "link": "https://www.justetf.com/en/etf-profile.html?isin=LU1190417599#overview",
+    "volatility12M": "0.07%",
+    "return12M": "4.11%",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "BlackRock Euro Ultra Short Core Bond Fund Accumulating EUR",
+    "isin": "IE00BMYPM319",
+    "link": "https://www.finect.com/fondos-inversion/IE00BMYPM319-Blackrock_euro_ultra_shrt_cor_bdfdacceur",
+    "volatility12M": "-",
+    "return12M": "-",
+    "notes": null,
+    "category": "Monetarios"
+  },
+  {
+    "name": "DWS Floating Rates",
+    "isin": "LU0034353002",
+    "link": "https://www.finect.com/fondos-inversion/LU0034353002-Dws_floating_rate_notes_lc",
+    "volatility12M": "0.19%",
+    "return12M": "4.73%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Carmignac Sécurité AW EUR Acc",
+    "isin": "FR0010149120",
+    "link": "https://www.finect.com/fondos-inversion/FR0010149120-Carmignac_securite_aw_eur_acc",
+    "volatility12M": "1.83%",
+    "return12M": "6.42%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Renta 4 Renta Fija R FI",
+    "isin": "ES0176954008",
+    "link": "https://www.finect.com/fondos-inversion/ES0176954008-Renta_4_renta_fija_r_fi",
+    "volatility12M": "0.84%",
+    "return12M": "5.63%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "BlackRock Global Funds - Euro Short Duration Bond Fund I2 EUR",
+    "isin": "LU0468289250",
+    "link": "https://www.finect.com/fondos-inversion/LU0468289250-Bgf_euro_short_duration_bond_i2_eur",
+    "volatility12M": "1.88%",
+    "return12M": "5.09%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Vanguard Global Short-Term Bond Index Fund EUR Hedged Acc",
+    "isin": "IE00BH65QP47",
+    "link": "https://www.finect.com/fondos-inversion/IE00BH65QP47-Vanguard_glb_st_bd_idx__h_acc",
+    "volatility12M": "2.52%",
+    "return12M": "6.06%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Amundi Enhanced Ultra Short Term Bond SRI R2-C",
+    "isin": "FR0010830885",
+    "link": "https://www.finect.com/fondos-inversion/FR0013508934-Amundi_enhanced_ult_sht_trm_bd_sri_r2",
+    "volatility12M": "0.37%",
+    "return12M": "5.22%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Amundi Ultra Short Term Bond SRI I C",
+    "isin": "FR0011088657",
+    "link": "https://www.finect.com/fondos-inversion/FR0011088657-Amundi_ultra_short_term_bond_sri_i_c",
+    "volatility12M": "0.19%",
+    "return12M": "4.47%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Ostrum SRI Crédit Euro 1-3 R (C) EUR",
+    "isin": "FR0011071778",
+    "link": "https://www.finect.com/fondos-inversion/FR0011071778-Ostrum_sri_credit_euro_13_rc",
+    "volatility12M": "1.68%",
+    "return12M": "6.19%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Evli Nordic Corporate Bond B",
+    "isin": "FI0008811997",
+    "link": "https://www.finect.com/fondos-inversion/FI0008811997-Evli_nordic_corporate_bond_b",
+    "volatility12M": "1.69%",
+    "return12M": "9.74%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Neuberger Berman Ultra Short Term Euro Bond Fund Class EUR I Accumulating",
+    "isin": "IE00BFZMJT78",
+    "link": "https://www.finect.com/fondos-inversion/IE00BFZMJT78-Neuberger_berman_ultr_st_er_bd_eur_iacc",
+    "volatility12M": "1.06%",
+    "return12M": "7.41%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "UBAM - Dynamic US Dollar Bond AHC EUR",
+    "isin": "LU0352158918",
+    "link": "https://www.finect.com/fondos-inversion/LU0352158918-Ubam_dynamic_us_dollar_bond_ahc_eur",
+    "volatility12M": "0.46%",
+    "return12M": "5.35%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "LAZARD EUR SHORT DUR SRI IC",
+    "isin": "FR0000027609",
+    "link": "https://www.finect.com/fondos-inversion/FR0000027609-Lazard_euro_short_duration_sri_ic",
+    "volatility12M": "1.57%",
+    "return12M": "4.90%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Amundi S.F. - Diversified Short-Term Bond A EUR ND",
+    "isin": "LU1706854152",
+    "link": "https://www.finect.com/fondos-inversion/LU1706854152-Amundi_sf_diversified_st_bd_a_eur_nd",
+    "volatility12M": "1.70%",
+    "return12M": "5.18%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "GAM Star Fund plc - GAM Star Cat Bond Class Ordinary EUR Accumulation Hedged",
+    "isin": "IE00B3Q8M574",
+    "link": "https://www.finect.com/fondos-inversion/IE00B3Q8M574-Gam_star_cat_bond_ord_eur_acc",
+    "volatility12M": "2.70%",
+    "return12M": "8.88%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "UBS Renta Fija 0-5 B FI",
+    "isin": "ES0124880032",
+    "link": "https://www.finect.com/fondos-inversion/ES0124880032-Cs_renta_fija_05_b_fi",
+    "volatility12M": "2.17%",
+    "return12M": "4.95%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "B&H Deuda FI",
+    "isin": "ES0112618006",
+    "link": "https://www.finect.com/fondos-inversion/ES0112618006-Bh_deuda_fi",
+    "volatility12M": "1.16%",
+    "return12M": "5.37%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Tikehau Short Duration Fund SF EUR Acc",
+    "isin": "LU1585265066",
+    "link": "https://www.finect.com/fondos-inversion/LU2098119287-Tikehau_short_duration_sf_eur_acc",
+    "volatility12M": "0.59%",
+    "return12M": "4.71%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Aegon European ABS Fund B EUR Acc",
+    "isin": "IE00BZ005D22",
+    "link": "https://www.finect.com/fondos-inversion/IE00BZ005D22-Aegon_european_abs_b_eur_acc",
+    "volatility12M": "0.70%",
+    "return12M": "4.77%",
+    "notes": null,
+    "category": "RF corto plazo"
+  },
+  {
+    "name": "Buy & Hold Luxembourg B&H Bond Class 2",
+    "isin": "LU1988110927",
+    "link": "https://www.finect.com/fondos-inversion/LU2278574988-Buy__hold_luxembourg_bh_bond_class_2",
+    "volatility12M": "3.72%",
+    "return12M": "10.20%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Carmignac Pf Credit A EUR Acc",
+    "isin": "LU1623762843",
+    "link": "https://www.finect.com/fondos-inversion/LU1623762843-Carmignac_pf_credit_a_eur_acc",
+    "volatility12M": "3.55%",
+    "return12M": "13.11%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Vanguard Global Bond Index Fund EUR Hedged Acc",
+    "isin": "IE00B18GC888",
+    "link": "https://www.finect.com/fondos-inversion/IE00B18GC888-Vanguard_global_bd_idx_eur_h_acc",
+    "volatility12M": "6.43%",
+    "return12M": "5.93%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Vanguard U.S. Government Bond Index Fund EUR Hedged Acc",
+    "isin": "IE0007471471",
+    "link": "https://www.finect.com/fondos-inversion/IE0007471471-Vanguard_us_govt_bd_idx__h_acc",
+    "volatility12M": "6.72%",
+    "return12M": "6.49%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Man Funds plc - Man Global Investment Grade Opportunities D H EUR",
+    "isin": "IE000MI53C66",
+    "link": "https://www.finect.com/fondos-inversion/IE000VA5W9H0-Man_glg_glingd_opports_i_h_eur_acc",
+    "volatility12M": "5.80%",
+    "return12M": "21.28%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Sigma Investment House FCP - BrightGate Global Income Fund A I",
+    "isin": "LU0942882589",
+    "link": "https://www.finect.com/fondos-inversion/LU0942882589-Sigma_inv_house_fcp_brightg_glb_inc_a_i",
+    "volatility12M": "3.45%",
+    "return12M": "13.39%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Schroder International Selection Fund EURO Corporate Bond A Accumulation EUR Duration Hedged",
+    "isin": "LU0607220562",
+    "link": "https://www.finect.com/fondos-inversion/LU0607220562-Schroder_isf_euro_corp_bd_a_acc_eur_h",
+    "volatility12M": "1.65%",
+    "return12M": "10.23%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Candriam Bonds Global High Yield Class C EUR Cap",
+    "isin": "LU0170291933",
+    "link": "https://www.finect.com/fondos-inversion/LU0170291933-Candriam_bds_global_hi_yld_c_eur_cap",
+    "volatility12M": "4.38%",
+    "return12M": "12.80%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "BlueBay Funds - BlueBay High Yield ESG Bond Fund M - EUR",
+    "isin": "LU0438373382",
+    "link": "https://www.finect.com/fondos-inversion/LU0438373382-Bluebay_high_yield_esg_bond_m_eur",
+    "volatility12M": "2.60%",
+    "return12M": "5.35%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "M&G (Lux) Global Floating Rate High Yield Fund EUR A-H Acc",
+    "isin": "LU1670722161",
+    "link": "https://www.finect.com/fondos-inversion/LU1670722161-Mg_lux_glb_fl_rt_hy_a_h_eur_acc",
+    "volatility12M": "1.94%",
+    "return12M": "5.25%",
+    "notes": null,
+    "category": "RF medio plazo"
+  },
+  {
+    "name": "Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation",
+    "isin": "IE0031786696",
+    "link": "https://www.finect.com/fondos-inversion/IE0031786142-Vanguard_emerg_mkts_stk_idx_inv_eur_acc",
+    "volatility12M": "11.84%",
+    "return12M": "9.92%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity MSCI World Index Fund EUR P Acc",
+    "isin": "IE00BYX5NX33",
+    "link": "https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc",
+    "volatility12M": "10.38%",
+    "return12M": "19.39%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity S&P 500 Index Fund EUR P Acc",
+    "isin": "IE00BYX5MX67",
+    "link": "https://www.finect.com/fondos-inversion/IE00BYX5MX67-Fidelity_sp_500_index_eur_p_acc",
+    "volatility12M": "11.01%",
+    "return12M": "21.03%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity Funds - Euro 50 Index Fund A-Acc-EUR",
+    "isin": "LU0261952682",
+    "link": "https://www.finect.com/fondos-inversion/LU0261952682-Fidelity_euro_stoxx_50_aacceur",
+    "volatility12M": "13.38%",
+    "return12M": "16.93%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Robeco QI European Conservative Equities D €",
+    "isin": "LU0339661307",
+    "link": "https://www.finect.com/fondos-inversion/LU0339661307-Robeco_qi_european_cnsrv_eqs_d_",
+    "volatility12M": "5.08%",
+    "return12M": "15.32%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity Funds - Sustainable Health Care Fund A-Acc-EUR",
+    "isin": "LU0261952419",
+    "link": "https://www.finect.com/fondos-inversion/LU0261952419-Fidelity_sust_glb_hlthcare_aacceur",
+    "volatility12M": "9.41%",
+    "return12M": "16.91%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "PICTET CHINA INDEX P ACC (EUR)",
+    "isin": "LU0625737910",
+    "link": "https://www.finect.com/fondos-inversion/LU0625737910-Pictetchina_index_p_eur",
+    "volatility12M": "16.82%",
+    "return12M": "-8.54%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "iShares Emerging Markets Index Fund (IE) D Acc EUR",
+    "isin": "IE00BYWYCC39",
+    "link": "https://www.finect.com/fondos-inversion/IE00BYWYCC39-Ishares_emergmkts_idx_ie_d_acc_eur",
+    "volatility12M": "10.06%",
+    "return12M": "9.69%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity Funds - Global Technology Fund A-Acc-EUR",
+    "isin": "LU0346389348",
+    "link": "https://www.finect.com/fondos-inversion/LU1213836080-Fidelity_global_technology_aacceur",
+    "volatility12M": "14.36%",
+    "return12M": "35.08%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "JPMorgan Funds - Global Focus Fund A (acc) - EUR",
+    "isin": "LU0210534227",
+    "link": "https://www.finect.com/fondos-inversion/LU0210534227-Jpm_global_focus_a_acc_eur",
+    "volatility12M": "11.15%",
+    "return12M": "29.89%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Jupiter India Select Class L EUR Acc",
+    "isin": "LU0329070915",
+    "link": "https://www.finect.com/fondos-inversion/LU0329070915-Jupiter_india_select_l_eur_acc",
+    "volatility12M": "17.24%",
+    "return12M": "22.29%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Allianz Global Investors Fund - Allianz Global Artificial Intelligence AT EUR",
+    "isin": "LU1548497699",
+    "link": "https://www.finect.com/fondos-inversion/LU1548497699-Allianz_global_artfcl_intlgc_at_eur",
+    "volatility12M": "21.05%",
+    "return12M": "-15.96%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Allianz Pet and Animal Wellbeing AT H2 EUR",
+    "isin": "LU1931536152LU1931536152",
+    "link": "https://www.finect.com/fondos-inversion/LU1931536152-Allianz_pet_and_animal_wlb_at_h2_eur",
+    "volatility12M": "13.81%",
+    "return12M": "-9.24%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Janus Henderson Horizon Global Smaller Companies Fund A2 EUR",
+    "isin": "LU1984712320",
+    "link": "https://www.finect.com/fondos-inversion/LU1984712320-Janus_henderson_hrzn_glb_sc_a2_eur_acc",
+    "volatility12M": "15.95%",
+    "return12M": "-4.33%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "GUINNESS GLOBAL EQUITY INCOME D EUR ACC",
+    "isin": "IE00BDGV0290",
+    "link": "https://www.finect.com/fondos-inversion/IE00BDGV0290-Guinness_global_equity_income_d_eur_acc",
+    "volatility12M": "11.50%",
+    "return12M": "11.92%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "JPMorgan Funds - Pacific Equity Fund A (acc) - EUR",
+    "isin": "LU0217390573",
+    "link": "https://www.finect.com/fondos-inversion/LU0217390573-Jpm_pacific_equity_a_acc_eur",
+    "volatility12M": "9.67%",
+    "return12M": "-5.27%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "GQG Partners Global Equity Fund Class I Euro Accumulating",
+    "isin": "IE00BH480S68",
+    "link": "https://www.finect.com/fondos-inversion/IE00BH480S68-Gqg_partners_global_equity_i_eur_acc",
+    "volatility12M": "14.71%",
+    "return12M": "-11.36%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Azvalor Internacional FI",
+    "isin": "ES0112611001",
+    "link": "https://www.finect.com/fondos-inversion/ES0112611001-Azvalor_internacional_fi",
+    "volatility12M": "9.06%",
+    "return12M": "-15.83%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Cobas Internacional C FI",
+    "isin": "ES0119199000",
+    "link": "https://www.finect.com/fondos-inversion/ES0119199000-Cobas_internacional_c_fi",
+    "volatility12M": "9.35%",
+    "return12M": "-1.08%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Heptagon Fund ICAV - Kopernik Global All-Cap Equity Fund AE EUR Acc",
+    "isin": "IE00BH6XSF26",
+    "link": "https://www.finect.com/fondos-inversion/IE00BH6XSF26-Heptagon_kopernik_glb_allcp_eq_ae__acc",
+    "volatility12M": "9.87%",
+    "return12M": "54.87%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Bestinver Internacional FI",
+    "isin": "ES0114638036",
+    "link": "https://www.finect.com/fondos-inversion/ES0114638036-Bestinver_internacional_fi",
+    "volatility12M": "10.80%",
+    "return12M": "-9.28%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Renta 4 Multigestión Numantia Patrimonio Global FI",
+    "isin": "ES0173311103",
+    "link": "https://www.finect.com/fondos-inversion/ES0173311103-Renta_4_multigestion_num_patr_glb_fi",
+    "volatility12M": "18.00%",
+    "return12M": "2.63%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Alken Fund - Small Cap Europe Class A",
+    "isin": "LU0524465548",
+    "link": "https://www.finect.com/fondos-inversion/LU0524465548-Alken_small_cap_europe_a",
+    "volatility12M": "16.70%",
+    "return12M": "14.97%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Evli Emerging Frontier B",
+    "isin": "FI4000066915",
+    "link": "https://www.finect.com/fondos-inversion/FI4000066915-Evli_emerging_frontier_b",
+    "volatility12M": "11.50%",
+    "return12M": "9.63%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Fidelity Funds - Global Equity Income Fund A-MINCOME(G)-EUR",
+    "isin": "LU1084165056",
+    "link": "https://www.finect.com/fondos-inversion/LU1084165056-Fidelity_global_equity_inc_amincgeur",
+    "volatility12M": "8.09%",
+    "return12M": "17.93%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Robeco QI Emerging Markets Active Equities D €",
+    "isin": "LU0329355670",
+    "link": "https://www.finect.com/fondos-inversion/LU0329355670-Robeco_qi_em_active_equities_d_",
+    "volatility12M": "10.41%",
+    "return12M": "5.44%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Multi Units Luxembourg - Amundi STOXX Europe 600 Insurance UCITS ETF Acc",
+    "isin": "LU1834987973",
+    "link": "https://www.finect.com/etfs/LU1834987973-Lyxor_stoxx_europe_600_insurance_etf",
+    "volatility12M": "9.40%",
+    "return12M": "32.02%",
+    "notes": null,
+    "category": "Renta Variable"
+  },
+  {
+    "name": "Vanguard 20+ Year Euro Treasury Index Fund EUR Acc",
+    "isin": "IE00B246KL88",
+    "link": "https://www.finect.com/fondos-inversion/IE00B246KL88-Vanguard_20_yr__trs_idx__acc",
+    "volatility12M": "17.67%",
+    "return12M": "9.44%",
+    "notes": null,
+    "category": "Renta Fija largo plazo"
+  },
+  {
+    "name": "AXA World Funds - Euro Long Duration Bonds E Capitalisation EUR",
+    "isin": "LU0251661590",
+    "link": "https://www.finect.com/fondos-inversion/LU0251661590-Axawf_euro_10__lt_e_cap_eur",
+    "volatility12M": "13.22%",
+    "return12M": "10.90%",
+    "notes": null,
+    "category": "Renta Fija largo plazo"
+  },
+  {
+    "name": "ETF ISHARES EURO GOV 20Y TGT D (EUR)",
+    "isin": "IE00BSKRJX20",
+    "link": "https://www.finect.com/etfs/IE00BSKRJX20-Ishares__govt_bond_20y_tgtdur_etf_dist",
+    "volatility12M": "17.08%",
+    "return12M": "9.74%",
+    "notes": null,
+    "category": "Renta Fija largo plazo"
+  },
+  {
+    "name": "iShares $ Treasury Bond 20+yr UCITS ETF",
+    "isin": "IE00BD8PGZ49",
+    "link": "https://www.finect.com/etfs/IE00BFM6TC58-Ishares__treasury_bd_20y_etf_usd_acc",
+    "volatility12M": "13.98%",
+    "return12M": "7.47%",
+    "notes": null,
+    "category": "Renta Fija largo plazo"
+  },
+  {
+    "name": "iShares € Govt Bond 20yr Target Duration UCITS ETF",
+    "isin": "E20Y",
+    "link": "https://www.finect.com/etfs/IE00BSKRJX20-Ishares__govt_bond_20y_tgtdur_etf_dist",
+    "volatility12M": "12.13%",
+    "return12M": "-3.52%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "iShares Physical Gold ETC",
+    "isin": "PPFB",
+    "link": "https://www.finect.com/etfs/IE00B4ND3602-Ishares_physical_gold_etc",
+    "volatility12M": "11.24%",
+    "return12M": "29.88%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "iShares Core MSCI World UCITS ETF USD (Acc)",
+    "isin": "EUNL",
+    "link": "https://www.finect.com/etfs/IE00B4L5Y983-Ishares_core_msci_world_etf_usd_acc",
+    "volatility12M": "15.15%",
+    "return12M": "12.96%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "Fidelity Physical Bitcoin ETP",
+    "isin": "XS2434891219 / FBTCG",
+    "link": "https://www.finect.com/etfs/XS2434891219-Fidelity_physical_bitcoin_etp",
+    "volatility12M": "59.11%",
+    "return12M": "10.71%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "VanEck Defense ETF A USD Acc",
+    "isin": "IE000YYE6WK5",
+    "link": "https://www.finect.com/etfs/IE000YYE6WK5-Vaneck_defense_etf_a_usd_acc",
+    "volatility12M": "-",
+    "return12M": "-",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "Multi Units Luxembourg - Amundi Smart Overnight Return UCITS ETF Acc",
+    "isin": "LU1190417599",
+    "link": "https://www.finect.com/etfs/LU1190417599-Lyxor_smart_overnight_return_etf_c_eur",
+    "volatility12M": "0.11%",
+    "return12M": "3.86%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "Xtrackers II Eurozone Government Bond 25+ UCITS ETF 1C",
+    "isin": "LU0290357846",
+    "link": "https://www.finect.com/etfs/LU0290357846-Xtrackers_ii_euroz_govt_bd_25_etf_1c",
+    "volatility12M": "13.21%",
+    "return12M": "-5.68%",
+    "notes": null,
+    "category": "ETFs"
+  },
+  {
+    "name": "Gamma Global A FI",
+    "isin": "ES0140794001",
+    "link": "https://www.finect.com/fondos-inversion/ES0140794001-Gamma_global_fi",
+    "volatility12M": "2.37%",
+    "return12M": "6.57%",
+    "notes": null,
+    "category": "Mixtos"
+  },
+  {
+    "name": "EVERCAPITAL INVESTMN I ACC EUR",
+    "isin": "LU1953238794",
+    "link": "https://www.finect.com/fondos-inversion/LU1953238877-Ec_sicav_evercapital_invms_ucits_i_ins_i",
+    "volatility12M": "8.58%",
+    "return12M": "-3.58%",
+    "notes": null,
+    "category": "Mixtos"
+  },
+  {
+    "name": "Acatis Value Event Fonds A",
+    "isin": "DE000A0X7541",
+    "link": "https://www.finect.com/fondos-inversion/DE000A0X7541-Acatis_value_event_fonds_a",
+    "volatility12M": "5.66%",
+    "return12M": "0.27%",
+    "notes": null,
+    "category": "Mixtos"
+  },
+  {
+    "name": "Avantage Fund A FI",
+    "isin": "ES0112231008",
+    "link": "https://www.finect.com/fondos-inversion/ES0112231008-Avantage_fund_a_fi",
+    "volatility12M": "10.07%",
+    "return12M": "5.32%",
+    "notes": null,
+    "category": "Mixtos"
+  },
+  {
+    "name": "Invesco Funds - Invesco Pan European High Income Fund A Accumulation EUR",
+    "isin": "LU0243957239",
+    "link": "https://www.finect.com/fondos-inversion/LU0243957239-Invesco_pan_european_hi_inc_a_eur_acc",
+    "volatility12M": "3.05%",
+    "return12M": "1.91%",
+    "notes": null,
+    "category": "Mixtos"
+  },
+  {
+    "name": "Candriam Index Arbitrage Classique en EUR",
+    "isin": "FR0010016477",
+    "link": "https://www.finect.com/fondos-inversion/FR0010016477-Candriam_index_arbitrage_classique_eur",
+    "volatility12M": "0.78%",
+    "return12M": "4.36%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Renta 4 Valor Relativo R FI",
+    "isin": "ES0128522002",
+    "link": "https://www.finect.com/fondos-inversion/ES0128522002-Renta_4_valor_relativo_r_fi",
+    "volatility12M": "2.07%",
+    "return12M": "6.54%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "MAN GLGALPHASELECT \"INH\"",
+    "isin": "IE00B5ZNKR51",
+    "link": "https://www.finect.com/fondos-inversion/IE00BJQ2XG97-Man_glg_alpha_select_alt_inh_eur",
+    "volatility12M": "2.85%",
+    "return12M": "3.32%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "European Specialist Investment Funds - M&G Total Return Credit Investment Fund P EUR Acc",
+    "isin": "LU2482630675",
+    "link": "https://www.finect.com/fondos-inversion/LU2482630675-Mg_total_return_crdt_invmt_p_eur_acc",
+    "volatility12M": "0.89%",
+    "return12M": "4.44%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "AXA World Funds - Euro Credit Total Return F Capitalisation EUR",
+    "isin": "LU1164221589",
+    "link": "https://www.finect.com/fondos-inversion/LU1164221589-Axawf_euro_credit_total_ret_f_cap_eur",
+    "volatility12M": "3.32%",
+    "return12M": "6.11%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Dunas Valor Equilibrado R FI",
+    "isin": "ES0175414012",
+    "link": "https://www.finect.com/fondos-inversion/ES0175414012-Dunas_valor_equilibrado_r_fi",
+    "volatility12M": "1.49%",
+    "return12M": "5.27%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Dunas Valor Prudente R FI",
+    "isin": "ES0175437005",
+    "link": "https://www.finect.com/fondos-inversion/ES0175437005-Dunas_valor_prudente_r_fi",
+    "volatility12M": "0.51%",
+    "return12M": "4.13%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "JPMorgan Funds - Europe Equity Absolute Alpha Fund C (perf) (acc) - EUR",
+    "isin": "LU1001748398",
+    "link": "https://www.finect.com/fondos-inversion/LU1001748398-Jpm_europe_eq_abs_alp_c_perf_acc_eur",
+    "volatility12M": "3.83%",
+    "return12M": "14.87%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "DNCA Invest Alpha Bonds A EUR",
+    "isin": "LU1694789451",
+    "link": "https://www.finect.com/fondos-inversion/LU1694789451-Dnca_invest_alpha_bonds_a_eur",
+    "volatility12M": "1.74%",
+    "return12M": "4.93%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Acacia Renta Dinámica Origen FI",
+    "isin": "ES0157935000",
+    "link": "https://www.finect.com/fondos-inversion/ES0157935000-Acacia_renta_dinamica_fi",
+    "volatility12M": "0.86%",
+    "return12M": "0.43%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Carmignac Portfolio Long-Short European Equities A EUR Acc",
+    "isin": "LU1317704051",
+    "link": "https://www.finect.com/fondos-inversion/LU1317704051-Carmignac_pf_ls_eurp_eqs_a_eur_acc",
+    "volatility12M": "8.18%",
+    "return12M": "3.17%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "BlackRock Strategic Fds - BlackRock Systematic Asia Pacific Equity Absolute Return Fd A2 EUR Hedged",
+    "isin": "LU1508158430",
+    "link": "https://www.finect.com/fondos-inversion/LU1508158430-Bsf_asia_pacific_divers_eq_ar_a2_eur_h",
+    "volatility12M": "3.70%",
+    "return12M": "15.63%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "JupiterMerian Global Equity Absolute Return Fund L (EUR) Hedged Acc",
+    "isin": "IE00BLP5S460",
+    "link": "https://www.finect.com/fondos-inversion/IE00BLP5S460-Jupitermerian_glb_eq_absrt_l__h_acc",
+    "volatility12M": "2.59%",
+    "return12M": "8.42%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "Vontobel Fund Credit Opportunities HI (hedged) EUR Cap",
+    "isin": "LU2416422751",
+    "link": "https://www.finect.com/fondos-inversion/LU2416422751-Vontobel_credit_opps_hi_hdg_eur_cap",
+    "volatility12M": "3.29%",
+    "return12M": "13.02%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "AQR Apex UCITS Fund RAEFT EUR Acc",
+    "isin": "LU1662496279",
+    "link": "https://www.finect.com/fondos-inversion/LU1662496279-Aqr_systematic_total_return_ucits_raeft",
+    "volatility12M": "5.99%",
+    "return12M": "7.33%",
+    "notes": null,
+    "category": "Alternativos"
+  },
+  {
+    "name": "AMRC SMALLER COMPANIES IE EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "ELEVA EUROPEAN SELECTION I EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "GQG EM MARKET EQUITY R EUR ACC (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "INDEX MSCI EUROPE IE ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "INDEX S&P 500 IE ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "ISHARES WORLD EQ IDX D2 AC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "PICTET EMERG MKTS INDEX I EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "POLAR GLBL TECHNOLOGY I ACC EU (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "SISF JAPANESE OPPOR C ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "US PREMIUM EQUITIES IH ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "US STRUCTUR RESEARCH EQ IN EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "MARCH NEXT GENERATION FI B ACC (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "EURIZON BD USD LTE Z ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "GIS EURO BOND BX EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "GLB SHRT DRTN INVST H ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "JPM ESG EMU GO IG 3-5Y ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "JUPITER DYN BOND I ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "MARCH GREEN TRANSITION BD C AC (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "SISF EURO CORP BND IZ ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "MARCH RENTA FIJA CP C EUR ACC (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "INVEST ALPHA BONDS N ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "OYSTER BM ALTERNATIVOS R AC EU (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "GROUPAMA ENTREPRISE RC ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  },
+  {
+    "name": "GLB SHRT DRTN INVST H ACC EUR (EUR)",
+    "isin": null,
+    "link": null,
+    "volatility12M": null,
+    "return12M": null,
+    "notes": null,
+    "category": "Revisar"
+  }
+]
