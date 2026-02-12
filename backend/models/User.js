@@ -32,6 +32,23 @@ const userSchema = new mongoose.Schema(
       required: true,
       select: false, // No incluir por defecto en las consultas
     },
+    // Rol básico para control de acceso
+    role: {
+      type: String,
+      enum: ["admin", "user"],
+      default: "user",
+    },
+    // Permisos específicos por funcionalidad
+    permissions: {
+      portfolioBuilder: {
+        type: Boolean,
+        default: false,
+      },
+      canChangePassword: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,
