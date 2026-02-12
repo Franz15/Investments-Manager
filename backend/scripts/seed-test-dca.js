@@ -7,6 +7,9 @@ import InvestmentHistory from "../models/InvestmentHistory.js";
 import Transaction from "../models/Transaction.js";
 import Debt from "../models/Debt.js";
 import { getQuote } from "../services/quoteService.js";
+import DailyVariation from "../models/DailyVariation.js";
+import PeriodVariation from "../models/PeriodVariation.js";
+import { recalculateAllPeriodVariations } from "../services/periodVariationService.js";
 
 dotenv.config();
 
@@ -32,6 +35,8 @@ async function clearExistingData() {
     InvestmentHistory.deleteMany({ user: USER_ID }),
     Transaction.deleteMany({ user: USER_ID }),
     Debt.deleteMany({ user: USER_ID }),
+    DailyVariation.deleteMany({ user: USER_ID }),
+    PeriodVariation.deleteMany({ user: USER_ID }),
   ]);
 }
 
@@ -472,6 +477,136 @@ async function seedInvestments(accounts, subAccounts) {
       notes: "Actualización de precio fondo RF medio plazo",
     });
   }
+
+  return investments;
+}
+
+/**
+ * Genera registros DailyVariation para todas las inversiones
+ * Interpola valores diarios entre los puntos de historial con ruido aleatorio
+ * para simular variaciones de mercado realistas
+ */
+async function seedDailyVariations(investments) {
+  console.log("Generando variaciones diarias...");
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  let totalCreated = 0;
+
+  for (const inv of investments) {
+    // Obtener historial ordenado por fecha
+    const history = await InvestmentHistory.find({
+      investment: inv._id,
+      user: USER_ID,
+    }).sort({ date: 1 });
+
+    if (history.length === 0) continue;
+
+    // Mapa de cambios de capital por fecha (para excluir aportes/retiros del cálculo)
+    const capitalChangesMap = new Map();
+    for (const entry of history) {
+      if (["creation", "add", "withdraw", "sell"].includes(entry.operation)) {
+        const dateNorm = new Date(entry.date);
+        dateNorm.setUTCHours(0, 0, 0, 0);
+        const key = dateNorm.getTime();
+        let amount = entry.operationAmount || 0;
+        if (!amount && entry.operation === "creation") {
+          amount = entry.totalValue || 0;
+        }
+        if (entry.operation === "withdraw" || entry.operation === "sell") {
+          amount = -Math.abs(amount);
+        }
+        capitalChangesMap.set(key, (capitalChangesMap.get(key) || 0) + amount);
+      }
+    }
+
+    // Puntos ancla: cada entrada de historial + valor actual como punto final
+    const anchors = history.map((h) => {
+      const date = new Date(h.date);
+      date.setUTCHours(0, 0, 0, 0);
+      return { date, totalValue: h.totalValue };
+    });
+
+    const currentTotalValue = inv.isAutomatedPortfolio
+      ? inv.currentPrice
+      : inv.quantity * inv.currentPrice;
+    anchors.push({ date: new Date(today), totalValue: currentTotalValue });
+
+    // Generar puntos diarios interpolando entre anclas con ruido de mercado
+    const dailyPoints = new Map();
+
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const start = anchors[i];
+      const end = anchors[i + 1];
+      const startTime = start.date.getTime();
+      const endTime = end.date.getTime();
+      const numDays = Math.round((endTime - startTime) / DAY_MS);
+
+      if (numDays <= 0) continue;
+
+      for (let dd = 0; dd < numDays; dd++) {
+        const date = new Date(startTime + dd * DAY_MS);
+        if (date >= today) break;
+
+        let totalValue;
+        if (dd === 0) {
+          // Punto ancla exacto (fecha de historial)
+          totalValue = start.totalValue;
+        } else {
+          // Interpolación lineal + ruido aleatorio (±0.8% diario)
+          const t = dd / numDays;
+          const baseValue =
+            start.totalValue + (end.totalValue - start.totalValue) * t;
+          const noise = baseValue * (Math.random() * 0.016 - 0.008);
+          totalValue = Math.max(1, baseValue + noise);
+        }
+
+        dailyPoints.set(date.getTime(), { date, totalValue });
+      }
+    }
+
+    // Ordenar por fecha y calcular variaciones
+    const sortedDays = Array.from(dailyPoints.values()).sort(
+      (a, b) => a.date - b.date,
+    );
+
+    let previousValue = null;
+    const variations = [];
+
+    for (const { date, totalValue } of sortedDays) {
+      const dateKey = date.getTime();
+      const capitalChange = capitalChangesMap.get(dateKey) || 0;
+
+      let changeAmount = 0;
+      let changePercent = 0;
+
+      if (previousValue !== null && previousValue > 0) {
+        // Variación = cambio total - cambio de capital (excluye aportes/retiros)
+        changeAmount = totalValue - previousValue - capitalChange;
+        changePercent = (changeAmount / previousValue) * 100;
+      }
+
+      variations.push({
+        user: USER_ID,
+        investment: inv._id,
+        date,
+        totalValue: parseFloat(totalValue.toFixed(2)),
+        changeAmount: parseFloat(changeAmount.toFixed(2)),
+        changePercent: parseFloat(changePercent.toFixed(2)),
+      });
+
+      previousValue = totalValue;
+    }
+
+    if (variations.length > 0) {
+      await DailyVariation.insertMany(variations);
+      totalCreated += variations.length;
+      console.log(`  ${inv.name}: ${variations.length} variaciones diarias`);
+    }
+  }
+
+  console.log(`✅ Total: ${totalCreated} variaciones diarias creadas.`);
 }
 
 async function main() {
@@ -486,7 +621,17 @@ async function main() {
     await clearExistingData();
     const { accounts, subAccounts } = await createAccountsAndSubAccounts();
     await seedTransactions(accounts, subAccounts);
-    await seedInvestments(accounts, subAccounts);
+    const investments = await seedInvestments(accounts, subAccounts);
+
+    // Generar variaciones diarias desde el historial
+    await seedDailyVariations(investments);
+
+    // Calcular variaciones de período (mensual, trimestral, anual) desde las diarias
+    console.log("Calculando variaciones de período...");
+    const periodResult = await recalculateAllPeriodVariations(USER_ID);
+    console.log(
+      `✅ Variaciones de período: ${periodResult.message || "completado"}`,
+    );
 
     console.log("✅ Datos ficticios para test-dca generados correctamente.");
   } catch (err) {

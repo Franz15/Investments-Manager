@@ -38,6 +38,11 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user"],
       default: "user",
     },
+    // Última fecha de inicio de sesión
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
     // Permisos específicos por funcionalidad
     permissions: {
       portfolioBuilder: {

@@ -1,8 +1,45 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, Loader2, Lock } from "lucide-react";
+import { ShieldCheck, Loader2, Lock, Clock } from "lucide-react";
 import api from "../services/api";
 import { useTranslation } from "../contexts/TranslationContext";
 import { useUser } from "../contexts/UserContext";
+
+/**
+ * Formatea una fecha como tiempo relativo (ej: "hace 2 horas", "hace 3 días")
+ */
+function formatTimeAgo(dateStr, t) {
+  if (!dateStr) return t("adminAccess.lastLoginNever") || "Nunca";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  let time;
+  if (diffSeconds < 60) {
+    time = `${diffSeconds}s`;
+  } else if (diffMinutes < 60) {
+    time = `${diffMinutes}min`;
+  } else if (diffHours < 24) {
+    time = `${diffHours}h`;
+  } else if (diffDays < 30) {
+    time = `${diffDays}d`;
+  } else {
+    // Mostrar fecha directa si es muy antiguo
+    return date.toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  const template = t("adminAccess.lastLoginAgo") || "hace {time}";
+  return template.replace("{time}", time);
+}
 
 const AdminAccess = () => {
   const { t } = useTranslation();
@@ -213,6 +250,22 @@ const AdminAccess = () => {
                       {user.id === "test-dca" && (
                         <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
                           {t("adminAccess.testAccount") || "Cuenta de test"}
+                        </span>
+                      )}
+                      {user.lastLogin && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                          <Clock className="w-3 h-3" />
+                          {t("adminAccess.lastLogin") ||
+                            "Última conexión"}:{" "}
+                          {formatTimeAgo(user.lastLogin, t)}
+                        </span>
+                      )}
+                      {!user.lastLogin && user.id !== currentUser?.id && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
+                          <Clock className="w-3 h-3" />
+                          {t("adminAccess.lastLogin") ||
+                            "Última conexión"}:{" "}
+                          {t("adminAccess.lastLoginNever") || "Nunca"}
                         </span>
                       )}
                     </div>

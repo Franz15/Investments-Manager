@@ -140,6 +140,10 @@ router.post("/login", async (req, res) => {
 
     console.log("[LOGIN] Login exitoso para usuario:", userId);
 
+    // Actualizar última conexión
+    user.lastLogin = new Date();
+    await user.save();
+
     // Generar token JWT
     const token = generateToken(user.id);
 
