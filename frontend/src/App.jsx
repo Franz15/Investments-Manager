@@ -16,6 +16,7 @@ import Investments from "./pages/Investments";
 import Debts from "./pages/Debts";
 import Profile from "./pages/Profile";
 import PortfolioBuilder from "./pages/PortfolioBuilder";
+import AdminAccess from "./pages/AdminAccess";
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useUser();
@@ -82,6 +83,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <PortfolioBuilder />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/access"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <AdminAccess />
             </Layout>
           </ProtectedRoute>
         }

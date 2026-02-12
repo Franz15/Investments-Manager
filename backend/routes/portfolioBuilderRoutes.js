@@ -4,12 +4,54 @@ import path from "path";
 import { fileURLToPath } from "url";
 import PortfolioBuilderConfig from "../models/PortfolioBuilderConfig.js";
 import PortfolioFund from "../models/PortfolioFund.js";
+import User from "../models/User.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
 router.use(authenticateToken);
+
+// Middleware: controlar acceso al Portfolio Builder
+async function requirePortfolioBuilderAccess(req, res, next) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    const user = await User.findOne({ id: req.userId });
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Bloquear explícitamente la cuenta de test
+    if (user.id === "test-dca") {
+      return res.status(403).json({
+        message:
+          "No tienes acceso al Portfolio Builder con esta cuenta de test",
+      });
+    }
+
+    // Los administradores siempre tienen acceso
+    if (user.role === "admin" || user.id === "javier") {
+      return next();
+    }
+
+    // Resto de usuarios necesitan permiso explícito
+    if (user.permissions?.portfolioBuilder) {
+      return next();
+    }
+
+    return res.status(403).json({
+      message: "No tienes permisos para acceder al Portfolio Builder",
+    });
+  } catch (error) {
+    console.error("Error en requirePortfolioBuilderAccess:", error);
+    return res.status(500).json({
+      message: "Error al verificar permisos de Portfolio Builder",
+    });
+  }
+}
 
 /** Cargar lista de fondos por defecto (Excel) */
 function getDefaultFunds() {
@@ -176,7 +218,7 @@ function parseReturn12M(value) {
 }
 
 // GET config: devuelve config + lista de fondos (del Excel en BBDD). Si es la primera vez, crea config y siembra fondos.
-router.get("/config", async (req, res) => {
+router.get("/config", requirePortfolioBuilderAccess, async (req, res) => {
   try {
     await seedFundsForUserIfEmpty(req.userId);
     let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
@@ -238,7 +280,7 @@ router.get("/config", async (req, res) => {
 });
 
 // PUT config: actualiza allocation, rvDistribution, extraFundIsinsByCategory y/o excludedFundIsinsByCategory
-router.put("/config", async (req, res) => {
+router.put("/config", requirePortfolioBuilderAccess, async (req, res) => {
   try {
     const {
       allocation,
@@ -303,172 +345,178 @@ router.put("/config", async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar config Portfolio Builder:", error);
-    res
-      .status(400)
-      .json({
-        message: "Error al actualizar la configuración",
-        error: error.message,
-      });
+    res.status(400).json({
+      message: "Error al actualizar la configuración",
+      error: error.message,
+    });
   }
 });
 
 // POST añadir fondo extra: solo category → añade "el siguiente" (mejor R12M); con isin → añade ese fondo
-router.post("/config/extra-fund", async (req, res) => {
-  try {
-    const { category, isin } = req.body;
-    if (!category) {
-      return res.status(400).json({ message: "Falta category" });
-    }
-    const catKey = String(category).trim();
-    let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
-    if (!config) {
-      config = await PortfolioBuilderConfig.create({
-        user: req.userId,
-        allocation: DEFAULT_ALLOCATION,
-        rvDistribution: DEFAULT_RV_DISTRIBUTION,
-      });
-    }
-    const extra =
-      config.extraFundIsinsByCategory &&
-      typeof config.extraFundIsinsByCategory === "object"
-        ? (config.extraFundIsinsByCategory.toObject?.() ??
-          config.extraFundIsinsByCategory)
-        : {};
-    const list = Array.isArray(extra[catKey]) ? [...extra[catKey]] : [];
-    let isinToAdd = isin ? String(isin).trim() : null;
-
-    if (!isinToAdd) {
-      const funds = await PortfolioFund.find({
-        user: req.userId,
-        category: catKey,
-      });
-      const mainSet = new Set(
-        (MAIN_FUND_ISINS_BY_CATEGORY[catKey] || []).map((s) => s.trim()),
-      );
-      const extraSet = new Set(list.map((e) => (e || "").trim()));
-      const available = funds.filter((f) => {
-        const isinNorm = (f.isin || "").trim();
-        return isinNorm && !mainSet.has(isinNorm) && !extraSet.has(isinNorm);
-      });
-      if (available.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No hay más fondos disponibles para añadir" });
+router.post(
+  "/config/extra-fund",
+  requirePortfolioBuilderAccess,
+  async (req, res) => {
+    try {
+      const { category, isin } = req.body;
+      if (!category) {
+        return res.status(400).json({ message: "Falta category" });
       }
-      available.sort(
-        (a, b) => parseReturn12M(b.return12M) - parseReturn12M(a.return12M),
-      );
-      isinToAdd = (available[0].isin || "").trim();
-    }
+      const catKey = String(category).trim();
+      let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
+      if (!config) {
+        config = await PortfolioBuilderConfig.create({
+          user: req.userId,
+          allocation: DEFAULT_ALLOCATION,
+          rvDistribution: DEFAULT_RV_DISTRIBUTION,
+        });
+      }
+      const extra =
+        config.extraFundIsinsByCategory &&
+        typeof config.extraFundIsinsByCategory === "object"
+          ? (config.extraFundIsinsByCategory.toObject?.() ??
+            config.extraFundIsinsByCategory)
+          : {};
+      const list = Array.isArray(extra[catKey]) ? [...extra[catKey]] : [];
+      let isinToAdd = isin ? String(isin).trim() : null;
 
-    if (list.includes(isinToAdd)) {
-      return res.json({
-        extraFundIsinsByCategory: { ...extra, [catKey]: list },
+      if (!isinToAdd) {
+        const funds = await PortfolioFund.find({
+          user: req.userId,
+          category: catKey,
+        });
+        const mainSet = new Set(
+          (MAIN_FUND_ISINS_BY_CATEGORY[catKey] || []).map((s) => s.trim()),
+        );
+        const extraSet = new Set(list.map((e) => (e || "").trim()));
+        const available = funds.filter((f) => {
+          const isinNorm = (f.isin || "").trim();
+          return isinNorm && !mainSet.has(isinNorm) && !extraSet.has(isinNorm);
+        });
+        if (available.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No hay más fondos disponibles para añadir" });
+        }
+        available.sort(
+          (a, b) => parseReturn12M(b.return12M) - parseReturn12M(a.return12M),
+        );
+        isinToAdd = (available[0].isin || "").trim();
+      }
+
+      if (list.includes(isinToAdd)) {
+        return res.json({
+          extraFundIsinsByCategory: { ...extra, [catKey]: list },
+          addedIsin: isinToAdd,
+        });
+      }
+      config.extraFundIsinsByCategory = {
+        ...extra,
+        [catKey]: [...list, isinToAdd],
+      };
+      // Si estaba en excluded (ej. era principal y lo quitó), quitarlo para que vuelva a verse
+      const excluded =
+        config.excludedFundIsinsByCategory &&
+        typeof config.excludedFundIsinsByCategory === "object"
+          ? (config.excludedFundIsinsByCategory.toObject?.() ??
+            config.excludedFundIsinsByCategory)
+          : {};
+      const excludedList = Array.isArray(excluded[catKey])
+        ? excluded[catKey].filter((i) => (i || "").trim() !== isinToAdd)
+        : [];
+      config.excludedFundIsinsByCategory = {
+        ...excluded,
+        [catKey]: excludedList,
+      };
+      await config.save();
+      const out =
+        config.extraFundIsinsByCategory?.toObject?.() ??
+        config.extraFundIsinsByCategory ??
+        {};
+      const outExcluded =
+        config.excludedFundIsinsByCategory?.toObject?.() ??
+        config.excludedFundIsinsByCategory ??
+        {};
+      res.json({
+        extraFundIsinsByCategory: out,
+        excludedFundIsinsByCategory: outExcluded,
         addedIsin: isinToAdd,
       });
+    } catch (error) {
+      console.error("Error al añadir fondo extra:", error);
+      res
+        .status(400)
+        .json({ message: "Error al añadir fondo", error: error.message });
     }
-    config.extraFundIsinsByCategory = {
-      ...extra,
-      [catKey]: [...list, isinToAdd],
-    };
-    // Si estaba en excluded (ej. era principal y lo quitó), quitarlo para que vuelva a verse
-    const excluded =
-      config.excludedFundIsinsByCategory &&
-      typeof config.excludedFundIsinsByCategory === "object"
-        ? (config.excludedFundIsinsByCategory.toObject?.() ??
-          config.excludedFundIsinsByCategory)
-        : {};
-    const excludedList = Array.isArray(excluded[catKey])
-      ? excluded[catKey].filter((i) => (i || "").trim() !== isinToAdd)
-      : [];
-    config.excludedFundIsinsByCategory = {
-      ...excluded,
-      [catKey]: excludedList,
-    };
-    await config.save();
-    const out =
-      config.extraFundIsinsByCategory?.toObject?.() ??
-      config.extraFundIsinsByCategory ??
-      {};
-    const outExcluded =
-      config.excludedFundIsinsByCategory?.toObject?.() ??
-      config.excludedFundIsinsByCategory ??
-      {};
-    res.json({
-      extraFundIsinsByCategory: out,
-      excludedFundIsinsByCategory: outExcluded,
-      addedIsin: isinToAdd,
-    });
-  } catch (error) {
-    console.error("Error al añadir fondo extra:", error);
-    res
-      .status(400)
-      .json({ message: "Error al añadir fondo", error: error.message });
-  }
-});
+  },
+);
 
 // DELETE quitar fondo de una categoría: si es extra se quita de extra; si es principal se añade a excluded
-router.delete("/config/extra-fund", async (req, res) => {
-  try {
-    const { category, isin } = req.query;
-    if (!category || !isin) {
-      return res.status(400).json({ message: "Faltan category o isin" });
-    }
-    const catKey = String(category).trim();
-    const isinNorm = String(isin).trim();
-    const config = await PortfolioBuilderConfig.findOne({ user: req.userId });
-    if (!config)
-      return res.status(404).json({ message: "Config no encontrada" });
-    const extra =
-      config.extraFundIsinsByCategory &&
-      typeof config.extraFundIsinsByCategory === "object"
-        ? (config.extraFundIsinsByCategory.toObject?.() ??
-          config.extraFundIsinsByCategory)
-        : {};
-    const excluded =
-      config.excludedFundIsinsByCategory &&
-      typeof config.excludedFundIsinsByCategory === "object"
-        ? (config.excludedFundIsinsByCategory.toObject?.() ??
-          config.excludedFundIsinsByCategory)
-        : {};
-    const extraList = Array.isArray(extra[catKey]) ? [...extra[catKey]] : [];
-    const isInExtra = extraList.some((i) => (i || "").trim() === isinNorm);
-    if (isInExtra) {
-      const newExtraList = extraList.filter(
-        (i) => (i || "").trim() !== isinNorm,
-      );
-      config.extraFundIsinsByCategory = { ...extra, [catKey]: newExtraList };
-    } else {
-      const excludedList = Array.isArray(excluded[catKey])
-        ? [...excluded[catKey]]
-        : [];
-      if (!excludedList.some((i) => (i || "").trim() === isinNorm)) {
-        excludedList.push(isinNorm);
-        config.excludedFundIsinsByCategory = {
-          ...excluded,
-          [catKey]: excludedList,
-        };
+router.delete(
+  "/config/extra-fund",
+  requirePortfolioBuilderAccess,
+  async (req, res) => {
+    try {
+      const { category, isin } = req.query;
+      if (!category || !isin) {
+        return res.status(400).json({ message: "Faltan category o isin" });
       }
+      const catKey = String(category).trim();
+      const isinNorm = String(isin).trim();
+      const config = await PortfolioBuilderConfig.findOne({ user: req.userId });
+      if (!config)
+        return res.status(404).json({ message: "Config no encontrada" });
+      const extra =
+        config.extraFundIsinsByCategory &&
+        typeof config.extraFundIsinsByCategory === "object"
+          ? (config.extraFundIsinsByCategory.toObject?.() ??
+            config.extraFundIsinsByCategory)
+          : {};
+      const excluded =
+        config.excludedFundIsinsByCategory &&
+        typeof config.excludedFundIsinsByCategory === "object"
+          ? (config.excludedFundIsinsByCategory.toObject?.() ??
+            config.excludedFundIsinsByCategory)
+          : {};
+      const extraList = Array.isArray(extra[catKey]) ? [...extra[catKey]] : [];
+      const isInExtra = extraList.some((i) => (i || "").trim() === isinNorm);
+      if (isInExtra) {
+        const newExtraList = extraList.filter(
+          (i) => (i || "").trim() !== isinNorm,
+        );
+        config.extraFundIsinsByCategory = { ...extra, [catKey]: newExtraList };
+      } else {
+        const excludedList = Array.isArray(excluded[catKey])
+          ? [...excluded[catKey]]
+          : [];
+        if (!excludedList.some((i) => (i || "").trim() === isinNorm)) {
+          excludedList.push(isinNorm);
+          config.excludedFundIsinsByCategory = {
+            ...excluded,
+            [catKey]: excludedList,
+          };
+        }
+      }
+      await config.save();
+      const outExtra =
+        config.extraFundIsinsByCategory?.toObject?.() ??
+        config.extraFundIsinsByCategory ??
+        {};
+      const outExcluded =
+        config.excludedFundIsinsByCategory?.toObject?.() ??
+        config.excludedFundIsinsByCategory ??
+        {};
+      res.json({
+        extraFundIsinsByCategory: outExtra,
+        excludedFundIsinsByCategory: outExcluded,
+      });
+    } catch (error) {
+      console.error("Error al quitar fondo:", error);
+      res
+        .status(400)
+        .json({ message: "Error al quitar fondo", error: error.message });
     }
-    await config.save();
-    const outExtra =
-      config.extraFundIsinsByCategory?.toObject?.() ??
-      config.extraFundIsinsByCategory ??
-      {};
-    const outExcluded =
-      config.excludedFundIsinsByCategory?.toObject?.() ??
-      config.excludedFundIsinsByCategory ??
-      {};
-    res.json({
-      extraFundIsinsByCategory: outExtra,
-      excludedFundIsinsByCategory: outExcluded,
-    });
-  } catch (error) {
-    console.error("Error al quitar fondo:", error);
-    res
-      .status(400)
-      .json({ message: "Error al quitar fondo", error: error.message });
-  }
-});
+  },
+);
 
 export default router;
