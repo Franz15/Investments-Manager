@@ -1358,61 +1358,191 @@ const Investments = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setInvestmentView("active")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            investmentView === "active"
-              ? "text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          }`}
-          style={
-            investmentView === "active"
-              ? {
-                  backgroundColor: "var(--user-color-600)",
-                }
-              : undefined
-          }
-          onMouseEnter={(e) => {
-            if (investmentView === "active") {
-              e.currentTarget.style.backgroundColor = "var(--user-color-700)";
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Botones de vista */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setInvestmentView("active")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              investmentView === "active"
+                ? "text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            }`}
+            style={
+              investmentView === "active"
+                ? {
+                    backgroundColor: "var(--user-color-600)",
+                  }
+                : undefined
             }
-          }}
-          onMouseLeave={(e) => {
-            if (investmentView === "active") {
-              e.currentTarget.style.backgroundColor = "var(--user-color-600)";
+            onMouseEnter={(e) => {
+              if (investmentView === "active") {
+                e.currentTarget.style.backgroundColor = "var(--user-color-700)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (investmentView === "active") {
+                e.currentTarget.style.backgroundColor = "var(--user-color-600)";
+              }
+            }}
+          >
+            {t("investments.views.active")}
+          </button>
+          <button
+            onClick={() => setInvestmentView("closed")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              investmentView === "closed"
+                ? "text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            }`}
+            style={
+              investmentView === "closed"
+                ? {
+                    backgroundColor: "var(--user-color-600)",
+                  }
+                : undefined
             }
-          }}
-        >
-          {t("investments.views.active")}
-        </button>
-        <button
-          onClick={() => setInvestmentView("closed")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            investmentView === "closed"
-              ? "text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          }`}
-          style={
-            investmentView === "closed"
-              ? {
-                  backgroundColor: "var(--user-color-600)",
-                }
-              : undefined
-          }
-          onMouseEnter={(e) => {
-            if (investmentView === "closed") {
-              e.currentTarget.style.backgroundColor = "var(--user-color-700)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (investmentView === "closed") {
-              e.currentTarget.style.backgroundColor = "var(--user-color-600)";
-            }
-          }}
-        >
-          {t("investments.views.closed")}
-        </button>
+            onMouseEnter={(e) => {
+              if (investmentView === "closed") {
+                e.currentTarget.style.backgroundColor = "var(--user-color-700)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (investmentView === "closed") {
+                e.currentTarget.style.backgroundColor = "var(--user-color-600)";
+              }
+            }}
+          >
+            {t("investments.views.closed")}
+          </button>
+        </div>
+
+        {/* Resumen inline a la derecha */}
+        {investmentView === "closed" &&
+          closedInvestments.length > 0 &&
+          (() => {
+            const totals = closedInvestments.reduce(
+              (acc, inv) => {
+                acc.totalContributed += inv.closeSummary?.totalContributed || 0;
+                acc.totalWithdrawn += inv.closeSummary?.totalWithdrawn || 0;
+                return acc;
+              },
+              { totalContributed: 0, totalWithdrawn: 0 },
+            );
+            const totalResult = totals.totalWithdrawn - totals.totalContributed;
+            const totalResultPercent =
+              totals.totalContributed > 0
+                ? (totalResult / totals.totalContributed) * 100
+                : 0;
+            const isPositive = totalResult >= 0;
+            const fmt = (v) =>
+              new Intl.NumberFormat("es-ES", {
+                style: "currency",
+                currency: "EUR",
+                maximumFractionDigits: 0,
+              }).format(v);
+
+            return (
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">
+                  {closedInvestments.length}{" "}
+                  {t("investments.closedSummary.investments")}
+                </span>
+                <span className="text-gray-400 dark:text-gray-600 hidden sm:inline">
+                  ·
+                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    <span className="hidden md:inline">
+                      {t("investments.closedSummary.totalInvested")}:{" "}
+                    </span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">
+                      {fmt(totals.totalContributed)}
+                    </span>
+                  </span>
+                  <span className="text-gray-300 dark:text-gray-600">→</span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    <span className="hidden md:inline">
+                      {t("investments.closedSummary.totalRecovered")}:{" "}
+                    </span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">
+                      {fmt(totals.totalWithdrawn)}
+                    </span>
+                  </span>
+                </div>
+                <span
+                  className={`font-bold ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                >
+                  {isPositive ? "+" : ""}
+                  {fmt(totalResult)}
+                  <span className="ml-1 font-semibold text-xs">
+                    ({isPositive ? "+" : ""}
+                    {totalResultPercent.toFixed(2)}%)
+                  </span>
+                </span>
+              </div>
+            );
+          })()}
+
+        {investmentView === "active" &&
+          activeInvestments.length > 0 &&
+          (() => {
+            const totals = activeInvestments.reduce(
+              (acc, inv) => {
+                const value = inv.isAutomatedPortfolio
+                  ? inv.currentPrice || 0
+                  : (inv.quantity || 0) * (inv.currentPrice || 0);
+                const pl = calculateProfitLoss(inv);
+                acc.totalValue += value;
+                acc.totalPL += pl;
+                return acc;
+              },
+              { totalValue: 0, totalPL: 0 },
+            );
+            const invested = totals.totalValue - totals.totalPL;
+            const totalPLPercent =
+              invested > 0 ? (totals.totalPL / invested) * 100 : 0;
+            const isPositive = totals.totalPL >= 0;
+            const fmt = (v) =>
+              new Intl.NumberFormat("es-ES", {
+                style: "currency",
+                currency: "EUR",
+                maximumFractionDigits: 0,
+              }).format(v);
+
+            return (
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">
+                  {activeInvestments.length}{" "}
+                  {t("investments.activeSummary.investments")}
+                </span>
+                <span className="text-gray-400 dark:text-gray-600 hidden sm:inline">
+                  ·
+                </span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  <span className="hidden md:inline">
+                    {t("investments.activeSummary.totalValue")}:{" "}
+                  </span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    {fmt(totals.totalValue)}
+                  </span>
+                </span>
+                <span
+                  className={`font-bold ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                >
+                  <span className="hidden md:inline">
+                    {t("investments.activeSummary.profitLoss")}:{" "}
+                  </span>
+                  {isPositive ? "+" : ""}
+                  {fmt(totals.totalPL)}
+                  <span className="ml-1 font-semibold text-xs">
+                    ({isPositive ? "+" : ""}
+                    {totalPLPercent.toFixed(2)}%)
+                  </span>
+                </span>
+              </div>
+            );
+          })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">

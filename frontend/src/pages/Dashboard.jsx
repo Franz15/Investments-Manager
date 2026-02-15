@@ -1655,6 +1655,104 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Rendimientos históricos por año */}
+      {performance?.historicalReturns?.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            {t("dashboard.historicalReturns")}
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400">
+                    {t("dashboard.historical.year")}
+                  </th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400">
+                    {t("dashboard.historical.return")}
+                  </th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                    {t("dashboard.historical.startValue")}
+                  </th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                    {t("dashboard.historical.endValue")}
+                  </th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">
+                    {t("dashboard.historical.contributed")}
+                  </th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">
+                    {t("dashboard.historical.withdrawn")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {performance.historicalReturns.map((yr) => {
+                  const isPositive = yr.totalChange >= 0;
+                  const fmt = (v) =>
+                    new Intl.NumberFormat("es-ES", {
+                      style: "currency",
+                      currency: "EUR",
+                      maximumFractionDigits: 0,
+                    }).format(v);
+                  return (
+                    <tr
+                      key={yr.year}
+                      className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <td className="py-3 px-3">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                          {yr.year}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span
+                            className={`font-bold text-base ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                          >
+                            {isPositive ? "+" : ""}
+                            {fmt(yr.totalChange)}
+                          </span>
+                          <span
+                            className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isPositive ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
+                          >
+                            {isPositive ? "+" : ""}
+                            {yr.changePercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-right text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                        {fmt(yr.startValue)}
+                      </td>
+                      <td className="py-3 px-3 text-right text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                        {fmt(yr.endValue)}
+                      </td>
+                      <td className="py-3 px-3 text-right text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                        {yr.contributed > 0 ? (
+                          <span className="text-blue-600 dark:text-blue-400">
+                            +{fmt(yr.contributed)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                        {yr.withdrawn > 0 ? (
+                          <span className="text-orange-600 dark:text-orange-400">
+                            -{fmt(yr.withdrawn)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Tooltip/Modal del Balance Total */}
       {showBalanceTooltip && (
         <div

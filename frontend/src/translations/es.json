@@ -57,6 +57,15 @@
     "annualizedReturn": "Rendimiento Anualizado",
     "debt": "Deuda",
     "vsSP500": "vs S&P 500",
+    "historicalReturns": "Rendimientos Históricos",
+    "historical": {
+      "year": "Año",
+      "return": "Rendimiento",
+      "startValue": "Valor Inicio",
+      "endValue": "Valor Final",
+      "contributed": "Aportado",
+      "withdrawn": "Retirado"
+    },
     "assetDistribution": "Distribución por Clase de Activo",
     "investmentDistribution": "Distribución por Inversión Individual",
     "balanceEvolution": "Evolución del Balance",
@@ -100,6 +109,17 @@
     "views": {
       "active": "Activas",
       "closed": "Histórico"
+    },
+    "closedSummary": {
+      "totalInvested": "Invertido",
+      "totalRecovered": "Recuperado",
+      "result": "Resultado",
+      "investments": "inversiones"
+    },
+    "activeSummary": {
+      "totalValue": "Valor total",
+      "profitLoss": "B/P",
+      "investments": "inversiones"
     },
     "badges": {
       "closed": "Cerrada"

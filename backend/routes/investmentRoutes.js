@@ -1446,6 +1446,15 @@ router.post("/:id/close", async (req, res) => {
     investment.dcaNextDate = null;
     investment.dcaDeactivatedDate = closeDate;
     investment.quantity = 0;
+    // Poner a cero las allocations para que no cuenten como capital invertido
+    if (Array.isArray(investment.allocations)) {
+      investment.allocations = investment.allocations.map((alloc) => ({
+        ...(alloc.toObject ? alloc.toObject() : alloc),
+        amount: 0,
+        quantity: 0,
+        averagePurchasePrice: 0,
+      }));
+    }
     if (!investment.isAutomatedPortfolio && priceToUse) {
       investment.currentPrice = priceToUse;
     }

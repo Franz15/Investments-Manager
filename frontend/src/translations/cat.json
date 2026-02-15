@@ -57,6 +57,15 @@
     "annualizedReturn": "Rendiment Anualitzat",
     "debt": "Deute",
     "vsSP500": "vs S&P 500",
+    "historicalReturns": "Rendiments Històrics",
+    "historical": {
+      "year": "Any",
+      "return": "Rendiment",
+      "startValue": "Valor Inici",
+      "endValue": "Valor Final",
+      "contributed": "Aportat",
+      "withdrawn": "Retirat"
+    },
     "assetDistribution": "Distribució per Classe d'Actiu",
     "investmentDistribution": "Distribució per Inversió Individual",
     "balanceEvolution": "Evolució del Balanç",
@@ -100,6 +109,17 @@
     "views": {
       "active": "Actives",
       "closed": "Històric"
+    },
+    "closedSummary": {
+      "totalInvested": "Invertit",
+      "totalRecovered": "Recuperat",
+      "result": "Resultat",
+      "investments": "inversions"
+    },
+    "activeSummary": {
+      "totalValue": "Valor total",
+      "profitLoss": "B/P",
+      "investments": "inversions"
     },
     "badges": {
       "closed": "Tancada"
