@@ -412,6 +412,7 @@ const Accounts = () => {
   const getInvestmentsForSubAccount = (subAccountId) => {
     return investments.filter(
       (inv) =>
+        inv.status !== "closed" &&
         getAllocationAmount(
           inv,
           (allocation) =>
@@ -423,6 +424,7 @@ const Accounts = () => {
   const getInvestmentsForAccount = (accountId) => {
     return investments.filter(
       (inv) =>
+        inv.status !== "closed" &&
         getAllocationAmount(
           inv,
           (allocation) =>

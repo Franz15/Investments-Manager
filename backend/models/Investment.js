@@ -178,6 +178,24 @@ const investmentSchema = new mongoose.Schema(
       type: Date,
       // Fecha en que se desactivó el DCA (para historial)
     },
+    // Estado de la inversión (activa o cerrada)
+    status: {
+      type: String,
+      enum: ["active", "closed"],
+      default: "active",
+    },
+    // Fecha en que se cerró la inversión
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+    // Resumen del cierre (ganancia/pérdida total)
+    closeSummary: {
+      totalContributed: { type: Number },
+      totalWithdrawn: { type: Number },
+      resultAmount: { type: Number },
+      resultPercent: { type: Number },
+    },
   },
   {
     timestamps: true,
