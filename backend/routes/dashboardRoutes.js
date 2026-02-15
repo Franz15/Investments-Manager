@@ -14,6 +14,7 @@ import {
   getPortfolioAccumulatedReturn,
   getCapitalFlowsForPeriod,
 } from "../services/portfolioReturnService.js";
+import PeriodVariation from "../models/PeriodVariation.js";
 import YahooFinance from "yahoo-finance2";
 
 const router = express.Router();
@@ -1747,6 +1748,7 @@ router.get("/accounts-summary", async (req, res) => {
     const investments = await Investment.find({
       user: req.userId,
       account: { $exists: true, $ne: null },
+      status: { $ne: "closed" },
     })
       .populate({ path: "allocations.account", select: "_id" })
       .populate({ path: "allocations.subAccount", select: "_id" })
@@ -2124,6 +2126,50 @@ router.get("/performance", async (req, res) => {
       // ignore
     }
 
+    // Rendimientos anuales históricos (años anteriores al actual)
+    const currentYear = perfToday.getFullYear();
+    const historicalYearlyReturns = await PeriodVariation.find({
+      user: req.userId,
+      periodType: "annual",
+      periodStart: { $lt: new Date(currentYear, 0, 1) },
+    })
+      .sort({ periodStart: -1 })
+      .lean();
+
+    const historicalReturns = [];
+    for (const pv of historicalYearlyReturns) {
+      const year = new Date(pv.periodStart).getFullYear();
+      // Obtener flujos de capital de ese año
+      const yearStart = new Date(year, 0, 1);
+      yearStart.setHours(0, 0, 0, 0);
+      const yearEnd = new Date(year, 11, 31);
+      yearEnd.setHours(23, 59, 59, 999);
+      const yearFlows = await getCapitalFlowsForPeriod(
+        req.userId,
+        perfInvestmentIds,
+        yearStart,
+        yearEnd,
+      );
+
+      const totalChange = pv.totalChangeAmount || 0;
+      const sv = pv.startValue || 0;
+      const netFlow = (yearFlows.contributed || 0) - (yearFlows.withdrawn || 0);
+      // Modified Dietz: % = ganancia / (valor_inicio + 0.5 * flujos_netos)
+      const avgCapital = sv + 0.5 * netFlow;
+      const correctedPercent =
+        avgCapital > 0 ? (totalChange / avgCapital) * 100 : 0;
+
+      historicalReturns.push({
+        year,
+        totalChange: parseFloat(totalChange.toFixed(2)),
+        changePercent: parseFloat(correctedPercent.toFixed(2)),
+        startValue: parseFloat(sv.toFixed(2)),
+        endValue: parseFloat((pv.endValue || 0).toFixed(2)),
+        contributed: parseFloat((yearFlows.contributed || 0).toFixed(2)),
+        withdrawn: parseFloat((yearFlows.withdrawn || 0).toFixed(2)),
+      });
+    }
+
     return res.json({
       annualizedReturn: perfAnnualizedReturn,
       totalReturn: perfTotalReturn,
@@ -2173,6 +2219,7 @@ router.get("/performance", async (req, res) => {
       endDate: perfEndDate.toISOString(),
       years: parseFloat(perfYears.toFixed(2)),
       sp500Comparison: perfSp500Comparison,
+      historicalReturns,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

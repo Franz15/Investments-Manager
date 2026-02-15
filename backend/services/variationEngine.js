@@ -48,6 +48,9 @@ const buildDailyMapFromHistory = (historyEntries) => {
       lastEntryStamp: null,
       lastUpdateEntry: null,
       lastUpdateStamp: null,
+      maxQtyEntry: null,
+      hasCloseOperation: false,
+      hasCapitalOperation: false,
     };
 
     if (entry.totalValue !== null && entry.totalValue !== undefined) {
@@ -69,8 +72,28 @@ const buildDailyMapFromHistory = (historyEntries) => {
       }
     }
 
+    // Trackear la entrada con mayor cantidad de participaciones del día
+    // (útil para detectar el estado post-aportación correcto)
+    if (entry.quantity !== null && entry.quantity !== undefined) {
+      if (
+        !existing.maxQtyEntry ||
+        entry.quantity > (existing.maxQtyEntry.quantity || 0)
+      ) {
+        existing.maxQtyEntry = entry;
+      }
+    }
+
+    // Detectar operaciones de cierre (withdraw/sell que dejan quantity=0 o totalValue=0)
+    if (
+      (entry.operation === "withdraw" || entry.operation === "sell") &&
+      (entry.quantity === 0 || entry.totalValue === 0)
+    ) {
+      existing.hasCloseOperation = true;
+    }
+
     if (isCapitalOperation(entry.operation)) {
       existing.capitalChange += getSignedOperationAmount(entry);
+      existing.hasCapitalOperation = true;
     }
 
     dayMap.set(key, existing);
@@ -87,11 +110,22 @@ const buildDailyVariationsFromHistory = (historyEntries, previousEndValue) => {
   let lastQuantity = null;
 
   days.forEach((day) => {
-    const preferredEntry = day.lastUpdateEntry || day.lastEntry;
+    // Selección de entrada preferida:
+    // 1. Cierre: usar lastEntry (endValue será 0)
+    // 2. Aportación (capitalChange > 0): usar maxQtyEntry (estado post-aportación)
+    // 3. Normal: preferir lastUpdateEntry sobre lastEntry
+    const preferredEntry = day.hasCloseOperation
+      ? day.lastEntry
+      : day.hasCapitalOperation && day.capitalChange > 0 && day.maxQtyEntry
+        ? day.maxQtyEntry
+        : day.lastUpdateEntry || day.lastEntry;
     let endValue = null;
     let capitalChange = day.capitalChange;
 
-    if (
+    // Si es una operación de cierre, endValue siempre es 0
+    if (day.hasCloseOperation) {
+      endValue = 0;
+    } else if (
       preferredEntry &&
       preferredEntry.totalValue !== null &&
       preferredEntry.totalValue !== undefined
@@ -111,12 +145,17 @@ const buildDailyVariationsFromHistory = (historyEntries, previousEndValue) => {
       return;
     }
 
+    // Cálculo del capitalChange basado en cambio REAL de participaciones.
+    // Más fiable que operationAmount porque:
+    // - Detecta participaciones silenciosas (DCA no registrado)
+    // - Ignora operaciones fantasma donde la cantidad no cambió
+    // - Para cierres, mantiene el capitalChange original (basado en operationAmount)
     if (
       preferredEntry &&
       preferredEntry.quantity !== null &&
       preferredEntry.quantity !== undefined
     ) {
-      if (lastQuantity !== null && capitalChange === 0) {
+      if (lastQuantity !== null && !day.hasCloseOperation) {
         const quantityDelta = preferredEntry.quantity - lastQuantity;
         if (quantityDelta !== 0) {
           const implicitPrice =
@@ -124,10 +163,12 @@ const buildDailyVariationsFromHistory = (historyEntries, previousEndValue) => {
             (preferredEntry.totalValue && preferredEntry.quantity
               ? preferredEntry.totalValue / preferredEntry.quantity
               : 0);
-          const implicitChange = quantityDelta * implicitPrice;
-          if (implicitChange !== 0) {
-            capitalChange += implicitChange;
-          }
+          // Reemplazar capitalChange con el cambio basado en participaciones
+          capitalChange = quantityDelta * implicitPrice;
+        } else if (day.hasCapitalOperation) {
+          // La cantidad no cambió a pesar de tener operación de capital
+          // → operación fantasma (ej: dinero fue a subcuenta de efectivo)
+          capitalChange = 0;
         }
       }
       lastQuantity = preferredEntry.quantity;
@@ -138,6 +179,15 @@ const buildDailyVariationsFromHistory = (historyEntries, previousEndValue) => {
     if (lastValue !== null && lastValue !== undefined && lastValue > 0) {
       changeAmount = endValue - lastValue - capitalChange;
       changePercent = lastValue !== 0 ? (changeAmount / lastValue) * 100 : 0;
+    } else if (
+      (lastValue === null || lastValue === undefined || lastValue === 0) &&
+      capitalChange > 0
+    ) {
+      // Primera operación (creación/aportación): capturar la ganancia/pérdida
+      // entre el capital aportado y el valor de mercado registrado
+      changeAmount = endValue - capitalChange;
+      changePercent =
+        capitalChange > 0 ? (changeAmount / capitalChange) * 100 : 0;
     }
 
     result.push({

@@ -57,6 +57,15 @@
     "annualizedReturn": "Rendiment Anualitzat",
     "debt": "Deute",
     "vsSP500": "vs S&P 500",
+    "historicalReturns": "Rendiments Històrics",
+    "historical": {
+      "year": "Any",
+      "return": "Rendiment",
+      "startValue": "Valor Inici",
+      "endValue": "Valor Final",
+      "contributed": "Aportat",
+      "withdrawn": "Retirat"
+    },
     "assetDistribution": "Distribució per Classe d'Actiu",
     "investmentDistribution": "Distribució per Inversió Individual",
     "balanceEvolution": "Evolució del Balanç",
@@ -100,6 +109,17 @@
     "views": {
       "active": "Actives",
       "closed": "Històric"
+    },
+    "closedSummary": {
+      "totalInvested": "Invertit",
+      "totalRecovered": "Recuperat",
+      "result": "Resultat",
+      "investments": "inversions"
+    },
+    "activeSummary": {
+      "totalValue": "Valor total",
+      "profitLoss": "B/P",
+      "investments": "inversions"
     },
     "badges": {
       "closed": "Tancada"
@@ -684,6 +704,78 @@
     "accessDeniedDescription": "Aquest compte no té accés al Portfolio Builder. Contacta amb en Javier perquè et concedeixi permisos si ho considera necessari.",
     "errors": {
       "loadConfig": "Error en carregar la configuració del Portfolio Builder"
+    },
+    "sections": {
+      "ratios": {
+        "title": "Ratios Mínims Compra/Lloguer",
+        "price": "Preu",
+        "rent": "Lloguer",
+        "ratio": "Ratio"
+      },
+      "financing": {
+        "title": "Finançament"
+      },
+      "capitalDistribution": {
+        "title": "Distribució de Capital",
+        "total": "(Total: {amount})",
+        "isin": "ISIN:",
+        "viewFinect": "Veure a Finect",
+        "viewDetails": "Veure detalls",
+        "vol12M": "Vol 12M:",
+        "r12M": "R 12M:",
+        "vol": "Vol:"
+      },
+      "videos": {
+        "title": "Vídeos i Recursos",
+        "viewVideo": "Veure vídeo"
+      },
+      "monetarios": {
+        "title": "Estalvi Remunerat / Fons Monetaris"
+      },
+      "rentaVariable": {
+        "title": "Inversió a Llarg Termini / Fons Indexats de Renda Variable"
+      },
+      "rentaFija": {
+        "title": "Renda Fixa / Bons / Inversió de Mitjà Termini"
+      },
+      "alternativos": {
+        "title": "Inversions Alternatives",
+        "description": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
+      },
+      "subsections": {
+        "rfCortoPlazo": {
+          "name": "Renda Fixa Curt Termini",
+          "description": "Germà major del Fons Monetari, per buscar retorns del 5%-6% amb baix risc. Inversió de baix risc. Ideal per superar la inflació i moure't a altres coses en cas que ho desitgis"
+        },
+        "rfMedioPlazo": {
+          "name": "Renda Fixa Mitjà Termini",
+          "description": "Renda Fixa amb risc mitjà, per buscar retorns del 7%-8%"
+        }
+      }
+    },
+    "categories": {
+      "monetarios": "Monetaris",
+      "rfCorto": "Renda Fixa Curt Termini",
+      "rfMedio": "Renda Fixa Mitjà Termini",
+      "rv": "Renda Variable",
+      "alternativos": "Alternatius",
+      "descriptions": {
+        "monetarios": "Liquiditat sense risc, ideal per treure diners",
+        "rfCorto": "Inversió de baix risc, ideal per superar la inflació i moure't a altres coses en cas que ho desitgis",
+        "rfMedio": "Guanyar diners amb la meitat de volatilitat que la Renda Variable",
+        "rv": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
+        "alternativos": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
+      }
+    },
+    "tips": {
+      "enCasoDeCaidas": "En cas de caigudes fortes en la RV, utilitzar part dels diners de monetaris per compres addicionals",
+      "siempreYCuando": "Sempre que tinguis un fons d'emergència suficient",
+      "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini",
+      "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar"
+    },
+    "descriptions": {
+      "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
+      "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar el risc"
     }
   },
   "adminAccess": {
@@ -705,88 +797,9 @@
     "resetPasswordSuccess": "Contrasenya resetajada correctament.",
     "resetPasswordGenerated": "Contrasenya resetajada. Nova contrasenya: {password}",
     "resetPasswordError": "No s'ha pogut resetajar la contrasenya de l'usuari.",
-    "empty": "No s'han trobat usuaris."
-  },
-  "sections": {
-    "ratios": {
-      "title": "Ratios Mínims Compra/Lloguer",
-      "price": "Preu",
-      "rent": "Lloguer",
-      "ratio": "Ratio"
-    },
-    "financing": {
-      "title": "Finançament"
-    },
-    "capitalDistribution": {
-      "title": "Distribució de Capital",
-      "total": "(Total: {amount})",
-      "isin": "ISIN:",
-      "viewFinect": "Veure a Finect",
-      "viewDetails": "Veure detalls",
-      "vol12M": "Vol 12M:",
-      "r12M": "R 12M:",
-      "vol": "Vol:"
-    },
-    "videos": {
-      "title": "Vídeos i Recursos",
-      "viewVideo": "Veure vídeo"
-    },
-    "monetarios": {
-      "title": "Estalvi Remunerat / Fons Monetaris"
-    },
-    "rentaVariable": {
-      "title": "Inversió a Llarg Termini / Fons Indexats de Renda Variable"
-    },
-    "rentaFija": {
-      "title": "Renda Fixa / Bons / Inversió de Mitjà Termini"
-    },
-    "alternativos": {
-      "title": "Inversions Alternatives",
-      "description": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
-    },
-    "subsections": {
-      "rfCortoPlazo": {
-        "name": "Renda Fixa Curt Termini",
-        "description": "Germà major del Fons Monetari, per buscar retorns del 5%-6% amb baix risc. Inversió de baix risc. Ideal per superar la inflació i moure't a altres coses en cas que ho desitgis"
-      },
-      "rfMedioPlazo": {
-        "name": "Renda Fixa Mitjà Termini",
-        "description": "Renda Fixa amb risc mitjà, per buscar retorns del 7%-8%"
-      }
-    }
-  },
-  "sync": {
-    "extracting": "Extraient fons de l'Excel...",
-    "syncing": "Sincronitzant {count} fons amb la base de dades...",
-    "success": "✓ {count} fons sincronitzats correctament",
-    "error": "Error en sincronitzar fons: {message}"
-  },
-  "errors": {
-    "loadExcel": "Error en carregar el fitxer Excel",
-    "loadConfig": "Error en carregar la configuració"
-  },
-  "categories": {
-    "monetarios": "Monetaris",
-    "rfCorto": "Renda Fixa Curt Termini",
-    "rfMedio": "Renda Fixa Mitjà Termini",
-    "rv": "Renda Variable",
-    "alternativos": "Alternatius",
-    "descriptions": {
-      "monetarios": "Liquiditat sense risc, ideal per treure diners",
-      "rfCorto": "Inversió de baix risc, ideal per superar la inflació i moure't a altres coses en cas que ho desitgis",
-      "rfMedio": "Guanyar diners amb la meitat de volatilitat que la Renda Variable",
-      "rv": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
-      "alternativos": "Guanyar diners mentre baixes el risc de la cartera. Màxima diversificació"
-    }
-  },
-  "tips": {
-    "enCasoDeCaidas": "En cas de caigudes fortes en la RV, utilitzar part dels diners de monetaris per compres addicionals",
-    "siempreYCuando": "Sempre que tinguis un fons d'emergència suficient",
-    "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini",
-    "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar"
-  },
-  "descriptions": {
-    "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
-    "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar el risc"
+    "empty": "No s'han trobat usuaris.",
+    "lastLogin": "Última connexió",
+    "lastLoginNever": "Mai",
+    "lastLoginAgo": "fa {time}"
   }
 }

@@ -17,6 +17,12 @@ export async function saveDailyVariation(
   currentTotalValue,
 ) {
   try {
+    // No crear variaciones diarias para inversiones cerradas
+    const inv = await Investment.findById(investmentId).select("status").lean();
+    if (inv?.status === "closed") {
+      return { changeAmount: 0, changePercent: 0 };
+    }
+
     const today = normalizeDay(new Date());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);

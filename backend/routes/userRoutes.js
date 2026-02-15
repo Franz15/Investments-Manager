@@ -84,7 +84,7 @@ router.get("/me", async (req, res) => {
 router.get("/", requireAdmin, async (req, res) => {
   try {
     const users = await User.find({})
-      .select("id name role permissions")
+      .select("id name role permissions lastLogin")
       .sort({ id: 1 });
     res.json(users);
   } catch (error) {
