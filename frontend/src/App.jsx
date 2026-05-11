@@ -21,9 +21,8 @@ import Businesses from "./pages/Businesses";
 import Profile from "./pages/Profile";
 import PortfolioBuilder from "./pages/PortfolioBuilder";
 import AdminAccess from "./pages/AdminAccess";
-import Budgets from "./pages/Budgets";
-import Forecasts from "./pages/Forecasts";
-import Businesses from "./pages/Businesses";
+import Finances from "./pages/Finances";
+import Reports from "./pages/Reports";
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useUser();
@@ -90,6 +89,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <PortfolioBuilder />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finances"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Finances />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Reports />
             </Layout>
           </ProtectedRoute>
         }
