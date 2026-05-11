@@ -55,7 +55,7 @@ api.interceptors.response.use(
       // No redirigir si la petición es al endpoint de login (el error es esperado)
       const isLoginRequest = error.config?.url?.includes("/auth/login");
 
-      if (!isLoginRequest) {
+      if (!isLoginRequest && window.location.pathname !== "/login") {
         // Token inválido o expirado, limpiar y redirigir a login
         localStorage.removeItem("authToken");
         localStorage.removeItem("currentUser");

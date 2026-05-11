@@ -169,17 +169,17 @@ function AppRoutes() {
 
 function App() {
   return (
-    <TranslationProvider>
-      <ThemeProvider>
-        <UserProvider>
+    <ThemeProvider>
+      <UserProvider>
+        <TranslationProvider>
           <BusinessProvider>
             <Router>
               <AppRoutes />
             </Router>
           </BusinessProvider>
-        </UserProvider>
-      </ThemeProvider>
-    </TranslationProvider>
+        </TranslationProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }
 
