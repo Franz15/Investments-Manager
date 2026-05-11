@@ -7,6 +7,7 @@ import {
   addMonths,
   isSameMonth,
   parseISO,
+  differenceInDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -27,6 +28,12 @@ import {
   Wallet,
   Calendar,
   ArrowLeftRight,
+  Download,
+  ArrowUpDown,
+  Eye,
+  EyeOff,
+  LayoutDashboard,
+  Clock,
 } from "lucide-react";
 import {
   BarChart,
@@ -83,7 +90,7 @@ const EMPTY_BUDGET = {
   notifications: { enabled: true, threshold: 80 },
 };
 
-const BudgetModal = ({ open, budget, categories, onSave, onClose }) => {
+const BudgetModal = ({ open, budget, categories, prefillCategory = "", onSave, onClose }) => {
   const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_BUDGET);
 
@@ -98,13 +105,13 @@ const BudgetModal = ({ open, budget, categories, onSave, onClose }) => {
         startDate: new Date(budget.startDate).toISOString().split("T")[0],
         endDate: budget.endDate ? new Date(budget.endDate).toISOString().split("T")[0] : "",
         isActive: budget.isActive,
-        business: null,  // Finances is strictly personal
+        business: null,
         notifications: budget.notifications || { enabled: true, threshold: 80 },
       });
     } else {
-      setForm(EMPTY_BUDGET);
+      setForm({ ...EMPTY_BUDGET, category: prefillCategory });
     }
-  }, [budget, open]);
+  }, [budget, open, prefillCategory]);
 
   if (!open) return null;
 
@@ -709,6 +716,7 @@ const REPORT_PERIODS = [
   { key: "3m", label: "3M", months: 3 },
   { key: "6m", label: "6M", months: 6 },
   { key: "1y", label: "1A", months: 12 },
+  { key: "custom", label: "···", months: 0 },
 ];
 
 const BarTip = ({ active, payload, label }) => {
@@ -737,22 +745,31 @@ const PieTip = ({ active, payload }) => {
 const ReportsTab = memo(() => {
   const { t } = useTranslation();
   const [period, setPeriod] = useState("6m");
+  const [customFrom, setCustomFrom] = useState(format(subMonths(new Date(), 5), "yyyy-MM-01"));
+  const [customTo, setCustomTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [periodData, setPeriodData] = useState([]);
   const [catData, setCatData] = useState([]);
+  const [budgetVsActual, setBudgetVsActual] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     const p = REPORT_PERIODS.find((x) => x.key === period);
-    const end = endOfMonth(new Date());
-    const start = startOfMonth(subMonths(new Date(), p.months - 1));
+    const end = period === "custom" ? new Date(customTo) : endOfMonth(new Date());
+    const start = period === "custom" ? new Date(customFrom) : startOfMonth(subMonths(new Date(), p.months - 1));
     try {
-      const [periodRes, catRes] = await Promise.all([
+      const nowStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+      const nowEnd = format(endOfMonth(new Date()), "yyyy-MM-dd");
+      const [periodRes, catRes, budgetsRes, spendRes] = await Promise.all([
         api.get("/transactions/statistics/by-period", {
           params: { period: "monthly", startDate: format(start, "yyyy-MM-dd"), endDate: format(end, "yyyy-MM-dd"), business: "null" },
         }),
         api.get("/transactions/statistics/by-category", {
           params: { startDate: format(start, "yyyy-MM-dd"), endDate: format(end, "yyyy-MM-dd"), type: "expense", business: "null" },
+        }),
+        api.get("/budgets", { params: { business: "null" } }),
+        api.get("/transactions/statistics/by-category", {
+          params: { startDate: nowStart, endDate: nowEnd, business: "null" },
         }),
       ]);
       const raw = periodRes.data?.basePeriod?.data ?? [];
@@ -769,8 +786,20 @@ const ReportsTab = memo(() => {
           .map((c) => ({ name: c.category || t("finances.uncategorized"), value: Math.round(c.expenses * 100) / 100, pct: total > 0 ? Math.round((c.expenses / total) * 100) : 0, fill: "" }))
           .map((c, i) => ({ ...c, fill: CAT_COLORS[i % CAT_COLORS.length] }))
       );
+      // Budget vs actual for current month
+      const spendMap = {};
+      (spendRes.data || []).forEach((c) => { spendMap[c.category] = c.expenses || 0; });
+      const bvaData = (budgetsRes.data || [])
+        .filter((b) => b.isActive)
+        .map((b) => ({
+          name: b.category?.name || b.name,
+          [t("reports.budget")]: b.amount,
+          [t("reports.actual")]: spendMap[b.category?.name] || 0,
+        }))
+        .filter((x) => x[t("reports.budget")] > 0 || x[t("reports.actual")] > 0);
+      setBudgetVsActual(bvaData);
     } catch { /* silent */ } finally { setLoading(false); }
-  }, [period, t]);
+  }, [period, customFrom, customTo, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -783,7 +812,7 @@ const ReportsTab = memo(() => {
   return (
     <div className="space-y-4">
       {/* Period selector */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="grid grid-cols-3 gap-4 flex-1 max-w-sm">
           <div className="card text-center py-2">
             <p className="text-xs text-gray-400 uppercase tracking-wide">{t("reports.income")}</p>
@@ -798,13 +827,24 @@ const ReportsTab = memo(() => {
             <p className={`text-base font-bold tabular-nums ${avgSavings >= 20 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>{avgSavings}%</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded p-1">
-          {REPORT_PERIODS.map((p) => (
-            <button key={p.key} onClick={() => setPeriod(p.key)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${period === p.key ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700"}`}>
-              {p.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded p-1">
+            {REPORT_PERIODS.map((p) => (
+              <button key={p.key} onClick={() => setPeriod(p.key)}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${period === p.key ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700"}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {period === "custom" && (
+            <div className="flex items-center gap-2 text-sm">
+              <input type="date" className="input-field py-1.5 text-sm" value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)} max={customTo} />
+              <span className="text-gray-400">→</span>
+              <input type="date" className="input-field py-1.5 text-sm" value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)} min={customFrom} max={format(new Date(), "yyyy-MM-dd")} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -896,6 +936,26 @@ const ReportsTab = memo(() => {
           </div>
         </div>
       </div>
+
+      {/* Budget vs Actual chart */}
+      {budgetVsActual.length > 0 && (
+        <div className="card">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">{t("reports.budgetVsActual")}</h3>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={budgetVsActual} barCategoryGap="30%" barGap={2} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={90} />
+                <Tooltip content={<BarTip />} />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Bar dataKey={t("reports.budget")} fill="#94a3b8" opacity={0.7} radius={[0, 3, 3, 0]} />
+                <Bar dataKey={t("reports.actual")} fill="#dc2626" opacity={0.85} radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -1172,10 +1232,10 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
       <div className="card">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Ingresos previstos", val: totalForecastIncome, cls: "text-green-600 dark:text-green-400" },
-            { label: "Gastos previstos", val: totalForecastExpense, cls: "text-red-500 dark:text-red-400" },
-            { label: "Ingresos reales", val: totalActualIncome, cls: "text-green-600 dark:text-green-400" },
-            { label: "Gastos reales", val: totalActualExpense, cls: "text-red-600 dark:text-red-400" },
+            { label: t("finances.plannedIncome"), val: totalForecastIncome, cls: "text-green-600 dark:text-green-400" },
+            { label: t("finances.plannedExpenses"), val: totalForecastExpense, cls: "text-red-500 dark:text-red-400" },
+            { label: t("finances.actualIncome"), val: totalActualIncome, cls: "text-green-600 dark:text-green-400" },
+            { label: t("finances.actualExpenses"), val: totalActualExpense, cls: "text-red-600 dark:text-red-400" },
           ].map(({ label, val, cls }) => (
             <div key={label}>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
@@ -1185,13 +1245,13 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
         </div>
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Balance previsto:</span>
+            <span className="text-xs text-gray-500">{t("finances.plannedBalance")}:</span>
             <span className={`text-sm font-semibold tabular-nums ${totalForecastIncome - totalForecastExpense >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
               {fmt(totalForecastIncome - totalForecastExpense)}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Balance real:</span>
+            <span className="text-xs text-gray-500">{t("finances.actualBalance")}:</span>
             <span className={`text-sm font-semibold tabular-nums ${totalActualIncome - totalActualExpense >= 0 ? "text-gray-900 dark:text-gray-100" : "text-red-500"}`}>
               {fmt(totalActualIncome - totalActualExpense)}
             </span>
@@ -1208,7 +1268,7 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
         <div className="card overflow-hidden p-0">
           {/* Column headers */}
           <div className="hidden sm:grid sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
-            {["Previsión", "Previsto/mes", "Real", "Diferencia", "Uso", ""].map((h, i) => (
+            {[t("forecasts.title"), `${t("budgets.budgeted")}/${t("finances.perMonth")}`, t("finances.actualExpenses").replace(" reales",""), t("budgets.remaining"), t("budgets.usage"), ""].map((h, i) => (
               <span key={i} className={`text-xs font-semibold text-gray-400 uppercase tracking-wide ${i > 0 ? "text-right" : ""}`}>{h}</span>
             ))}
           </div>
@@ -1221,7 +1281,7 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
                   <TrendingUp className="h-3.5 w-3.5 text-green-600" />
                   <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">{t("forecasts.types.income")}</span>
                 </div>
-                <span className="text-xs text-gray-400 tabular-nums">Prev: {fmt(totalForecastIncome)} · Real: {fmt(totalActualIncome)}</span>
+                <span className="text-xs text-gray-400 tabular-nums">{t("finances.plannedIncome")}: {fmt(totalForecastIncome)} · {t("finances.actualIncome")}: {fmt(totalActualIncome)}</span>
               </div>
               {incomeFCs.map((f) => <ForecastRow key={f._id} f={f} />)}
             </>
@@ -1235,7 +1295,7 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
                   <TrendingDown className="h-3.5 w-3.5 text-red-600" />
                   <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">{t("forecasts.types.expense")}</span>
                 </div>
-                <span className="text-xs text-gray-400 tabular-nums">Prev: {fmt(totalForecastExpense)} · Real: {fmt(totalActualExpense)}</span>
+                <span className="text-xs text-gray-400 tabular-nums">{t("finances.plannedExpenses")}: {fmt(totalForecastExpense)} · {t("finances.actualExpenses")}: {fmt(totalActualExpense)}</span>
               </div>
               {expenseFCs.map((f) => <ForecastRow key={f._id} f={f} />)}
             </>
@@ -1268,9 +1328,173 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
 };
 
 /* ═══════════════════════════════════════════════════
+   TAB OVERVIEW — RESUMEN DEL MES
+═══════════════════════════════════════════════════ */
+const OverviewTab = memo(() => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [budgets, setBudgets] = useState([]);
+  const [spending, setSpending] = useState({});
+  const [forecasts, setForecasts] = useState([]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const start = format(startOfMonth(new Date()), "yyyy-MM-dd");
+    const end = format(endOfMonth(new Date()), "yyyy-MM-dd");
+    try {
+      const [sumRes, budgetsRes, spendRes, forecastsRes] = await Promise.all([
+        api.get("/transactions/statistics/summary", { params: { startDate: start, endDate: end, business: "null" } }),
+        api.get("/budgets", { params: { business: "null" } }),
+        api.get("/transactions/statistics/by-category", { params: { startDate: start, endDate: end, business: "null" } }),
+        api.get("/forecasts", { params: { business: "null" } }),
+      ]);
+      setSummary(sumRes.data);
+      setBudgets((budgetsRes.data || []).filter((b) => b.isActive));
+      const map = {};
+      (spendRes.data || []).forEach((c) => { map[c.category] = c.expenses || 0; });
+      setSpending(map);
+      setForecasts((forecastsRes.data || []).filter((f) => f.isActive));
+    } catch { /* silent */ } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  if (loading) return <LoadingSpinner />;
+
+  const income = summary?.totalIncome ?? 0;
+  const expenses = summary?.totalExpenses ?? 0;
+  const balance = income - expenses;
+  const savingsRate = income > 0 ? Math.round(((income - expenses) / income) * 100) : 0;
+
+  const monthlyAmt = (f) => ({ monthly: f.amount, yearly: f.amount / 12, weekly: f.amount * 4.33, biweekly: f.amount * 2.17, quarterly: f.amount / 3, "one-time": 0 }[f.frequency] ?? f.amount);
+  const projectedIncome = forecasts.filter((f) => f.type === "income").reduce((s, f) => s + monthlyAmt(f), 0);
+  const projectedExpenses = forecasts.filter((f) => f.type === "expense").reduce((s, f) => s + monthlyAmt(f), 0);
+
+  const budgetRows = budgets.map((b) => {
+    const spent = spending[b.category?.name] || 0;
+    const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
+    return { b, spent, pct };
+  });
+  const exceeded = budgetRows.filter((r) => r.pct >= 100).length;
+  const onTrack = budgetRows.filter((r) => r.pct < 80).length;
+
+  const upcomingForecasts = forecasts
+    .filter((f) => {
+      if (!f.endDate) return false;
+      const days = differenceInDays(new Date(f.endDate), new Date());
+      return days >= 0 && days <= 30;
+    })
+    .sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+
+  return (
+    <div className="space-y-4">
+      {/* KPI banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: t("financesDashboard.totalIncome"), val: income, cls: "text-green-600 dark:text-green-400", prefix: "+" },
+          { label: t("financesDashboard.totalExpenses"), val: expenses, cls: "text-red-600 dark:text-red-400", prefix: "−" },
+          { label: t("financesDashboard.balance"), val: balance, cls: balance >= 0 ? "text-gray-900 dark:text-gray-100" : "text-red-600 dark:text-red-400", prefix: "" },
+          { label: t("finances.savingsRate"), val: null, cls: savingsRate >= 20 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400", custom: `${savingsRate}%` },
+        ].map(({ label, val, cls, prefix, custom }) => (
+          <div key={label} className="card py-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+            <p className={`text-lg font-bold tabular-nums ${cls}`}>{custom ?? `${prefix}${fmt(val)}`}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Forecasts projection */}
+      {forecasts.length > 0 && (
+        <div className="card">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t("finances.overviewTitle")} — previsión recurrente</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-gray-400">{t("finances.plannedIncome")}</p>
+              <p className="text-base font-bold text-green-600 dark:text-green-400 tabular-nums">~{fmt(projectedIncome)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">{t("finances.plannedExpenses")}</p>
+              <p className="text-base font-bold text-red-600 dark:text-red-400 tabular-nums">~{fmt(projectedExpenses)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">{t("finances.plannedBalance")}</p>
+              <p className={`text-base font-bold tabular-nums ${projectedIncome - projectedExpenses >= 0 ? "text-gray-900 dark:text-gray-100" : "text-red-600 dark:text-red-400"}`}>
+                ~{fmt(projectedIncome - projectedExpenses)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Budget overview */}
+        <div className="card">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t("finances.budgetOverview")}</h3>
+          {budgetRows.length === 0 ? (
+            <p className="text-sm text-gray-400">{t("finances.noBudgetsYet")}</p>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-xs text-gray-500">{onTrack} {t("finances.budgetsOnTrack")}</span>
+                </div>
+                {exceeded > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-xs text-red-500">{exceeded} {t("finances.budgetsExceeded")}</span>
+                  </div>
+                )}
+              </div>
+              {budgetRows.slice(0, 6).map(({ b, spent, pct }) => (
+                <div key={b._id} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600 dark:text-gray-400 truncate max-w-[140px]">{b.name}</span>
+                    <span className={`tabular-nums font-medium ${pct >= 100 ? "text-red-600 dark:text-red-400" : pct >= 80 ? "text-amber-600" : "text-gray-500"}`}>{fmt(spent)} / {fmt(b.amount)}</span>
+                  </div>
+                  <ProgressBar pct={pct} />
+                </div>
+              ))}
+              {budgetRows.length > 6 && <p className="text-xs text-gray-400 pt-1">+{budgetRows.length - 6} más...</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming expiring forecasts */}
+        <div className="card">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t("finances.upcomingForecasts")}</h3>
+          {upcomingForecasts.length === 0 ? (
+            <p className="text-sm text-gray-400">{t("forecasts.noForecasts")}</p>
+          ) : (
+            <div className="space-y-2">
+              {upcomingForecasts.map((f) => {
+                const days = differenceInDays(new Date(f.endDate), new Date());
+                return (
+                  <div key={f._id} className="flex items-center justify-between text-sm">
+                    <div className="min-w-0">
+                      <p className="text-gray-700 dark:text-gray-300 font-medium truncate">{f.name}</p>
+                      <p className="text-xs text-gray-400">{fmt(f.amount)} · {t(`forecasts.frequencies.${f.frequency}`)}</p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${days <= 7 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
+                      {days === 0 ? t("finances.expired") : `${days}d`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/* ═══════════════════════════════════════════════════
    MAIN PAGE
 ═══════════════════════════════════════════════════ */
 const TABS = [
+  { key: "overview", labelKey: "finances.tabs.overview", icon: LayoutDashboard },
   { key: "budget", labelKey: "finances.tabs.budget", icon: Wallet },
   { key: "transactions", labelKey: "finances.tabs.transactions", icon: ArrowLeftRight },
   { key: "reports", labelKey: "finances.tabs.reports", icon: BarChart2 },
@@ -1285,7 +1509,7 @@ const BUDGET_MODES = [
 const Finances = () => {
   const { t } = useTranslation();
   const today = new Date();
-  const [tab, setTab] = useState("budget");
+  const [tab, setTab] = useState("overview");
   const [month, setMonth] = useState(startOfMonth(today));
   const [showAdd, setShowAdd] = useState(false);
   const [budgetMode, setBudgetMode] = useState(
@@ -1298,12 +1522,14 @@ const Finances = () => {
   };
 
   const showMonthNav = tab === "budget" || tab === "transactions";
+  const canAdd = tab !== "reports" && tab !== "overview";
   const isCurrentMonth = isSameMonth(month, today);
 
   const addLabels = {
     budget: budgetMode === "sobres" ? t("budgets.newBudget") : t("forecasts.newForecast"),
     transactions: t("quickTransaction.addTransaction"),
     reports: null,
+    overview: null,
     forecasts: t("forecasts.newForecast"),
   };
 
@@ -1355,7 +1581,7 @@ const Finances = () => {
           )}
 
           {/* Add button */}
-          {tab !== "reports" && (
+          {canAdd && (
             <button onClick={() => setShowAdd(true)}
               className="btn-primary flex items-center gap-1.5 text-sm">
               <Plus className="h-4 w-4" />
@@ -1366,6 +1592,7 @@ const Finances = () => {
       </div>
 
       {/* Tab content */}
+      {tab === "overview" && <OverviewTab />}
       {tab === "budget" && <BudgetTabWithAdd month={month} triggerAdd={showAdd} onAddDone={() => setShowAdd(false)} budgetMode={budgetMode} />}
       {tab === "transactions" && <TransactionsTabWithAdd month={month} triggerAdd={showAdd} onAddDone={() => setShowAdd(false)} />}
       {tab === "reports" && <ReportsTab />}
@@ -1383,11 +1610,12 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
   const [spending, setSpending] = useState({});
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, budget: null });
+  const [modal, setModal] = useState({ open: false, budget: null, prefillCategory: "" });
+  const [sortBy, setSortBy] = useState("pct");
 
   useEffect(() => {
     if (triggerAdd && budgetMode === "sobres") {
-      setModal({ open: true, budget: null });
+      setModal({ open: true, budget: null, prefillCategory: "" });
       onAddDone();
     }
   }, [triggerAdd]);
@@ -1421,7 +1649,7 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
     try {
       if (modal.budget) await api.put(`/budgets/${modal.budget._id}`, data);
       else await api.post("/budgets", data);
-      setModal({ open: false, budget: null });
+      setModal({ open: false, budget: null, prefillCategory: "" });
       fetchData();
     } catch { }
   };
@@ -1446,6 +1674,11 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
     const remaining = b.amount - spent;
     const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
     return { b, catName, spent, remaining, pct };
+  }).sort((a, z) => {
+    if (sortBy === "pct") return z.pct - a.pct;
+    if (sortBy === "amount") return z.b.amount - a.b.amount;
+    if (sortBy === "name") return a.b.name.localeCompare(z.b.name);
+    return 0;
   });
   const unbudgeted = Object.entries(spending).filter(([cat, amt]) => amt > 0 && !budgetedCats.has(cat)).sort(([, a], [, b]) => b - a);
   const totalBudgeted = rows.reduce((s, r) => s + r.b.amount, 0);
@@ -1482,13 +1715,22 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
       {rows.length === 0 && unbudgeted.length === 0 ? (
         <div className="card text-center py-12 space-y-3">
           <p className="text-gray-400">{t("budgets.noBudgets")}</p>
-          <button onClick={() => setModal({ open: true, budget: null })} className="btn-primary mx-auto">{t("budgets.newBudget")}</button>
+          <button onClick={() => setModal({ open: true, budget: null, prefillCategory: "" })} className="btn-primary mx-auto">{t("budgets.newBudget")}</button>
         </div>
       ) : (
         <div className="card overflow-hidden p-0">
           <div className="hidden sm:grid sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
-            {[t("budgets.category"), t("budgets.budgeted"), t("budgets.spent"), t("budgets.remaining"), t("budgets.usage"), ""].map((h, i) => (
-              <span key={i} className={`text-xs font-semibold text-gray-400 uppercase tracking-wide ${i > 0 ? "text-right" : ""}`}>{h}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t("budgets.category")}</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                className="text-xs text-gray-400 bg-transparent border-none outline-none cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+                <option value="pct">{t("finances.sortByUsage")}</option>
+                <option value="amount">{t("finances.sortByAmount")}</option>
+                <option value="name">{t("finances.sortByName")}</option>
+              </select>
+            </div>
+            {[t("budgets.budgeted"), t("budgets.spent"), t("budgets.remaining"), t("budgets.usage"), ""].map((h, i) => (
+              <span key={i} className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">{h}</span>
             ))}
           </div>
           {rows.map(({ b, catName, spent, remaining, pct }) => (
@@ -1512,7 +1754,7 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
                 <p className="text-xs text-gray-400">{Math.round(pct)}%</p>
               </div>
               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => setModal({ open: true, budget: b })} className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"><Edit className="h-3.5 w-3.5" /></button>
+                <button onClick={() => setModal({ open: true, budget: b, prefillCategory: "" })} className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"><Edit className="h-3.5 w-3.5" /></button>
                 <button onClick={() => handleDelete(b._id)} className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
@@ -1522,20 +1764,37 @@ const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
               <div className="px-5 py-2 bg-gray-50 dark:bg-gray-900/30 border-t border-b border-gray-100 dark:border-gray-800">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t("budgets.unbudgeted")}</span>
               </div>
-              {unbudgeted.map(([cat, amt]) => (
-                <div key={cat} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3 border-b border-gray-50 dark:border-gray-800/40 last:border-0 items-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{cat || t("finances.uncategorized")}</p>
-                  <p className="hidden sm:block text-sm text-gray-400 text-right">—</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums">{fmt(amt)}</p>
-                  <p className="hidden sm:block text-gray-400 text-right text-sm">—</p>
-                  <div className="hidden sm:block" /><div className="hidden sm:block" />
-                </div>
-              ))}
+              {unbudgeted.map(([cat, amt]) => {
+                const catObj = categories.find((c) => c.name === cat);
+                return (
+                  <div key={cat} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3 border-b border-gray-50 dark:border-gray-800/40 last:border-0 items-center group hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{cat || t("finances.uncategorized")}</p>
+                      <button
+                        onClick={() => setModal({ open: true, budget: null, prefillCategory: catObj?._id || "" })}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs text-[var(--user-color-600)] hover:text-[var(--user-color-700)] font-medium flex-shrink-0">
+                        <Plus className="h-3 w-3" />{t("finances.suggestBudgets").split(" ")[0]}
+                      </button>
+                    </div>
+                    <p className="hidden sm:block text-sm text-gray-400 text-right">—</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums sm:col-start-3">{fmt(amt)}</p>
+                    <p className="hidden sm:block text-gray-400 text-right text-sm">—</p>
+                    <div className="hidden sm:block" /><div className="hidden sm:block" />
+                  </div>
+                );
+              })}
             </>
           )}
         </div>
       )}
-      <BudgetModal open={modal.open} budget={modal.budget} categories={categories} onSave={handleSave} onClose={() => setModal({ open: false, budget: null })} />
+      <BudgetModal
+        open={modal.open}
+        budget={modal.budget}
+        categories={categories}
+        prefillCategory={modal.prefillCategory}
+        onSave={handleSave}
+        onClose={() => setModal({ open: false, budget: null, prefillCategory: "" })}
+      />
     </div>
   );
 };
@@ -1547,8 +1806,33 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState("all");
+  const [catFilter, setCatFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+
+  const today = new Date();
+  const defaultDate = isSameMonth(month, today)
+    ? today.toISOString().split("T")[0]
+    : format(endOfMonth(month), "yyyy-MM-dd");
+
+  const exportCsv = () => {
+    const header = ["Fecha", "Tipo", "Categoría", "Descripción", "Importe"];
+    const rows = filtered.map((tx) => [
+      format(new Date(tx.date), "yyyy-MM-dd"),
+      tx.type,
+      tx.category || "",
+      (tx.description || "").replace(/,/g, " "),
+      tx.type === "expense" ? -tx.amount : tx.amount,
+    ]);
+    const csv = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transacciones_${format(month, "yyyy-MM")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -1562,15 +1846,21 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const allCategories = useMemo(() => {
+    const cats = new Set(transactions.map((tx) => tx.category).filter(Boolean));
+    return [...cats].sort();
+  }, [transactions]);
+
   const filtered = useMemo(() => {
     let list = transactions;
     if (typeFilter !== "all") list = list.filter((tx) => tx.type === typeFilter);
+    if (catFilter !== "all") list = list.filter((tx) => tx.category === catFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((tx) => (tx.description || "").toLowerCase().includes(q) || (tx.category || "").toLowerCase().includes(q));
     }
     return list;
-  }, [transactions, typeFilter, search]);
+  }, [transactions, typeFilter, catFilter, search]);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -1605,11 +1895,24 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
             </button>
           ))}
         </div>
-        <div className="relative flex-1 min-w-[160px]">
+        {allCategories.length > 0 && (
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
+            className="input-field py-1.5 text-xs text-sm max-w-[160px]">
+            <option value="all">{t("finances.allCategories")}</option>
+            {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        <div className="relative flex-1 min-w-[140px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input type="text" className="input-field pl-9 py-2 text-sm" placeholder={t("transactions.search") || "Buscar..."} value={search} onChange={(e) => setSearch(e.target.value)} />
           {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>}
         </div>
+        {filtered.length > 0 && (
+          <button onClick={exportCsv} title={t("finances.exportCsv")}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0">
+            <Download className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {filtered.length > 0 && (
@@ -1649,7 +1952,7 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
         </div>
       )}
 
-      <QuickTransactionForm isOpen={showAdd} onClose={() => setShowAdd(false)} businessId={null} onSuccess={() => { setShowAdd(false); fetchData(); }} />
+      <QuickTransactionForm isOpen={showAdd} onClose={() => setShowAdd(false)} businessId={null} defaultDate={defaultDate} onSuccess={() => { setShowAdd(false); fetchData(); }} />
       <TransactionDetailModal isOpen={!!selected} transaction={selected} onClose={() => setSelected(null)} onUpdate={() => { setSelected(null); fetchData(); }} onDelete={() => { setSelected(null); fetchData(); }} />
     </div>
   );
@@ -1661,6 +1964,7 @@ const ForecastsTabWithAdd = ({ triggerAdd, onAddDone }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, forecast: null });
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => { if (triggerAdd) { setModal({ open: true, forecast: null }); onAddDone(); } }, [triggerAdd]);
 
@@ -1691,28 +1995,43 @@ const ForecastsTabWithAdd = ({ triggerAdd, onAddDone }) => {
 
   if (loading) return <LoadingSpinner />;
 
-  const income = forecasts.filter((f) => f.isActive && f.type === "income");
-  const expenses = forecasts.filter((f) => f.isActive && f.type === "expense");
-  const monthlyAmt = (f) => f.frequency === "monthly" ? f.amount : f.frequency === "yearly" ? f.amount / 12 : f.frequency === "weekly" ? f.amount * 4.33 : f.frequency === "biweekly" ? f.amount * 2.17 : f.frequency === "quarterly" ? f.amount / 3 : f.amount;
+  const activeForecasts = forecasts.filter((f) => f.isActive);
+  const income = activeForecasts.filter((f) => f.type === "income");
+  const expenses = activeForecasts.filter((f) => f.type === "expense");
+  const inactiveForecasts = forecasts.filter((f) => !f.isActive);
+  const monthlyAmt = (f) => f.frequency === "monthly" ? f.amount : f.frequency === "yearly" ? f.amount / 12 : f.frequency === "weekly" ? f.amount * 4.33 : f.frequency === "biweekly" ? f.amount * 2.17 : f.frequency === "quarterly" ? f.amount / 3 : 0;
   const totalMonthlyIncome = income.reduce((s, f) => s + monthlyAmt(f), 0);
   const totalMonthlyExpense = expenses.reduce((s, f) => s + monthlyAmt(f), 0);
 
-  const ForecastRow = ({ f }) => (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group px-4">
-      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.type === "income" ? "bg-green-500" : "bg-red-500"}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{f.name}</p>
-        <p className="text-xs text-gray-400">{t(`forecasts.frequencies.${f.frequency}`)}{f.category?.name && ` · ${f.category.name}`}</p>
+  const ForecastRow = ({ f }) => {
+    const daysLeft = f.endDate ? differenceInDays(new Date(f.endDate), new Date()) : null;
+    const expiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
+    const expired = daysLeft !== null && daysLeft < 0;
+    return (
+      <div className={`flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group px-4 ${!f.isActive ? "opacity-50" : ""}`}>
+        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.type === "income" ? "bg-green-500" : "bg-red-500"}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{f.name}</p>
+            {expiringSoon && (
+              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${daysLeft <= 7 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
+                {daysLeft === 0 ? t("finances.expired") : `${daysLeft}d`}
+              </span>
+            )}
+            {expired && <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 flex-shrink-0">{t("finances.expired")}</span>}
+          </div>
+          <p className="text-xs text-gray-400">{t(`forecasts.frequencies.${f.frequency}`)}{f.category?.name && ` · ${f.category.name}`}</p>
+        </div>
+        <p className={`text-sm font-semibold tabular-nums flex-shrink-0 ${f.type === "income" ? "text-green-600 dark:text-green-400" : "text-gray-800 dark:text-gray-200"}`}>
+          {f.type === "income" ? "+" : "−"}{fmt(f.amount)}
+        </p>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => setModal({ open: true, forecast: f })} className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"><Edit className="h-3.5 w-3.5" /></button>
+          <button onClick={() => handleDelete(f._id)} className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
       </div>
-      <p className={`text-sm font-semibold tabular-nums flex-shrink-0 ${f.type === "income" ? "text-green-600 dark:text-green-400" : "text-gray-800 dark:text-gray-200"}`}>
-        {f.type === "income" ? "+" : "−"}{fmt(f.amount)}
-      </p>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => setModal({ open: true, forecast: f })} className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"><Edit className="h-3.5 w-3.5" /></button>
-        <button onClick={() => handleDelete(f._id)} className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -1734,28 +2053,40 @@ const ForecastsTabWithAdd = ({ triggerAdd, onAddDone }) => {
       {forecasts.length === 0 ? (
         <div className="card text-center py-12"><p className="text-gray-400">{t("forecasts.noForecasts")}</p></div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="card p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/10">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">{t("forecasts.types.income")}</span>
-              </div>
-              <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">~{fmt(totalMonthlyIncome)}/mes</span>
-            </div>
-            {income.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">{t("forecasts.noForecasts")}</p> : income.map((f) => <ForecastRow key={f._id} f={f} />)}
+        <>
+          <div className="flex justify-end">
+            <button onClick={() => setShowInactive((v) => !v)}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+              {showInactive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showInactive ? t("finances.hideInactive") : t("finances.showInactive")}
+              {inactiveForecasts.length > 0 && <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full px-1.5 py-0.5 text-xs">{inactiveForecasts.length}</span>}
+            </button>
           </div>
-          <div className="card p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-red-50/50 dark:bg-red-900/10">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">{t("forecasts.types.expense")}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="card p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/10">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">{t("forecasts.types.income")}</span>
+                </div>
+                <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">~{fmt(totalMonthlyIncome)}{t("finances.perMonth")}</span>
               </div>
-              <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">~{fmt(totalMonthlyExpense)}/mes</span>
+              {income.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">{t("forecasts.noForecasts")}</p> : income.map((f) => <ForecastRow key={f._id} f={f} />)}
+              {showInactive && inactiveForecasts.filter((f) => f.type === "income").map((f) => <ForecastRow key={f._id} f={f} />)}
             </div>
-            {expenses.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">{t("forecasts.noForecasts")}</p> : expenses.map((f) => <ForecastRow key={f._id} f={f} />)}
+            <div className="card p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-red-50/50 dark:bg-red-900/10">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                  <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">{t("forecasts.types.expense")}</span>
+                </div>
+                <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">~{fmt(totalMonthlyExpense)}{t("finances.perMonth")}</span>
+              </div>
+              {expenses.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">{t("forecasts.noForecasts")}</p> : expenses.map((f) => <ForecastRow key={f._id} f={f} />)}
+              {showInactive && inactiveForecasts.filter((f) => f.type === "expense").map((f) => <ForecastRow key={f._id} f={f} />)}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <ForecastModal open={modal.open} forecast={modal.forecast} categories={categories} onSave={handleSave} onClose={() => setModal({ open: false, forecast: null })} />
