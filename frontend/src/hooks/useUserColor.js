@@ -12,7 +12,7 @@ function hexToRgb(hex) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16),
       }
-    : { r: 2, g: 132, b: 199 }; // Fallback a primary-600
+    : { r: 201, g: 150, b: 26 }; // Fallback a TradeClimb gold
 }
 
 /**
@@ -64,7 +64,7 @@ function rgbToHex(rgb) {
  */
 export function useUserColor() {
   const { currentUser } = useUser();
-  const userColor = currentUser?.color || '#0284c7'; // Fallback a primary-600
+  const userColor = currentUser?.color || '#C9961A'; // Fallback a TradeClimb gold
 
   useEffect(() => {
     const root = document.documentElement;
