@@ -402,9 +402,6 @@ const Transactions = () => {
     }
     return subAccounts;
   }, [subAccounts, filters.accountId]);
-      accountId: "",
-    });
-  };
 
   if (loading) {
     return <LoadingSpinner />;
