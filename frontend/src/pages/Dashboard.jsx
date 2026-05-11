@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from 'react';
 import {
   CgTrending,
   CgTrendingDown,
@@ -9,7 +9,7 @@ import {
   CgDanger,
   CgArrowUp,
   CgArrowDown,
-} from "react-icons/cg";
+} from 'react-icons/cg';
 import {
   LineChart,
   Line,
@@ -27,25 +27,25 @@ import {
   Pie,
   Cell,
   Treemap,
-} from "recharts";
-import api from "../services/api";
-import LoadingSpinner from "../components/LoadingSpinner";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "../contexts/TranslationContext";
-import { useTheme } from "../contexts/ThemeContext";
+} from 'recharts';
+import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../contexts/TranslationContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Funciones auxiliares
-const formatPrice = (value, currency = "EUR") => {
+const formatPrice = (value, currency = 'EUR') => {
   if (value === null || value === undefined || isNaN(value)) {
-    return "0,00 €";
+    return '0,00 €';
   }
 
   const decimalPart = Math.abs((value * 10000) % 100);
   const hasTrailingZeros = decimalPart === 0;
   const decimals = hasTrailingZeros ? 2 : 4;
 
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
     currency: currency,
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -65,10 +65,7 @@ const calculateProfitLoss = (investment) => {
 const calculateProfitLossPercentage = (investment) => {
   if (investment.isAutomatedPortfolio) {
     if (investment.quantity === 0) return 0;
-    return (
-      ((investment.currentPrice - investment.quantity) / investment.quantity) *
-      100
-    );
+    return ((investment.currentPrice - investment.quantity) / investment.quantity) * 100;
   }
   const avgPrice = investment.averagePurchasePrice || investment.purchasePrice;
   if (!avgPrice || avgPrice === 0) return 0;
@@ -76,22 +73,11 @@ const calculateProfitLossPercentage = (investment) => {
 };
 
 // Tooltip común para gráficas: estilo moderno y compatible con tema claro/oscuro
-const ChartTooltip = ({
-  active,
-  payload,
-  label,
-  labelLabel = "Fecha",
-  valueFormatter,
-  isDark,
-}) => {
+const ChartTooltip = ({ active, payload, label, labelLabel = 'Fecha', valueFormatter, isDark }) => {
   if (!active || !payload?.length) return null;
-  const bg = isDark
-    ? "bg-[#2c2c2e] border-[#404040]"
-    : "bg-white border-gray-200";
+  const bg = isDark ? 'bg-[#2c2c2e] border-[#404040]' : 'bg-white border-gray-200';
   return (
-    <div
-      className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[140px]`}
-    >
+    <div className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[140px]`}>
       {label && (
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
           {labelLabel}: {label}
@@ -99,10 +85,7 @@ const ChartTooltip = ({
       )}
       {payload.map((entry, i) => (
         <div key={i} className="flex items-center justify-between gap-4">
-          <span
-            className="text-sm text-gray-600 dark:text-gray-300"
-            style={{ color: entry.color }}
-          >
+          <span className="text-sm text-gray-600 dark:text-gray-300" style={{ color: entry.color }}>
             ● {entry.name}
           </span>
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -126,10 +109,8 @@ const Dashboard = () => {
   const [distributionByBank, setDistributionByBank] = useState([]);
   const [performance, setPerformance] = useState(null);
   const [showBalanceTooltip, setShowBalanceTooltip] = useState(false);
-  const [showInvestmentDetailModal, setShowInvestmentDetailModal] =
-    useState(false);
-  const [selectedTreemapInvestment, setSelectedTreemapInvestment] =
-    useState(null);
+  const [showInvestmentDetailModal, setShowInvestmentDetailModal] = useState(false);
+  const [selectedTreemapInvestment, setSelectedTreemapInvestment] = useState(null);
   const [detailInvestmentHistory, setDetailInvestmentHistory] = useState([]);
   const [detailDailyVariations, setDetailDailyVariations] = useState([]);
   const [includeBusinessAccounts, setIncludeBusinessAccounts] = useState(false);
@@ -138,92 +119,90 @@ const Dashboard = () => {
 
   const getTypeLabel = (type, isAutomatedPortfolio = false) => {
     if (isAutomatedPortfolio) {
-      return t("investments.investmentTypes.automatedPortfolio");
+      return t('investments.investmentTypes.automatedPortfolio');
     }
     const types = {
-      stock: t("investments.investmentTypes.stock"),
-      bond: t("investments.investmentTypes.bond"),
-      crypto: t("investments.investmentTypes.crypto"),
-      fund: t("investments.investmentTypes.fund"),
-      etf: t("investments.investmentTypes.etf"),
-      automated_portfolio: t("investments.investmentTypes.automatedPortfolio"),
-      other: t("investments.investmentTypes.other"),
+      stock: t('investments.investmentTypes.stock'),
+      bond: t('investments.investmentTypes.bond'),
+      crypto: t('investments.investmentTypes.crypto'),
+      fund: t('investments.investmentTypes.fund'),
+      etf: t('investments.investmentTypes.etf'),
+      automated_portfolio: t('investments.investmentTypes.automatedPortfolio'),
+      other: t('investments.investmentTypes.other'),
     };
     return types[type] || type;
   };
 
   const getFixedIncomeSubtypeLabel = (fixedIncomeSubtype) => {
-    if (fixedIncomeSubtype === "short") {
-      return t("investments.assetClassLabels.fixedIncomeSubtypeShort");
+    if (fixedIncomeSubtype === 'short') {
+      return t('investments.assetClassLabels.fixedIncomeSubtypeShort');
     }
-    if (fixedIncomeSubtype === "medium") {
-      return t("investments.assetClassLabels.fixedIncomeSubtypeMedium");
+    if (fixedIncomeSubtype === 'medium') {
+      return t('investments.assetClassLabels.fixedIncomeSubtypeMedium');
     }
-    return "";
+    return '';
   };
 
   const getFixedIncomeSubtypeTone = (fixedIncomeSubtype) => {
-    if (fixedIncomeSubtype === "short") {
-      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200";
+    if (fixedIncomeSubtype === 'short') {
+      return 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200';
     }
-    if (fixedIncomeSubtype === "medium") {
-      return "bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100";
+    if (fixedIncomeSubtype === 'medium') {
+      return 'bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-100';
     }
-    return "";
+    return '';
   };
 
   const COLORS = [
-    "#0ea5e9",
-    "#10b981",
-    "#f59e0b",
-    "#ef4444",
-    "#8b5cf6",
-    "#ec4899",
-    "#f97316",
-    "#06b6d4",
-    "#84cc16",
-    "#a855f7",
+    '#0ea5e9',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#ec4899',
+    '#f97316',
+    '#06b6d4',
+    '#84cc16',
+    '#a855f7',
   ];
 
   // Colores específicos para cada clase de activo
   const ASSET_CLASS_COLORS = {
-    "Renta Fija": "#3b82f6", // Azul
-    "Renta Variable": "#10b981", // Verde
-    Efectivo: "#f59e0b", // Amarillo/Naranja
+    'Renta Fija': '#3b82f6', // Azul
+    'Renta Variable': '#10b981', // Verde
+    Efectivo: '#f59e0b', // Amarillo/Naranja
   };
 
   // Colores para tipo de renta (fija corto/medio, variable, alternativa)
   const ASSET_TYPE_COLORS = {
-    fixed_short: "#0ea5e9", // sky
-    fixed_medium: "#3b82f6", // blue
-    variable: "#10b981", // emerald
-    alternative: "#8b5cf6", // violet
+    fixed_short: '#0ea5e9', // sky
+    fixed_medium: '#3b82f6', // blue
+    variable: '#10b981', // emerald
+    alternative: '#8b5cf6', // violet
   };
 
   // Generar colores para bancos y variaciones para subcuentas
   const generateBankColors = (bankName, subAccountCount, savedColor = null) => {
     const isRenta4 =
-      String(bankName || "")
+      String(bankName || '')
         .toLowerCase()
-        .replace(/\s/g, "") === "renta4";
+        .replace(/\s/g, '') === 'renta4';
     const baseColor =
-      savedColor && savedColor.trim() !== ""
+      savedColor && savedColor.trim() !== ''
         ? savedColor
         : (() => {
             const bankBaseColors = {
-              Santander: "#ec0000",
-              BBVA: "#004481",
-              CaixaBank: "#004481",
-              ING: "#ff6200",
-              MyInvestor: "#00a859",
-              Openbank: "#00a859",
-              N26: "#000000",
-              Revolut: "#0075eb",
-              Renta4: "#e85d04",
+              Santander: '#ec0000',
+              BBVA: '#004481',
+              CaixaBank: '#004481',
+              ING: '#ff6200',
+              MyInvestor: '#00a859',
+              Openbank: '#00a859',
+              N26: '#000000',
+              Revolut: '#0075eb',
+              Renta4: '#e85d04',
             };
-            return (
-              bankBaseColors[bankName] || generateColorFromString(bankName)
-            );
+            return bankBaseColors[bankName] || generateColorFromString(bankName);
           })();
 
     // Renta4: variaciones muy sutiles (Efectivo / Inversiones) del mismo color
@@ -255,7 +234,7 @@ const Dashboard = () => {
     let hue, saturation, lightness;
 
     // Si es un color HSL, extraer los valores
-    if (baseColor.startsWith("hsl")) {
+    if (baseColor.startsWith('hsl')) {
       const match = baseColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
       if (match) {
         hue = parseInt(match[1]);
@@ -269,14 +248,14 @@ const Dashboard = () => {
       }
     } else {
       // Si es un color hexadecimal, convertir a HSL
-      let hex = baseColor.replace("#", "");
+      let hex = baseColor.replace('#', '');
 
       // Manejar colores de 3 dígitos
       if (hex.length === 3) {
         hex = hex
-          .split("")
+          .split('')
           .map((char) => char + char)
-          .join("");
+          .join('');
       }
 
       const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -343,8 +322,8 @@ const Dashboard = () => {
     if (count === 0) return [];
     // Recalcular con pasos de luminosidad mucho menores (±3% por paso)
     let hue, saturation, lightness;
-    const bc = baseColor.replace(/\s/g, "");
-    if (bc.startsWith("hsl")) {
+    const bc = baseColor.replace(/\s/g, '');
+    if (bc.startsWith('hsl')) {
       const match = bc.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
       if (match) {
         hue = parseInt(match[1]);
@@ -356,12 +335,12 @@ const Dashboard = () => {
         lightness = 50;
       }
     } else {
-      let hex = baseColor.replace("#", "");
+      let hex = baseColor.replace('#', '');
       if (hex.length === 3)
         hex = hex
-          .split("")
+          .split('')
           .map((c) => c + c)
-          .join("");
+          .join('');
       const r = parseInt(hex.slice(0, 2), 16) / 255;
       const g = parseInt(hex.slice(2, 4), 16) / 255;
       const b = parseInt(hex.slice(4, 6), 16) / 255;
@@ -405,18 +384,12 @@ const Dashboard = () => {
       ? (() => {
           const maxSubs = Math.max(
             ...distributionByBank.map((b) => (b.subAccounts || []).length),
-            1,
+            1
           );
-          const sorted = [...distributionByBank].sort(
-            (a, b) => (b.total || 0) - (a.total || 0),
-          );
+          const sorted = [...distributionByBank].sort((a, b) => (b.total || 0) - (a.total || 0));
           return sorted.map((bank) => {
             const subs = bank.subAccounts || [];
-            const colors = generateBankColors(
-              bank.bankName,
-              subs.length,
-              bank.color,
-            );
+            const colors = generateBankColors(bank.bankName, subs.length, bank.color);
             const row = {
               bankName: bank.bankName,
               total: bank.total || 0,
@@ -424,8 +397,7 @@ const Dashboard = () => {
               _subAccounts: subs,
             };
             for (let i = 0; i < maxSubs; i++) {
-              row[`seg${i}`] =
-                subs[i]?.value ?? (i === 0 ? bank.total || 0 : 0);
+              row[`seg${i}`] = subs[i]?.value ?? (i === 0 ? bank.total || 0 : 0);
             }
             return row;
           });
@@ -438,9 +410,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const params = includeBusinessAccounts
-        ? { includeBusinessAccounts: "true" }
-        : {};
+      const params = includeBusinessAccounts ? { includeBusinessAccounts: 'true' } : {};
       const [
         statsRes,
         balanceRes,
@@ -451,24 +421,20 @@ const Dashboard = () => {
         bankRes,
         performanceRes,
       ] = await Promise.all([
-        api.get("/dashboard/stats", { params }),
-        api.get("/dashboard/balance-daily", { params }),
-        api.get("/investment-history/evolution?months=6"),
-        api.get("/dashboard/distribution-by-asset-class", { params }),
-        api.get("/dashboard/distribution-by-asset-type", { params }),
-        api.get("/dashboard/investments-detailed", { params }),
-        api.get("/dashboard/distribution-by-bank", { params }),
-        api.get("/dashboard/performance", { params }),
+        api.get('/dashboard/stats', { params }),
+        api.get('/dashboard/balance-daily', { params }),
+        api.get('/investment-history/evolution?months=6'),
+        api.get('/dashboard/distribution-by-asset-class', { params }),
+        api.get('/dashboard/distribution-by-asset-type', { params }),
+        api.get('/dashboard/investments-detailed', { params }),
+        api.get('/dashboard/distribution-by-bank', { params }),
+        api.get('/dashboard/performance', { params }),
       ]);
       setStats(statsRes.data);
       // Asegurar que los datos estén ordenados por fecha
-      const sortedBalanceData = balanceRes.data.sort(
-        (a, b) => new Date(a.date) - new Date(b.date),
-      );
+      const sortedBalanceData = balanceRes.data.sort((a, b) => new Date(a.date) - new Date(b.date));
       // Verificar valores únicos
-      const uniqueBalances = [
-        ...new Set(sortedBalanceData.map((item) => item.balance)),
-      ];
+      const uniqueBalances = [...new Set(sortedBalanceData.map((item) => item.balance))];
 
       setBalanceChart(sortedBalanceData);
       setInvestmentsEvolution(evolutionRes.data);
@@ -486,50 +452,44 @@ const Dashboard = () => {
 
   // Capital aportado INCLUYE EFECTIVO: neto invertido (historial) + efectivo (subcuentas cash/savings/inversión)
   const contributedCapital =
-    stats && typeof stats.capitalAportadoIncluyeEfectivo === "number"
+    stats && typeof stats.capitalAportadoIncluyeEfectivo === 'number'
       ? Math.max(0, stats.capitalAportadoIncluyeEfectivo)
       : stats &&
-          typeof stats.netInvestedCapital === "number" &&
-          typeof stats.totalCashSavings === "number"
+          typeof stats.netInvestedCapital === 'number' &&
+          typeof stats.totalCashSavings === 'number'
         ? Math.max(0, stats.netInvestedCapital + stats.totalCashSavings)
-        : stats && typeof stats.netInvestedCapital === "number"
+        : stats && typeof stats.netInvestedCapital === 'number'
           ? Math.max(0, stats.netInvestedCapital)
           : stats && performance
-            ? Math.max(
-                0,
-                (stats.totalBalance || 0) -
-                  (performance.accumulatedReturn || 0),
-              )
+            ? Math.max(0, (stats.totalBalance || 0) - (performance.accumulatedReturn || 0))
             : null;
   // Rendimiento acumulado = solo inversiones (valor actual - capital neto invertido), no incluye efectivo
   const accumulatedReturn =
-    stats && typeof stats.accumulatedReturn === "number"
+    stats && typeof stats.accumulatedReturn === 'number'
       ? stats.accumulatedReturn
       : (performance?.accumulatedReturn ?? null);
   const accumulatedReturnPercent =
-    contributedCapital != null &&
-    contributedCapital > 0 &&
-    accumulatedReturn != null
+    contributedCapital != null && contributedCapital > 0 && accumulatedReturn != null
       ? Number(((accumulatedReturn / contributedCapital) * 100).toFixed(2))
-      : ((typeof stats?.accumulatedReturnPercent === "number"
+      : ((typeof stats?.accumulatedReturnPercent === 'number'
           ? stats.accumulatedReturnPercent
           : performance?.accumulatedReturnPercent) ?? 0);
 
   // Color de celda por rentabilidad (para Recharts Treemap)
   const getTreemapCellColor = (pct) => {
-    if (pct == null) return "#64748b";
-    if (pct === 0) return "#64748b";
+    if (pct == null) return '#64748b';
+    if (pct === 0) return '#64748b';
     const abs = Math.abs(pct);
     if (pct > 0) {
-      if (abs >= 30) return "#047857";
-      if (abs >= 15) return "#166534";
-      if (abs >= 5) return "#15803d";
-      return "#16a34a";
+      if (abs >= 30) return '#047857';
+      if (abs >= 15) return '#166534';
+      if (abs >= 5) return '#15803d';
+      return '#16a34a';
     }
-    if (abs >= 30) return "#991b1b";
-    if (abs >= 15) return "#b91c1c";
-    if (abs >= 5) return "#dc2626";
-    return "#ef4444";
+    if (abs >= 30) return '#991b1b';
+    if (abs >= 15) return '#b91c1c';
+    if (abs >= 5) return '#dc2626';
+    return '#ef4444';
   };
 
   // Datos para Recharts Treemap: array con un root y children (inversiones)
@@ -537,7 +497,7 @@ const Dashboard = () => {
     investmentsDetailed?.length > 0
       ? [
           {
-            name: "Inversiones",
+            name: 'Inversiones',
             children: investmentsDetailed.map((inv) => ({
               name: inv.name,
               value: Math.max(Number(inv.value) || 0, 0.01),
@@ -557,15 +517,13 @@ const Dashboard = () => {
       setSelectedTreemapInvestment(res.data);
       const [hist, vars] = await Promise.all([
         api.get(`/investment-history/investment/${dataItem._id}`),
-        api.get(
-          `/investment-history/investment/${dataItem._id}/daily-variations`,
-        ),
+        api.get(`/investment-history/investment/${dataItem._id}/daily-variations`),
       ]);
       setDetailInvestmentHistory(hist.data || []);
       setDetailDailyVariations(vars.data || []);
       setShowInvestmentDetailModal(true);
     } catch (err) {
-      console.error("Error al cargar detalles:", err);
+      console.error('Error al cargar detalles:', err);
       setSelectedTreemapInvestment(dataItem);
       setShowInvestmentDetailModal(true);
     }
@@ -576,10 +534,10 @@ const Dashboard = () => {
       <div className="mb-2 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-            {t("dashboard.title")}
+            {t('dashboard.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 tracking-tight">
-            {t("dashboard.subtitle")}
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -591,7 +549,7 @@ const Dashboard = () => {
               className="rounded"
             />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t("dashboard.includeBusinessAccounts")}
+              {t('dashboard.includeBusinessAccounts')}
             </span>
           </label>
         </div>
@@ -606,12 +564,12 @@ const Dashboard = () => {
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                {t("dashboard.totalBalance")}
+                {t('dashboard.totalBalance')}
               </p>
               <p className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 break-words">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
                   maximumFractionDigits: 0,
                 }).format(stats.totalBalance)}
               </p>
@@ -619,11 +577,11 @@ const Dashboard = () => {
                 performance.annualizedReturn !== null &&
                 contributedCapital !== null && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                    {t("dashboard.contributedCapital")}:{" "}
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {t('dashboard.contributedCapital')}:{' '}
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(contributedCapital || 0)}
                   </p>
@@ -631,7 +589,7 @@ const Dashboard = () => {
             </div>
             <div
               className="flex-shrink-0 p-2.5 rounded"
-              style={{ backgroundColor: "var(--user-color-600)" }}
+              style={{ backgroundColor: 'var(--user-color-600)' }}
             >
               <CgCreditCard className="h-4 w-4 text-white" />
             </div>
@@ -639,17 +597,12 @@ const Dashboard = () => {
 
           {/* Barra de distribución */}
           {(() => {
-            const totalAssets =
-              (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
+            const totalAssets = (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
             const cashPercent =
-              totalAssets > 0
-                ? ((stats.totalCashSavings || 0) / totalAssets) * 100
-                : 0;
+              totalAssets > 0 ? ((stats.totalCashSavings || 0) / totalAssets) * 100 : 0;
             const investmentPercent =
-              totalAssets > 0
-                ? ((stats.totalInvestments || 0) / totalAssets) * 100
-                : 0;
-            const cashColor = ASSET_CLASS_COLORS["Efectivo"] || "#f59e0b";
+              totalAssets > 0 ? ((stats.totalInvestments || 0) / totalAssets) * 100 : 0;
+            const cashColor = ASSET_CLASS_COLORS['Efectivo'] || '#f59e0b';
 
             return (
               <div className="space-y-4 flex-1 flex flex-col justify-between">
@@ -677,8 +630,7 @@ const Dashboard = () => {
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-600"></div>
                       <span className="text-gray-600 dark:text-gray-400 font-medium">
-                        {t("dashboard.invested")}:{" "}
-                        {investmentPercent.toFixed(1)}%
+                        {t('dashboard.invested')}: {investmentPercent.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -687,7 +639,7 @@ const Dashboard = () => {
                         style={{ backgroundColor: cashColor }}
                       ></div>
                       <span className="text-gray-600 dark:text-gray-400 font-medium">
-                        {t("dashboard.cash")}: {cashPercent.toFixed(1)}%
+                        {t('dashboard.cash')}: {cashPercent.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -695,26 +647,26 @@ const Dashboard = () => {
                 <div className="pt-3 space-y-2.5 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {t("dashboard.investedCapital")}
+                      {t('dashboard.investedCapital')}
                     </span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                        notation: "compact",
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        notation: 'compact',
                         maximumFractionDigits: 1,
                       }).format(stats.totalInvestments || 0)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {t("dashboard.cash")}
+                      {t('dashboard.cash')}
                     </span>
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                        notation: "compact",
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        notation: 'compact',
                         maximumFractionDigits: 1,
                       }).format(stats.totalCashSavings || 0)}
                     </span>
@@ -732,25 +684,25 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.dailyChange")}
+                    {t('dashboard.dailyChange')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.dailyReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {(performance.dailyReturnPercent || 0) >= 0 ? "+" : ""}
+                    {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}
                     {(performance.dailyReturnPercent || 0).toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(performance.dailyReturn || 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${(performance.dailyReturnPercent || 0) >= 0 ? "bg-purple-500 dark:bg-purple-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${(performance.dailyReturnPercent || 0) >= 0 ? 'bg-purple-500 dark:bg-purple-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgTrending className="h-4 w-4 text-white" />
                 </div>
@@ -761,25 +713,25 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.monthlyReturn")}
+                    {t('dashboard.monthlyReturn')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.monthlyReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {(performance.monthlyReturnPercent || 0) >= 0 ? "+" : ""}
+                    {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}
                     {(performance.monthlyReturnPercent || 0).toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(performance.monthlyReturn || 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${(performance.monthlyReturnPercent || 0) >= 0 ? "bg-cyan-500 dark:bg-cyan-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${(performance.monthlyReturnPercent || 0) >= 0 ? 'bg-cyan-500 dark:bg-cyan-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgTrending className="h-4 w-4 text-white" />
                 </div>
@@ -790,25 +742,25 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.accumulatedReturn")}
+                    {t('dashboard.accumulatedReturn')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${accumulatedReturnPercent >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${accumulatedReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {accumulatedReturnPercent >= 0 ? "+" : ""}
+                    {accumulatedReturnPercent >= 0 ? '+' : ''}
                     {accumulatedReturnPercent.toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(accumulatedReturn ?? 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${accumulatedReturnPercent >= 0 ? "bg-green-500 dark:bg-green-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${accumulatedReturnPercent >= 0 ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgDollar className="h-4 w-4 text-white" />
                 </div>
@@ -821,24 +773,50 @@ const Dashboard = () => {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                {t("dashboard.debt")}
+                {t('dashboard.debt')}
               </p>
               <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 break-words">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
-                  notation: "compact",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
+                  notation: 'compact',
                   maximumFractionDigits: 1,
                 }).format(stats.totalDebts || 0)}
               </p>
+              {(stats.totalGoodDebts > 0 || stats.totalBadDebts > 0) && (
+                <div className="mt-2 space-y-0.5">
+                  {stats.totalBadDebts > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400">
+                      {t('debts.badDebt')}{' '}
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(stats.totalBadDebts)}
+                    </p>
+                  )}
+                  {stats.totalGoodDebts > 0 && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      {t('debts.goodDebt')}{' '}
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(stats.totalGoodDebts)}
+                    </p>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
-                  notation: "compact",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
+                  notation: 'compact',
                   maximumFractionDigits: 1,
                 }).format(stats.totalMonthlyDebtPayments || 0)}
-                {t("dashboard.monthly")}
+                {t('dashboard.monthly')}
               </p>
             </div>
             <div className="flex-shrink-0 p-2.5 bg-red-500 dark:bg-red-600 rounded">
@@ -854,25 +832,25 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.quarterlyReturn")}
+                    {t('dashboard.quarterlyReturn')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.quarterlyReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {(performance.quarterlyReturnPercent || 0) >= 0 ? "+" : ""}
+                    {(performance.quarterlyReturnPercent || 0) >= 0 ? '+' : ''}
                     {(performance.quarterlyReturnPercent || 0).toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(performance.quarterlyReturn || 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${(performance.quarterlyReturnPercent || 0) >= 0 ? "bg-teal-500 dark:bg-teal-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${(performance.quarterlyReturnPercent || 0) >= 0 ? 'bg-teal-500 dark:bg-teal-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgTrending className="h-4 w-4 text-white" />
                 </div>
@@ -883,25 +861,25 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.annualReturn")}
+                    {t('dashboard.annualReturn')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.annualReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${(performance.annualReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {(performance.annualReturnPercent || 0) >= 0 ? "+" : ""}
+                    {(performance.annualReturnPercent || 0) >= 0 ? '+' : ''}
                     {(performance.annualReturnPercent || 0).toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 1,
                     }).format(performance.annualReturn || 0)}
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${(performance.annualReturnPercent || 0) >= 0 ? "bg-green-500 dark:bg-green-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${(performance.annualReturnPercent || 0) >= 0 ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgDollar className="h-4 w-4 text-white" />
                 </div>
@@ -912,12 +890,12 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {t("dashboard.annualizedReturn")}
+                    {t('dashboard.annualizedReturn')}
                   </p>
                   <p
-                    className={`text-2xl sm:text-3xl font-bold break-words ${performance.annualizedReturn >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                    className={`text-2xl sm:text-3xl font-bold break-words ${performance.annualizedReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                   >
-                    {performance.annualizedReturn >= 0 ? "+" : ""}
+                    {performance.annualizedReturn >= 0 ? '+' : ''}
                     {performance.annualizedReturn.toFixed(2)}%
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -925,7 +903,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div
-                  className={`flex-shrink-0 p-2.5 rounded ${performance.annualizedReturn >= 0 ? "bg-blue-500 dark:bg-blue-600" : "bg-red-500 dark:bg-red-600"}`}
+                  className={`flex-shrink-0 p-2.5 rounded ${performance.annualizedReturn >= 0 ? 'bg-blue-500 dark:bg-blue-600' : 'bg-red-500 dark:bg-red-600'}`}
                 >
                   <CgTrending className="h-4 w-4 text-white" />
                 </div>
@@ -937,36 +915,30 @@ const Dashboard = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                      {t("dashboard.vsSP500")}
+                      {t('dashboard.vsSP500')}
                     </p>
                     {performance.sp500Comparison.outperformance !== null ? (
                       <>
                         <p
-                          className={`text-2xl sm:text-3xl font-bold break-words ${performance.sp500Comparison.outperformance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                          className={`text-2xl sm:text-3xl font-bold break-words ${performance.sp500Comparison.outperformance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                         >
-                          {performance.sp500Comparison.outperformance >= 0
-                            ? "+"
-                            : ""}
-                          {performance.sp500Comparison.outperformance.toFixed(
-                            2,
-                          )}
-                          %
+                          {performance.sp500Comparison.outperformance >= 0 ? '+' : ''}
+                          {performance.sp500Comparison.outperformance.toFixed(2)}%
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          Tu CAGR: {performance.annualizedReturn.toFixed(2)}% |
-                          S&P 500:{" "}
+                          Tu CAGR: {performance.annualizedReturn.toFixed(2)}% | S&P 500:{' '}
                           {performance.sp500Comparison.historicalAnnualReturn}%
                         </p>
                       </>
                     ) : (
                       <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
-                        {performance.annualizedReturn.toFixed(2)}% vs{" "}
+                        {performance.annualizedReturn.toFixed(2)}% vs{' '}
                         {performance.sp500Comparison.historicalAnnualReturn}%
                       </p>
                     )}
                   </div>
                   <div
-                    className={`flex-shrink-0 p-2.5 rounded ${performance.sp500Comparison.outperformance !== null && performance.sp500Comparison.outperformance >= 0 ? "bg-purple-500 dark:bg-purple-600" : "bg-gray-500 dark:bg-gray-600"}`}
+                    className={`flex-shrink-0 p-2.5 rounded ${performance.sp500Comparison.outperformance !== null && performance.sp500Comparison.outperformance >= 0 ? 'bg-purple-500 dark:bg-purple-600' : 'bg-gray-500 dark:bg-gray-600'}`}
                   >
                     {performance.sp500Comparison.outperformance !== null &&
                     performance.sp500Comparison.outperformance >= 0 ? (
@@ -987,61 +959,49 @@ const Dashboard = () => {
         {balanceChart.length > 0 && (
           <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              {t("dashboard.totalNetWorthEvolution")}
+              {t('dashboard.totalNetWorthEvolution')}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart
                 data={balanceChart.map((item) => {
                   const balanceValue = parseFloat(item.balance) || 0;
-                  const dateStr = new Date(item.date).toLocaleDateString(
-                    "es-ES",
-                    { month: "short", day: "numeric" },
-                  );
+                  const dateStr = new Date(item.date).toLocaleDateString('es-ES', {
+                    month: 'short',
+                    day: 'numeric',
+                  });
                   return { date: dateStr, balance: balanceValue };
                 })}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient
-                    id="balanceGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
+                  <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.4} />
-                    <stop
-                      offset="100%"
-                      stopColor="#0ea5e9"
-                      stopOpacity={0.02}
-                    />
+                    <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={
-                    isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
-                  }
+                  stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
-                  axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                  tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                  axisLine={{ stroke: isDark ? '#404040' : '#e5e7eb' }}
                   tickLine={false}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                 />
                 <YAxis
-                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value) =>
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 0,
                     }).format(value)
                   }
@@ -1055,9 +1015,9 @@ const Dashboard = () => {
                       label={label}
                       labelLabel="Fecha"
                       valueFormatter={(v) =>
-                        new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: "EUR",
+                        new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
                         }).format(v)
                       }
                       isDark={isDark}
@@ -1067,12 +1027,12 @@ const Dashboard = () => {
                 <Area
                   type="monotone"
                   dataKey="balance"
-                  name={t("dashboard.totalNetWorth")}
+                  name={t('dashboard.totalNetWorth')}
                   stroke="#0ea5e9"
                   strokeWidth={2}
                   fill="url(#balanceGradient)"
                   dot={false}
-                  activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: 'white' }}
                   isAnimationActive
                   animationDuration={800}
                   animationEasing="ease-out"
@@ -1090,52 +1050,40 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart
                 data={investmentsEvolution.map((item) => ({
-                  date: new Date(item.date).toLocaleDateString("es-ES", {
-                    month: "short",
-                    day: "numeric",
+                  date: new Date(item.date).toLocaleDateString('es-ES', {
+                    month: 'short',
+                    day: 'numeric',
                   }),
                   value: item.totalValue,
                 }))}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient
-                    id="investmentsGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
+                  <linearGradient id="investmentsGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                    <stop
-                      offset="100%"
-                      stopColor="#8b5cf6"
-                      stopOpacity={0.02}
-                    />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={
-                    isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"
-                  }
+                  stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
-                  axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                  tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                  axisLine={{ stroke: isDark ? '#404040' : '#e5e7eb' }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
+                  tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value) =>
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
-                      notation: "compact",
+                    new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      notation: 'compact',
                       maximumFractionDigits: 0,
                     }).format(value)
                   }
@@ -1149,9 +1097,9 @@ const Dashboard = () => {
                       label={label}
                       labelLabel="Fecha"
                       valueFormatter={(v) =>
-                        new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: "EUR",
+                        new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
                         }).format(v)
                       }
                       isDark={isDark}
@@ -1166,7 +1114,7 @@ const Dashboard = () => {
                   strokeWidth={2}
                   fill="url(#investmentsGradient)"
                   dot={false}
-                  activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: 'white' }}
                   isAnimationActive
                   animationDuration={800}
                   animationEasing="ease-out"
@@ -1181,7 +1129,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("dashboard.byAssetClass")}
+            {t('dashboard.byAssetClass')}
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
@@ -1193,15 +1141,13 @@ const Dashboard = () => {
                 outerRadius={95}
                 paddingAngle={2}
                 dataKey="value"
-                stroke={isDark ? "#2c2c2e" : "#fff"}
+                stroke={isDark ? '#2c2c2e' : '#fff'}
                 strokeWidth={2}
                 label={({ name, percent }) =>
-                  percent >= 0.08
-                    ? `${name} ${(percent * 100).toFixed(0)}%`
-                    : ""
+                  percent >= 0.08 ? `${name} ${(percent * 100).toFixed(0)}%` : ''
                 }
                 labelLine={{
-                  stroke: isDark ? "#525252" : "#d1d5db",
+                  stroke: isDark ? '#525252' : '#d1d5db',
                   strokeWidth: 1,
                 }}
                 isAnimationActive
@@ -1209,9 +1155,7 @@ const Dashboard = () => {
                 animationEasing="ease-out"
               >
                 {distributionByAssetClass.map((entry, index) => {
-                  const color =
-                    ASSET_CLASS_COLORS[entry.name] ||
-                    COLORS[index % COLORS.length];
+                  const color = ASSET_CLASS_COLORS[entry.name] || COLORS[index % COLORS.length];
                   return <Cell key={`asset-${index}`} fill={color} />;
                 })}
               </Pie>
@@ -1219,28 +1163,18 @@ const Dashboard = () => {
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const entry = payload[0].payload;
-                  const total = distributionByAssetClass.reduce(
-                    (s, d) => s + d.value,
-                    0,
-                  );
+                  const total = distributionByAssetClass.reduce((s, d) => s + d.value, 0);
                   const pct = total > 0 ? (entry.value / total) * 100 : 0;
-                  const bg = isDark
-                    ? "bg-[#2c2c2e] border-[#404040]"
-                    : "bg-white border-gray-200";
+                  const bg = isDark ? 'bg-[#2c2c2e] border-[#404040]' : 'bg-white border-gray-200';
                   return (
-                    <div
-                      className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
-                    >
+                    <div className={`${bg} border rounded-xl shadow-xl px-4 py-3`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span
                           className="w-3 h-3 rounded-full shrink-0"
                           style={{
                             backgroundColor:
                               ASSET_CLASS_COLORS[entry.name] ||
-                              COLORS[
-                                distributionByAssetClass.indexOf(entry) %
-                                  COLORS.length
-                              ],
+                              COLORS[distributionByAssetClass.indexOf(entry) % COLORS.length],
                           }}
                         />
                         <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
@@ -1248,10 +1182,10 @@ const Dashboard = () => {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: "EUR",
-                        }).format(entry.value)}{" "}
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
+                        }).format(entry.value)}{' '}
                         · {pct.toFixed(1)}%
                       </div>
                     </div>
@@ -1265,7 +1199,7 @@ const Dashboard = () => {
         {distributionByAssetType.length > 0 && (
           <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              {t("dashboard.byAssetType")}
+              {t('dashboard.byAssetType')}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
@@ -1277,16 +1211,16 @@ const Dashboard = () => {
                   outerRadius={95}
                   paddingAngle={2}
                   dataKey="value"
-                  stroke={isDark ? "#2c2c2e" : "#fff"}
+                  stroke={isDark ? '#2c2c2e' : '#fff'}
                   strokeWidth={2}
                   nameKey="id"
                   label={({ id, percent }) =>
                     percent >= 0.08
                       ? `${t(`dashboard.assetType.${id}`)} ${(percent * 100).toFixed(0)}%`
-                      : ""
+                      : ''
                   }
                   labelLine={{
-                    stroke: isDark ? "#525252" : "#d1d5db",
+                    stroke: isDark ? '#525252' : '#d1d5db',
                     strokeWidth: 1,
                   }}
                   isAnimationActive
@@ -1294,9 +1228,7 @@ const Dashboard = () => {
                   animationEasing="ease-out"
                 >
                   {distributionByAssetType.map((entry, index) => {
-                    const color =
-                      ASSET_TYPE_COLORS[entry.id] ||
-                      COLORS[index % COLORS.length];
+                    const color = ASSET_TYPE_COLORS[entry.id] || COLORS[index % COLORS.length];
                     return <Cell key={`asset-type-${entry.id}`} fill={color} />;
                   })}
                 </Pie>
@@ -1304,28 +1236,20 @@ const Dashboard = () => {
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const entry = payload[0].payload;
-                    const total = distributionByAssetType.reduce(
-                      (s, d) => s + d.value,
-                      0,
-                    );
+                    const total = distributionByAssetType.reduce((s, d) => s + d.value, 0);
                     const pct = total > 0 ? (entry.value / total) * 100 : 0;
                     const bg = isDark
-                      ? "bg-[#2c2c2e] border-[#404040]"
-                      : "bg-white border-gray-200";
+                      ? 'bg-[#2c2c2e] border-[#404040]'
+                      : 'bg-white border-gray-200';
                     return (
-                      <div
-                        className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
-                      >
+                      <div className={`${bg} border rounded-xl shadow-xl px-4 py-3`}>
                         <div className="flex items-center gap-2 mb-1">
                           <span
                             className="w-3 h-3 rounded-full shrink-0"
                             style={{
                               backgroundColor:
                                 ASSET_TYPE_COLORS[entry.id] ||
-                                COLORS[
-                                  distributionByAssetType.indexOf(entry) %
-                                    COLORS.length
-                                ],
+                                COLORS[distributionByAssetType.indexOf(entry) % COLORS.length],
                             }}
                           />
                           <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
@@ -1333,10 +1257,10 @@ const Dashboard = () => {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Intl.NumberFormat("es-ES", {
-                            style: "currency",
-                            currency: "EUR",
-                          }).format(entry.value)}{" "}
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
+                          }).format(entry.value)}{' '}
                           · {pct.toFixed(1)}%
                         </div>
                       </div>
@@ -1353,12 +1277,9 @@ const Dashboard = () => {
       {bankChartData && bankChartData.length > 0 && (
         <div className="card w-full">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("dashboard.byBank")}
+            {t('dashboard.byBank')}
           </h2>
-          <ResponsiveContainer
-            width="100%"
-            height={Math.max(280, bankChartData.length * 56)}
-          >
+          <ResponsiveContainer width="100%" height={Math.max(280, bankChartData.length * 56)}>
             <BarChart
               data={bankChartData}
               layout="vertical"
@@ -1366,19 +1287,19 @@ const Dashboard = () => {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}
+                stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
                 horizontal={false}
               />
               <XAxis
                 type="number"
-                tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 11 }}
-                axisLine={{ stroke: isDark ? "#404040" : "#e5e7eb" }}
+                tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 }}
+                axisLine={{ stroke: isDark ? '#404040' : '#e5e7eb' }}
                 tickLine={false}
                 tickFormatter={(v) =>
-                  new Intl.NumberFormat("es-ES", {
-                    style: "currency",
-                    currency: "EUR",
-                    notation: "compact",
+                  new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    notation: 'compact',
                     maximumFractionDigits: 0,
                   }).format(v)
                 }
@@ -1387,12 +1308,10 @@ const Dashboard = () => {
                 type="category"
                 dataKey="bankName"
                 width={140}
-                tick={{ fill: isDark ? "#9ca3af" : "#6b7280", fontSize: 12 }}
+                tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) =>
-                  v && v.length > 18 ? v.slice(0, 17) + "…" : v
-                }
+                tickFormatter={(v) => (v && v.length > 18 ? v.slice(0, 17) + '…' : v)}
               />
               <Tooltip
                 content={({ active, payload }) => {
@@ -1400,13 +1319,9 @@ const Dashboard = () => {
                   const entry = payload[0].payload;
                   const subs = entry._subAccounts || [];
                   const colors = entry._colors;
-                  const bg = isDark
-                    ? "bg-[#2c2c2e] border-[#404040]"
-                    : "bg-white border-gray-200";
+                  const bg = isDark ? 'bg-[#2c2c2e] border-[#404040]' : 'bg-white border-gray-200';
                   return (
-                    <div
-                      className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[200px]`}
-                    >
+                    <div className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[200px]`}>
                       <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 pb-1 border-b border-gray-200 dark:border-gray-600">
                         {entry.bankName}
                       </p>
@@ -1420,8 +1335,7 @@ const Dashboard = () => {
                               <span
                                 className="w-2 h-2 rounded-full shrink-0"
                                 style={{
-                                  backgroundColor:
-                                    colors?.variations?.[i] ?? colors?.base,
+                                  backgroundColor: colors?.variations?.[i] ?? colors?.base,
                                 }}
                               />
                               <span className="truncate text-gray-700 dark:text-gray-300">
@@ -1429,27 +1343,27 @@ const Dashboard = () => {
                               </span>
                             </span>
                             <span className="font-medium text-gray-900 dark:text-gray-100 tabular-nums shrink-0">
-                              {new Intl.NumberFormat("es-ES", {
-                                style: "currency",
-                                currency: "EUR",
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: 'EUR',
                               }).format(sub.value || 0)}
                             </span>
                           </div>
                         ))
                       ) : (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {new Intl.NumberFormat("es-ES", {
-                            style: "currency",
-                            currency: "EUR",
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
                           }).format(entry.total)}
                         </p>
                       )}
                       <div className="flex justify-between gap-4 mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-600 font-semibold text-gray-900 dark:text-gray-100 text-sm">
                         <span>Total</span>
                         <span className="tabular-nums">
-                          {new Intl.NumberFormat("es-ES", {
-                            style: "currency",
-                            currency: "EUR",
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
                           }).format(entry.total)}
                         </span>
                       </div>
@@ -1462,24 +1376,16 @@ const Dashboard = () => {
                   .filter((k) => /^seg\d+$/.test(k))
                   .sort(
                     (a, b) =>
-                      parseInt(a.replace("seg", ""), 10) -
-                      parseInt(b.replace("seg", ""), 10),
+                      parseInt(a.replace('seg', ''), 10) - parseInt(b.replace('seg', ''), 10)
                   )
                   .map((segKey) => (
-                    <Bar
-                      key={segKey}
-                      dataKey={segKey}
-                      stackId="bank"
-                      radius={0}
-                      minPointSize={4}
-                    >
+                    <Bar key={segKey} dataKey={segKey} stackId="bank" radius={0} minPointSize={4}>
                       {bankChartData.map((entry, idx) => (
                         <Cell
                           key={idx}
                           fill={
-                            entry._colors?.variations?.[
-                              parseInt(segKey.replace("seg", ""), 10)
-                            ] ?? entry._colors?.base
+                            entry._colors?.variations?.[parseInt(segKey.replace('seg', ''), 10)] ??
+                            entry._colors?.base
                           }
                         />
                       ))}
@@ -1495,13 +1401,13 @@ const Dashboard = () => {
         <div className="card w-full overflow-visible">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Mapa de calor · {t("dashboard.byInvestment")}
+              Mapa de calor · {t('dashboard.byInvestment')}
             </h2>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#047857" }}
+                  style={{ backgroundColor: '#047857' }}
                   aria-hidden
                 />
                 ≥30%
@@ -1509,7 +1415,7 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#166534" }}
+                  style={{ backgroundColor: '#166534' }}
                   aria-hidden
                 />
                 15-30%
@@ -1517,7 +1423,7 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#15803d" }}
+                  style={{ backgroundColor: '#15803d' }}
                   aria-hidden
                 />
                 5-15%
@@ -1525,22 +1431,19 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#16a34a" }}
+                  style={{ backgroundColor: '#16a34a' }}
                   aria-hidden
                 />
                 0-5%
               </span>
               <span className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-sm shrink-0 bg-slate-500"
-                  aria-hidden
-                />
+                <span className="w-3 h-3 rounded-sm shrink-0 bg-slate-500" aria-hidden />
                 0%
               </span>
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#ef4444" }}
+                  style={{ backgroundColor: '#ef4444' }}
                   aria-hidden
                 />
                 0 a -5%
@@ -1548,7 +1451,7 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#dc2626" }}
+                  style={{ backgroundColor: '#dc2626' }}
                   aria-hidden
                 />
                 -5 a -15%
@@ -1556,7 +1459,7 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#b91c1c" }}
+                  style={{ backgroundColor: '#b91c1c' }}
                   aria-hidden
                 />
                 -15 a -30%
@@ -1564,23 +1467,20 @@ const Dashboard = () => {
               <span className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ backgroundColor: "#991b1b" }}
+                  style={{ backgroundColor: '#991b1b' }}
                   aria-hidden
                 />
                 &lt;-30%
               </span>
               <span className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-sm shrink-0 bg-slate-500"
-                  aria-hidden
-                />
+                <span className="w-3 h-3 rounded-sm shrink-0 bg-slate-500" aria-hidden />
                 Sin datos
               </span>
             </div>
           </div>
           <div
             className="w-full overflow-visible rounded-lg bg-gray-100 dark:bg-gray-800/60"
-            style={{ height: "500px", minHeight: "500px" }}
+            style={{ height: '500px', minHeight: '500px' }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <Treemap
@@ -1596,29 +1496,16 @@ const Dashboard = () => {
                   }
                 }}
                 content={(props) => {
-                  const {
-                    x,
-                    y,
-                    width,
-                    height,
-                    depth,
-                    name,
-                    value,
-                    totalReturnPercent,
-                    _id,
-                  } = props;
+                  const { x, y, width, height, depth, name, value, totalReturnPercent, _id } =
+                    props;
                   if (depth === 0) return null;
                   const color = getTreemapCellColor(totalReturnPercent);
                   const minSide = Math.min(width, height);
-                  const fontSize = Math.max(
-                    10,
-                    Math.min(30, Math.floor(minSide / 8)),
-                  );
+                  const fontSize = Math.max(10, Math.min(30, Math.floor(minSide / 8)));
                   const pctStr =
-                    totalReturnPercent != null &&
-                    !Number.isNaN(totalReturnPercent)
-                      ? `${totalReturnPercent >= 0 ? "+" : ""}${totalReturnPercent.toFixed(2)}%`
-                      : "";
+                    totalReturnPercent != null && !Number.isNaN(totalReturnPercent)
+                      ? `${totalReturnPercent >= 0 ? '+' : ''}${totalReturnPercent.toFixed(2)}%`
+                      : '';
                   return (
                     <g>
                       <foreignObject
@@ -1626,7 +1513,7 @@ const Dashboard = () => {
                         y={y}
                         width={Math.max(1, width)}
                         height={Math.max(1, height)}
-                        style={{ overflow: "visible" }}
+                        style={{ overflow: 'visible' }}
                       >
                         <div
                           className="relative w-full h-full"
@@ -1637,7 +1524,7 @@ const Dashboard = () => {
                             style={{
                               backgroundColor: color,
                               backgroundImage:
-                                "linear-gradient(to right bottom, rgba(255,255,255,0.1), rgba(0,0,0,0.1))",
+                                'linear-gradient(to right bottom, rgba(255,255,255,0.1), rgba(0,0,0,0.1))',
                               opacity: 1,
                             }}
                           >
@@ -1646,7 +1533,7 @@ const Dashboard = () => {
                                 className="font-bold text-white leading-none w-full px-0.5 truncate text-center"
                                 style={{
                                   fontSize: `${fontSize}px`,
-                                  textShadow: "rgba(0,0,0,0.3) 0px 1px 2px",
+                                  textShadow: 'rgba(0,0,0,0.3) 0px 1px 2px',
                                 }}
                               >
                                 {name}
@@ -1678,29 +1565,29 @@ const Dashboard = () => {
       {performance?.historicalReturns?.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("dashboard.historicalReturns")}
+            {t('dashboard.historicalReturns')}
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400">
-                    {t("dashboard.historical.year")}
+                    {t('dashboard.historical.year')}
                   </th>
                   <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400">
-                    {t("dashboard.historical.return")}
+                    {t('dashboard.historical.return')}
                   </th>
                   <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                    {t("dashboard.historical.startValue")}
+                    {t('dashboard.historical.startValue')}
                   </th>
                   <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                    {t("dashboard.historical.endValue")}
+                    {t('dashboard.historical.endValue')}
                   </th>
                   <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                    {t("dashboard.historical.contributed")}
+                    {t('dashboard.historical.contributed')}
                   </th>
                   <th className="text-right py-2.5 px-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                    {t("dashboard.historical.withdrawn")}
+                    {t('dashboard.historical.withdrawn')}
                   </th>
                 </tr>
               </thead>
@@ -1708,9 +1595,9 @@ const Dashboard = () => {
                 {performance.historicalReturns.map((yr) => {
                   const isPositive = yr.totalChange >= 0;
                   const fmt = (v) =>
-                    new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
+                    new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
                       maximumFractionDigits: 0,
                     }).format(v);
                   return (
@@ -1726,15 +1613,15 @@ const Dashboard = () => {
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <span
-                            className={`font-bold text-base ${isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`font-bold text-base ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                           >
-                            {isPositive ? "+" : ""}
+                            {isPositive ? '+' : ''}
                             {fmt(yr.totalChange)}
                           </span>
                           <span
-                            className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isPositive ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
+                            className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isPositive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
                           >
-                            {isPositive ? "+" : ""}
+                            {isPositive ? '+' : ''}
                             {yr.changePercent.toFixed(2)}%
                           </span>
                         </div>
@@ -1751,7 +1638,7 @@ const Dashboard = () => {
                             +{fmt(yr.contributed)}
                           </span>
                         ) : (
-                          "—"
+                          '—'
                         )}
                       </td>
                       <td className="py-3 px-3 text-right text-gray-600 dark:text-gray-400 hidden md:table-cell">
@@ -1760,7 +1647,7 @@ const Dashboard = () => {
                             -{fmt(yr.withdrawn)}
                           </span>
                         ) : (
-                          "—"
+                          '—'
                         )}
                       </td>
                     </tr>
@@ -1785,7 +1672,7 @@ const Dashboard = () => {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                {t("dashboard.totalBalance")}
+                {t('dashboard.totalBalance')}
               </h2>
               <button
                 onClick={() => setShowBalanceTooltip(false)}
@@ -1800,12 +1687,12 @@ const Dashboard = () => {
               <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {t("dashboard.totalBalance")}
+                    {t('dashboard.totalBalance')}
                   </span>
                   <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
                       maximumFractionDigits: 0,
                     }).format(stats.totalBalance)}
                   </span>
@@ -1814,19 +1701,18 @@ const Dashboard = () => {
                   <>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {t("dashboard.contributedCapital")}
+                        {t('dashboard.contributedCapital')}
                       </span>
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {new Intl.NumberFormat("es-ES", {
-                          style: "currency",
-                          currency: "EUR",
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
                           maximumFractionDigits: 0,
                         }).format(contributedCapital || 0)}
                       </span>
                     </div>
                     {(() => {
-                      const totalReturn =
-                        stats.totalBalance - (contributedCapital || 0);
+                      const totalReturn = stats.totalBalance - (contributedCapital || 0);
                       const totalReturnPercent =
                         (contributedCapital || 0) > 0
                           ? (totalReturn / (contributedCapital || 0)) * 100
@@ -1834,23 +1720,23 @@ const Dashboard = () => {
                       return (
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {t("dashboard.totalProfitLoss")}
+                            {t('dashboard.totalProfitLoss')}
                           </span>
                           <div className="text-right">
                             <span
-                              className={`text-sm font-semibold ${totalReturn >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                              className={`text-sm font-semibold ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             >
-                              {totalReturn >= 0 ? "+" : ""}
-                              {new Intl.NumberFormat("es-ES", {
-                                style: "currency",
-                                currency: "EUR",
+                              {totalReturn >= 0 ? '+' : ''}
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: 'EUR',
                                 maximumFractionDigits: 0,
                               }).format(totalReturn)}
                             </span>
                             <span
-                              className={`text-xs ml-2 ${totalReturnPercent >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                              className={`text-xs ml-2 ${totalReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             >
-                              ({totalReturnPercent >= 0 ? "+" : ""}
+                              ({totalReturnPercent >= 0 ? '+' : ''}
                               {totalReturnPercent.toFixed(2)}%)
                             </span>
                           </div>
@@ -1863,81 +1749,78 @@ const Dashboard = () => {
 
               {/* Patrimonio Neto */}
               {stats.totalDebts > 0 && (
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      {t("dashboard.netWorth")}
-                    </span>
-                    <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                        maximumFractionDigits: 0,
-                      }).format(stats.totalBalance - (stats.totalDebts || 0))}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {t("dashboard.totalDebt")}
-                    </span>
-                    <span className="text-xs font-medium text-red-600 dark:text-red-400">
-                      {new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                        maximumFractionDigits: 0,
-                      }).format(stats.totalDebts || 0)}
-                    </span>
-                  </div>
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4 space-y-2">
+                  {stats.totalBadDebts > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-red-500 dark:text-red-400">
+                        {t('debts.badDebt')}
+                      </span>
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                        -
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
+                          maximumFractionDigits: 0,
+                        }).format(stats.totalBadDebts)}
+                      </span>
+                    </div>
+                  )}
+                  {stats.totalGoodDebts > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                        {t('debts.goodDebt')} ({t('debts.goodDebtNotDeducted')})
+                      </span>
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: 'EUR',
+                          maximumFractionDigits: 0,
+                        }).format(stats.totalGoodDebts)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Desglose de Activos */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {t("dashboard.assetBreakdown")}
+                  {t('dashboard.assetBreakdown')}
                 </h3>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
                     Capital Invertido
                   </span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
                       maximumFractionDigits: 0,
                     }).format(stats.totalInvestments || 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Efectivo
-                  </span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat("es-ES", {
-                      style: "currency",
-                      currency: "EUR",
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'EUR',
                       maximumFractionDigits: 0,
                     }).format(stats.totalCashSavings || 0)}
                   </span>
                 </div>
                 {(() => {
-                  const totalAssets =
-                    (stats.totalCashSavings || 0) +
-                    (stats.totalInvestments || 0);
+                  const totalAssets = (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
                   const cashPercent =
-                    totalAssets > 0
-                      ? ((stats.totalCashSavings || 0) / totalAssets) * 100
-                      : 0;
+                    totalAssets > 0 ? ((stats.totalCashSavings || 0) / totalAssets) * 100 : 0;
                   const investmentPercent =
-                    totalAssets > 0
-                      ? ((stats.totalInvestments || 0) / totalAssets) * 100
-                      : 0;
-                  const cashColor = ASSET_CLASS_COLORS["Efectivo"] || "#f59e0b";
+                    totalAssets > 0 ? ((stats.totalInvestments || 0) / totalAssets) * 100 : 0;
+                  const cashColor = ASSET_CLASS_COLORS['Efectivo'] || '#f59e0b';
 
                   return (
                     <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
                       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>{t("dashboard.distribution")}</span>
+                        <span>{t('dashboard.distribution')}</span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div className="h-full flex">
@@ -1962,8 +1845,7 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-600"></div>
                           <span className="text-gray-600 dark:text-gray-400">
-                            {t("dashboard.invested")}:{" "}
-                            {investmentPercent.toFixed(1)}%
+                            {t('dashboard.invested')}: {investmentPercent.toFixed(1)}%
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1972,7 +1854,7 @@ const Dashboard = () => {
                             style={{ backgroundColor: cashColor }}
                           ></div>
                           <span className="text-gray-600 dark:text-gray-400">
-                            {t("dashboard.cash")}: {cashPercent.toFixed(1)}%
+                            {t('dashboard.cash')}: {cashPercent.toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -1988,28 +1870,27 @@ const Dashboard = () => {
                     Rendimientos
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {accumulatedReturn !== null &&
-                      accumulatedReturnPercent !== null && (
-                        <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Acumulado
-                          </div>
-                          <div
-                            className={`text-sm font-bold ${(accumulatedReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                          >
-                            {(accumulatedReturnPercent || 0) >= 0 ? "+" : ""}
-                            {(accumulatedReturnPercent || 0).toFixed(2)}%
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                              notation: "compact",
-                              maximumFractionDigits: 1,
-                            }).format(accumulatedReturn || 0)}
-                          </div>
+                    {accumulatedReturn !== null && accumulatedReturnPercent !== null && (
+                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Acumulado
                         </div>
-                      )}
+                        <div
+                          className={`text-sm font-bold ${(accumulatedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                        >
+                          {(accumulatedReturnPercent || 0) >= 0 ? '+' : ''}
+                          {(accumulatedReturnPercent || 0).toFixed(2)}%
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
+                            notation: 'compact',
+                            maximumFractionDigits: 1,
+                          }).format(accumulatedReturn || 0)}
+                        </div>
+                      </div>
+                    )}
                     {performance.annualizedReturn !== null &&
                       performance.annualizedReturnPercent !== null && (
                         <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
@@ -2017,21 +1898,16 @@ const Dashboard = () => {
                             Anualizado
                           </div>
                           <div
-                            className={`text-sm font-bold ${(performance.annualizedReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`text-sm font-bold ${(performance.annualizedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                           >
-                            {(performance.annualizedReturnPercent || 0) >= 0
-                              ? "+"
-                              : ""}
-                            {(performance.annualizedReturnPercent || 0).toFixed(
-                              2,
-                            )}
-                            %
+                            {(performance.annualizedReturnPercent || 0) >= 0 ? '+' : ''}
+                            {(performance.annualizedReturnPercent || 0).toFixed(2)}%
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                              notation: "compact",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
+                              currency: 'EUR',
+                              notation: 'compact',
                               maximumFractionDigits: 1,
                             }).format(performance.annualizedReturn || 0)}
                           </div>
@@ -2044,19 +1920,16 @@ const Dashboard = () => {
                             Mensual
                           </div>
                           <div
-                            className={`text-sm font-bold ${(performance.monthlyReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`text-sm font-bold ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                           >
-                            {(performance.monthlyReturnPercent || 0) >= 0
-                              ? "+"
-                              : ""}
-                            {(performance.monthlyReturnPercent || 0).toFixed(2)}
-                            %
+                            {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}
+                            {(performance.monthlyReturnPercent || 0).toFixed(2)}%
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                              notation: "compact",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
+                              currency: 'EUR',
+                              notation: 'compact',
                               maximumFractionDigits: 1,
                             }).format(performance.monthlyReturn || 0)}
                           </div>
@@ -2069,38 +1942,35 @@ const Dashboard = () => {
                             Diario
                           </div>
                           <div
-                            className={`text-sm font-bold ${(performance.dailyReturnPercent || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                            className={`text-sm font-bold ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                           >
-                            {(performance.dailyReturnPercent || 0) >= 0
-                              ? "+"
-                              : ""}
+                            {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}
                             {(performance.dailyReturnPercent || 0).toFixed(2)}%
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                              notation: "compact",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
+                              currency: 'EUR',
+                              notation: 'compact',
                               maximumFractionDigits: 1,
                             }).format(performance.dailyReturn || 0)}
                           </div>
                         </div>
                       )}
                   </div>
-                  {performance.vsSP500 !== null &&
-                    performance.vsSP500 !== undefined && (
-                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3 mt-3">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          vs S&P 500
-                        </div>
-                        <div
-                          className={`text-sm font-bold ${(performance.vsSP500 || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                        >
-                          {(performance.vsSP500 || 0) >= 0 ? "+" : ""}
-                          {(performance.vsSP500 || 0).toFixed(2)}%
-                        </div>
+                  {performance.vsSP500 !== null && performance.vsSP500 !== undefined && (
+                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3 mt-3">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        vs S&P 500
                       </div>
-                    )}
+                      <div
+                        className={`text-sm font-bold ${(performance.vsSP500 || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                      >
+                        {(performance.vsSP500 || 0) >= 0 ? '+' : ''}
+                        {(performance.vsSP500 || 0).toFixed(2)}%
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2134,12 +2004,11 @@ const Dashboard = () => {
                     {selectedTreemapInvestment.symbol}
                   </p>
                 )}
-                {selectedTreemapInvestment.isin &&
-                  !selectedTreemapInvestment.symbol && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      ISIN: {selectedTreemapInvestment.isin}
-                    </p>
-                  )}
+                {selectedTreemapInvestment.isin && !selectedTreemapInvestment.symbol && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    ISIN: {selectedTreemapInvestment.isin}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -2164,20 +2033,16 @@ const Dashboard = () => {
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Tipo:
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
                       <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                         {getTypeLabel(
                           selectedTreemapInvestment.type,
-                          selectedTreemapInvestment.isAutomatedPortfolio,
+                          selectedTreemapInvestment.isAutomatedPortfolio
                         )}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Moneda:
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
                       <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                         {selectedTreemapInvestment.currency}
                       </span>
@@ -2185,15 +2050,13 @@ const Dashboard = () => {
                     {(selectedTreemapInvestment.account ||
                       selectedTreemapInvestment.subAccount) && (
                       <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Cuenta:
-                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
                         <div className="mt-1">
                           {selectedTreemapInvestment.account && (
                             <span className="font-medium text-gray-900 dark:text-gray-100">
                               {selectedTreemapInvestment.account.name ||
                                 selectedTreemapInvestment.account.bankName ||
-                                "N/A"}
+                                'N/A'}
                             </span>
                           )}
                           {selectedTreemapInvestment.subAccount && (
@@ -2206,63 +2069,49 @@ const Dashboard = () => {
                     )}
                     {selectedTreemapInvestment.assetClass && (
                       <div className="col-span-2">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Clase de Activo:
-                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
                         <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          {selectedTreemapInvestment.assetClass ===
-                            "fixed_income" && (
+                          {selectedTreemapInvestment.assetClass === 'fixed_income' && (
                             <>
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                                {t("investments.assetClassLabels.fixedIncome")}
+                                {t('investments.assetClassLabels.fixedIncome')}
                               </span>
                               {getFixedIncomeSubtypeLabel(
-                                selectedTreemapInvestment.fixedIncomeSubtype,
+                                selectedTreemapInvestment.fixedIncomeSubtype
                               ) && (
                                 <span
                                   className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
-                                    selectedTreemapInvestment.fixedIncomeSubtype,
+                                    selectedTreemapInvestment.fixedIncomeSubtype
                                   )}`}
                                 >
                                   {getFixedIncomeSubtypeLabel(
-                                    selectedTreemapInvestment.fixedIncomeSubtype,
+                                    selectedTreemapInvestment.fixedIncomeSubtype
                                   )}
                                 </span>
                               )}
                             </>
                           )}
-                          {selectedTreemapInvestment.assetClass ===
-                            "variable_income" && (
+                          {selectedTreemapInvestment.assetClass === 'variable_income' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                              {t("investments.assetClassLabels.variableIncome")}
+                              {t('investments.assetClassLabels.variableIncome')}
                             </span>
                           )}
-                          {selectedTreemapInvestment.assetClass === "mixed" && (
+                          {selectedTreemapInvestment.assetClass === 'mixed' && (
                             <>
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                {t("investments.assetClassLabels.mixed")}
+                                {t('investments.assetClassLabels.mixed')}
                               </span>
                               <span className="text-xs text-gray-600 dark:text-gray-400">
-                                {t(
-                                  "investments.assetClassLabels.fixedIncomeShort",
-                                )}
-                                :{" "}
-                                {selectedTreemapInvestment.fixedIncomePercentage ||
-                                  0}
-                                % |{" "}
-                                {t(
-                                  "investments.assetClassLabels.variableIncomeShort",
-                                )}
-                                :{" "}
-                                {selectedTreemapInvestment.variableIncomePercentage ||
-                                  0}
-                                %
+                                {t('investments.assetClassLabels.fixedIncomeShort')}:{' '}
+                                {selectedTreemapInvestment.fixedIncomePercentage || 0}% |{' '}
+                                {t('investments.assetClassLabels.variableIncomeShort')}:{' '}
+                                {selectedTreemapInvestment.variableIncomePercentage || 0}%
                               </span>
                             </>
                           )}
                           {selectedTreemapInvestment.isAlternative && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                              {t("investments.assetClassLabels.alternative")}
+                              {t('investments.assetClassLabels.alternative')}
                             </span>
                           )}
                         </div>
@@ -2271,7 +2120,7 @@ const Dashboard = () => {
                     {selectedTreemapInvestment.isAutomatedPortfolio && (
                       <div className="col-span-2">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                          {t("investments.investmentTypes.automatedPortfolio")}
+                          {t('investments.investmentTypes.automatedPortfolio')}
                         </span>
                       </div>
                     )}
@@ -2287,24 +2136,20 @@ const Dashboard = () => {
                     {selectedTreemapInvestment.isAutomatedPortfolio ? (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Monto invertido:
-                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">Monto invertido:</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
                               currency: selectedTreemapInvestment.currency,
                             }).format(selectedTreemapInvestment.quantity)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Valor actual:
-                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
                           <span className="font-bold text-gray-900 dark:text-gray-100">
                             {formatPrice(
                               selectedTreemapInvestment.currentPrice,
-                              selectedTreemapInvestment.currency,
+                              selectedTreemapInvestment.currency
                             )}
                           </span>
                         </div>
@@ -2312,9 +2157,7 @@ const Dashboard = () => {
                     ) : (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Cantidad:
-                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {selectedTreemapInvestment.quantity} unidades
                           </span>
@@ -2327,7 +2170,7 @@ const Dashboard = () => {
                             <span className="font-medium text-gray-900 dark:text-gray-100">
                               {formatPrice(
                                 selectedTreemapInvestment.averagePurchasePrice,
-                                selectedTreemapInvestment.currency,
+                                selectedTreemapInvestment.currency
                               )}
                             </span>
                           </div>
@@ -2341,47 +2184,41 @@ const Dashboard = () => {
                               <span className="font-medium text-gray-900 dark:text-gray-100">
                                 {formatPrice(
                                   selectedTreemapInvestment.purchasePrice,
-                                  selectedTreemapInvestment.currency,
+                                  selectedTreemapInvestment.currency
                                 )}
                               </span>
                             </div>
                           )}
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Precio actual:
-                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {formatPrice(
                               selectedTreemapInvestment.currentPrice,
-                              selectedTreemapInvestment.currency,
+                              selectedTreemapInvestment.currency
                             )}
                           </span>
                         </div>
                         <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Valor total:
-                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
                           <span className="font-bold text-gray-900 dark:text-gray-100">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
                               currency: selectedTreemapInvestment.currency,
                             }).format(
                               selectedTreemapInvestment.quantity *
-                                selectedTreemapInvestment.currentPrice,
+                                selectedTreemapInvestment.currentPrice
                             )}
                           </span>
                         </div>
                       </>
                     )}
                     <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Ganancia/Pérdida:
-                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
                       <span
                         className={`font-bold flex items-center ${
                           calculateProfitLoss(selectedTreemapInvestment) >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? 'text-green-600'
+                            : 'text-red-600'
                         }`}
                       >
                         {calculateProfitLoss(selectedTreemapInvestment) >= 0 ? (
@@ -2389,17 +2226,12 @@ const Dashboard = () => {
                         ) : (
                           <CgTrendingDown className="h-4 w-4 mr-1" />
                         )}
-                        {new Intl.NumberFormat("es-ES", {
-                          style: "currency",
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
                           currency: selectedTreemapInvestment.currency,
-                        }).format(
-                          calculateProfitLoss(selectedTreemapInvestment),
-                        )}
+                        }).format(calculateProfitLoss(selectedTreemapInvestment))}
                         <span className="ml-2">
-                          (
-                          {calculateProfitLossPercentage(
-                            selectedTreemapInvestment,
-                          ).toFixed(2)}
+                          ({calculateProfitLossPercentage(selectedTreemapInvestment).toFixed(2)}
                           %)
                         </span>
                       </span>
@@ -2409,31 +2241,25 @@ const Dashboard = () => {
 
                 {/* Fechas */}
                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Fechas
-                  </h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
                   <div className="space-y-2 text-sm">
                     {selectedTreemapInvestment.purchaseDate && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Fecha de compra:
-                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(
-                            selectedTreemapInvestment.purchaseDate,
-                          ).toLocaleDateString("es-ES")}
+                          {new Date(selectedTreemapInvestment.purchaseDate).toLocaleDateString(
+                            'es-ES'
+                          )}
                         </span>
                       </div>
                     )}
                     {selectedTreemapInvestment.createdAt && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Fecha de creación:
-                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">Fecha de creación:</span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(
-                            selectedTreemapInvestment.createdAt,
-                          ).toLocaleDateString("es-ES")}
+                          {new Date(selectedTreemapInvestment.createdAt).toLocaleDateString(
+                            'es-ES'
+                          )}
                         </span>
                       </div>
                     )}
@@ -2443,9 +2269,9 @@ const Dashboard = () => {
                           Última actualización:
                         </span>
                         <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(
-                            selectedTreemapInvestment.updatedAt,
-                          ).toLocaleDateString("es-ES")}
+                          {new Date(selectedTreemapInvestment.updatedAt).toLocaleDateString(
+                            'es-ES'
+                          )}
                         </span>
                       </div>
                     )}
@@ -2453,8 +2279,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
-                {(selectedTreemapInvestment.symbol ||
-                  selectedTreemapInvestment.isin) &&
+                {(selectedTreemapInvestment.symbol || selectedTreemapInvestment.isin) &&
                   !selectedTreemapInvestment.isAutomatedPortfolio && (
                     <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -2468,20 +2293,18 @@ const Dashboard = () => {
                           <span
                             className={`font-medium ${
                               selectedTreemapInvestment.autoUpdate !== false
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-gray-500 dark:text-gray-400"
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {selectedTreemapInvestment.autoUpdate !== false
-                              ? "Activada"
-                              : "Desactivada"}
+                              ? 'Activada'
+                              : 'Desactivada'}
                           </span>
                         </div>
                         {selectedTreemapInvestment.platformUrl && (
                           <div>
-                            <span className="text-gray-600 dark:text-gray-400">
-                              Plataforma:
-                            </span>
+                            <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
                             <a
                               href={selectedTreemapInvestment.platformUrl}
                               target="_blank"
@@ -2499,9 +2322,7 @@ const Dashboard = () => {
                 {/* Notas */}
                 {selectedTreemapInvestment.notes && (
                   <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      Notas
-                    </h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                       {selectedTreemapInvestment.notes}
                     </p>
@@ -2517,13 +2338,13 @@ const Dashboard = () => {
                     Evolución del Valor
                   </h3>
                   {detailInvestmentHistory.length > 0 ? (
-                    <div style={{ height: "290px" }}>
+                    <div style={{ height: '290px' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart
                           data={detailInvestmentHistory.map((h) => ({
-                            date: new Date(h.date).toLocaleDateString("es-ES", {
-                              day: "2-digit",
-                              month: "short",
+                            date: new Date(h.date).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
                             }),
                             value: h.totalValue,
                             dailyChange: h.dailyChangeAmount || 0,
@@ -2531,42 +2352,24 @@ const Dashboard = () => {
                           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
                           <defs>
-                            <linearGradient
-                              id="detailValueGradient"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0%"
-                                stopColor="#0ea5e9"
-                                stopOpacity={0.35}
-                              />
-                              <stop
-                                offset="100%"
-                                stopColor="#0ea5e9"
-                                stopOpacity={0.02}
-                              />
+                            <linearGradient id="detailValueGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.35} />
+                              <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.02} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke={
-                              isDark
-                                ? "rgba(255,255,255,0.06)"
-                                : "rgba(0,0,0,0.06)"
-                            }
+                            stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
                             vertical={false}
                           />
                           <XAxis
                             dataKey="date"
                             tick={{
-                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fill: isDark ? '#9ca3af' : '#6b7280',
                               fontSize: 11,
                             }}
                             axisLine={{
-                              stroke: isDark ? "#404040" : "#e5e7eb",
+                              stroke: isDark ? '#404040' : '#e5e7eb',
                             }}
                             tickLine={false}
                             angle={-45}
@@ -2575,16 +2378,16 @@ const Dashboard = () => {
                           />
                           <YAxis
                             tick={{
-                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fill: isDark ? '#9ca3af' : '#6b7280',
                               fontSize: 11,
                             }}
                             axisLine={false}
                             tickLine={false}
                             tickFormatter={(value) =>
-                              new Intl.NumberFormat("es-ES", {
-                                style: "currency",
+                              new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
                                 currency: selectedTreemapInvestment.currency,
-                                notation: "compact",
+                                notation: 'compact',
                                 maximumFractionDigits: 0,
                               }).format(value)
                             }
@@ -2595,20 +2398,15 @@ const Dashboard = () => {
                               if (!active || !payload?.length) return null;
                               const data = payload[0]?.payload;
                               const totalValue = data?.value || 0;
-                              const formattedValue = new Intl.NumberFormat(
-                                "es-ES",
-                                {
-                                  style: "currency",
-                                  currency: selectedTreemapInvestment.currency,
-                                },
-                              ).format(totalValue);
+                              const formattedValue = new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: selectedTreemapInvestment.currency,
+                              }).format(totalValue);
                               const bg = isDark
-                                ? "bg-[#2c2c2e] border-[#404040]"
-                                : "bg-white border-gray-200";
+                                ? 'bg-[#2c2c2e] border-[#404040]'
+                                : 'bg-white border-gray-200';
                               return (
-                                <div
-                                  className={`${bg} border rounded-xl shadow-xl px-4 py-3`}
-                                >
+                                <div className={`${bg} border rounded-xl shadow-xl px-4 py-3`}>
                                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                                     {label}
                                   </p>
@@ -2632,7 +2430,7 @@ const Dashboard = () => {
                             strokeWidth={2}
                             fill="url(#detailValueGradient)"
                             dot={false}
-                            activeDot={{ r: 4, strokeWidth: 2, fill: "white" }}
+                            activeDot={{ r: 4, strokeWidth: 2, fill: 'white' }}
                             isAnimationActive
                             animationDuration={600}
                             animationEasing="ease-out"
@@ -2642,12 +2440,9 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">
-                        No hay datos de historial para mostrar
-                      </p>
+                      <p className="text-sm">No hay datos de historial para mostrar</p>
                       <p className="text-xs mt-2">
-                        El historial se genera automáticamente con las
-                        operaciones
+                        El historial se genera automáticamente con las operaciones
                       </p>
                     </div>
                   )}
@@ -2659,30 +2454,26 @@ const Dashboard = () => {
                     Variación Diaria
                   </h3>
                   {detailDailyVariations.length > 0 ? (
-                    <div style={{ height: "290px" }}>
+                    <div style={{ height: '290px' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={detailDailyVariations.map((v) => {
                             const changeAmount =
-                              v.dailyChangeAmount !== null &&
-                              v.dailyChangeAmount !== undefined
+                              v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined
                                 ? v.dailyChangeAmount
                                 : 0;
                             return {
-                              date: new Date(v.date).toLocaleDateString(
-                                "es-ES",
-                                { day: "2-digit", month: "short" },
-                              ),
+                              date: new Date(v.date).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'short',
+                              }),
                               dailyChange: changeAmount,
                               dailyChangePercent:
-                                v.dailyChangePercent !== null &&
-                                v.dailyChangePercent !== undefined
+                                v.dailyChangePercent !== null && v.dailyChangePercent !== undefined
                                   ? v.dailyChangePercent
                                   : null,
-                              dailyChangePositive:
-                                changeAmount >= 0 ? changeAmount : 0,
-                              dailyChangeNegative:
-                                changeAmount < 0 ? changeAmount : 0,
+                              dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
+                              dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
                             };
                           })}
                           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -2690,21 +2481,17 @@ const Dashboard = () => {
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke={
-                              isDark
-                                ? "rgba(255,255,255,0.06)"
-                                : "rgba(0,0,0,0.06)"
-                            }
+                            stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
                             vertical={false}
                           />
                           <XAxis
                             dataKey="date"
                             tick={{
-                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fill: isDark ? '#9ca3af' : '#6b7280',
                               fontSize: 11,
                             }}
                             axisLine={{
-                              stroke: isDark ? "#404040" : "#e5e7eb",
+                              stroke: isDark ? '#404040' : '#e5e7eb',
                             }}
                             tickLine={false}
                             angle={-45}
@@ -2713,16 +2500,16 @@ const Dashboard = () => {
                           />
                           <YAxis
                             tick={{
-                              fill: isDark ? "#9ca3af" : "#6b7280",
+                              fill: isDark ? '#9ca3af' : '#6b7280',
                               fontSize: 11,
                             }}
                             axisLine={false}
                             tickLine={false}
                             tickFormatter={(value) =>
-                              new Intl.NumberFormat("es-ES", {
-                                style: "currency",
+                              new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
                                 currency: selectedTreemapInvestment.currency,
-                                notation: "compact",
+                                notation: 'compact',
                                 maximumFractionDigits: 0,
                               }).format(value)
                             }
@@ -2733,22 +2520,17 @@ const Dashboard = () => {
                               if (!active || !payload?.length) return null;
                               const data = payload[0]?.payload;
                               const dailyChange =
-                                data?.dailyChange !== null &&
-                                data?.dailyChange !== undefined
+                                data?.dailyChange !== null && data?.dailyChange !== undefined
                                   ? data.dailyChange
                                   : 0;
-                              const dailyChangePercent =
-                                data?.dailyChangePercent;
-                              const formattedChange = new Intl.NumberFormat(
-                                "es-ES",
-                                {
-                                  style: "currency",
-                                  currency: selectedTreemapInvestment.currency,
-                                },
-                              ).format(Math.abs(dailyChange));
+                              const dailyChangePercent = data?.dailyChangePercent;
+                              const formattedChange = new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: selectedTreemapInvestment.currency,
+                              }).format(Math.abs(dailyChange));
                               const bg = isDark
-                                ? "bg-[#2c2c2e] border-[#404040]"
-                                : "bg-white border-gray-200";
+                                ? 'bg-[#2c2c2e] border-[#404040]'
+                                : 'bg-white border-gray-200';
                               return (
                                 <div
                                   className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[160px]`}
@@ -2764,20 +2546,15 @@ const Dashboard = () => {
                                       <span
                                         className={`font-semibold ${
                                           dailyChange > 0
-                                            ? "text-green-600 dark:text-green-400"
+                                            ? 'text-green-600 dark:text-green-400'
                                             : dailyChange < 0
-                                              ? "text-red-600 dark:text-red-400"
-                                              : "text-gray-500 dark:text-gray-400"
+                                              ? 'text-red-600 dark:text-red-400'
+                                              : 'text-gray-500 dark:text-gray-400'
                                         }`}
                                       >
-                                        {dailyChange > 0
-                                          ? "+"
-                                          : dailyChange < 0
-                                            ? "-"
-                                            : ""}
+                                        {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}
                                         {formattedChange}
-                                        {dailyChange === 0 &&
-                                          " (Sin variación)"}
+                                        {dailyChange === 0 && ' (Sin variación)'}
                                       </span>
                                     </div>
                                     {dailyChangePercent !== null &&
@@ -2789,22 +2566,20 @@ const Dashboard = () => {
                                         <span
                                           className={`font-semibold ${
                                             dailyChangePercent > 0
-                                              ? "text-green-600 dark:text-green-400"
+                                              ? 'text-green-600 dark:text-green-400'
                                               : dailyChangePercent < 0
-                                                ? "text-red-600 dark:text-red-400"
-                                                : "text-gray-500 dark:text-gray-400"
+                                                ? 'text-red-600 dark:text-red-400'
+                                                : 'text-gray-500 dark:text-gray-400'
                                           }`}
                                         >
-                                          {dailyChangePercent > 0 ? "+" : ""}
+                                          {dailyChangePercent > 0 ? '+' : ''}
                                           {dailyChangePercent.toFixed(2)}%
                                         </span>
                                       </div>
                                     ) : (
                                       <div className="flex justify-between items-center gap-4 text-gray-500 dark:text-gray-400">
                                         <span>Variación</span>
-                                        <span className="text-xs">
-                                          Sin datos previos
-                                        </span>
+                                        <span className="text-xs">Sin datos previos</span>
                                       </div>
                                     )}
                                   </div>
@@ -2835,12 +2610,9 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">
-                        No hay datos de variación diaria para mostrar
-                      </p>
+                      <p className="text-sm">No hay datos de variación diaria para mostrar</p>
                       <p className="text-xs mt-2">
-                        Las variaciones se generan automáticamente al actualizar
-                        precios
+                        Las variaciones se generan automáticamente al actualizar precios
                       </p>
                     </div>
                   )}
@@ -2852,7 +2624,7 @@ const Dashboard = () => {
             <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
               <button
                 onClick={() => {
-                  navigate("/investments");
+                  navigate('/investments');
                 }}
                 className="flex-1 btn-secondary flex items-center justify-center"
               >

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useTranslation } from "../contexts/TranslationContext";
-import { useTheme } from "../contexts/ThemeContext";
-import LoadingSpinner from "../components/LoadingSpinner";
-import api from "../services/api";
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from '../contexts/TranslationContext';
+import { useTheme } from '../contexts/ThemeContext';
+import LoadingSpinner from '../components/LoadingSpinner';
+import api from '../services/api';
 import {
   ExternalLink,
   Home,
@@ -17,14 +17,14 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   DEFAULT_PORTFOLIO_ALLOCATION,
   DEFAULT_RV_DISTRIBUTION,
   DEFAULT_SECTION_DESCRIPTIONS,
   DEFAULT_SECTION_TIPS,
   DEFAULT_SECTION_VIDEOS,
-} from "../data/portfolioBuilderData";
+} from '../data/portfolioBuilderData';
 
 const PortfolioBuilder = () => {
   const { t } = useTranslation();
@@ -33,9 +33,7 @@ const PortfolioBuilder = () => {
   const [error, setError] = useState(null);
   const [forbidden, setForbidden] = useState(false);
   const [portfolioData, setPortfolioData] = useState(null);
-  const [expandedSections, setExpandedSections] = useState(
-    new Set(["calculator"]),
-  );
+  const [expandedSections, setExpandedSections] = useState(new Set(['calculator']));
   const [expandedVideos, setExpandedVideos] = useState(new Set());
 
   // Estado para la tabla de cálculos interactiva
@@ -43,34 +41,34 @@ const PortfolioBuilder = () => {
     totalAmount: 120000,
     categories: [
       {
-        name: "Monetarios",
+        name: 'Monetarios',
         expectedReturn: 2.0,
         weight: 0,
-        description: t("portfolioBuilder.categories.descriptions.monetarios"),
+        description: t('portfolioBuilder.categories.descriptions.monetarios'),
       },
       {
-        name: "RF Corto",
+        name: 'RF Corto',
         expectedReturn: 4.0,
         weight: 40,
-        description: t("portfolioBuilder.categories.descriptions.rfCorto"),
+        description: t('portfolioBuilder.categories.descriptions.rfCorto'),
       },
       {
-        name: "RF Medio",
+        name: 'RF Medio',
         expectedReturn: 5.5,
         weight: 25,
-        description: t("portfolioBuilder.categories.descriptions.rfMedio"),
+        description: t('portfolioBuilder.categories.descriptions.rfMedio'),
       },
       {
-        name: "RV",
+        name: 'RV',
         expectedReturn: 9.0,
         weight: 25,
-        description: t("portfolioBuilder.categories.descriptions.rv"),
+        description: t('portfolioBuilder.categories.descriptions.rv'),
       },
       {
-        name: "Alternativos",
+        name: 'Alternativos',
         expectedReturn: 5.0,
         weight: 10,
-        description: t("portfolioBuilder.categories.descriptions.alternativos"),
+        description: t('portfolioBuilder.categories.descriptions.alternativos'),
       },
     ],
   });
@@ -96,51 +94,45 @@ const PortfolioBuilder = () => {
     const rvDist = config?.rvDistribution || DEFAULT_RV_DISTRIBUTION;
     const fundsList = config?.funds || [];
     const rvDistributionIsins = new Set(
-      (rvDist || []).map((d) => (d.isin || "").trim()).filter(Boolean),
+      (rvDist || []).map((d) => (d.isin || '').trim()).filter(Boolean)
     );
     const byCategory = (cat, onlyShowInSection = true) =>
       fundsList
-        .filter(
-          (f) =>
-            f.category === cat &&
-            (!onlyShowInSection || f.showInSection === true),
-        )
+        .filter((f) => f.category === cat && (!onlyShowInSection || f.showInSection === true))
         .map(mapFundToSection);
     const rvFundsOnlyExtras = () =>
       fundsList
         .filter(
           (f) =>
-            f.category === "Renta Variable" &&
+            f.category === 'Renta Variable' &&
             f.showInSection === true &&
-            !rvDistributionIsins.has((f.isin || "").trim()),
+            !rvDistributionIsins.has((f.isin || '').trim())
         )
         .map(mapFundToSection);
 
     // Fallback para fondos conocidos que pueden no estar en fundsList (p. ej. Heptagon en configs antiguas)
     const KNOWN_RV_FUND_FALLBACKS = {
       Heptagon: {
-        name: "Heptagon Fund ICAV - Kopernik Global All-Cap Equity Fund AE EUR Acc",
-        isin: "IE00BH6XSF26",
-        link: "https://www.finect.com/fondos-inversion/IE00BH6XSF26-Heptagon_kopernik_glb_allcp_eq_ae__acc",
-        volatility12M: "9.87%",
-        return12M: "54.87%",
+        name: 'Heptagon Fund ICAV - Kopernik Global All-Cap Equity Fund AE EUR Acc',
+        isin: 'IE00BH6XSF26',
+        link: 'https://www.finect.com/fondos-inversion/IE00BH6XSF26-Heptagon_kopernik_glb_allcp_eq_ae__acc',
+        volatility12M: '9.87%',
+        return12M: '54.87%',
       },
     };
 
     // Enriquecer cada ítem de la distribución RV con datos de fundsList (p. ej. Heptagon con ISIN, link, volatilidad, rentabilidad)
     const enrichDistributionItem = (d) => {
-      const isin = (d.isin || "").trim();
+      const isin = (d.isin || '').trim();
       let fund =
-        (isin && fundsList.find((f) => (f.isin || "").trim() === isin)) ||
+        (isin && fundsList.find((f) => (f.isin || '').trim() === isin)) ||
         (d.name &&
           fundsList.find((f) =>
-            (f.name || "").toLowerCase().includes((d.name || "").toLowerCase()),
+            (f.name || '').toLowerCase().includes((d.name || '').toLowerCase())
           )) ||
         (d.name &&
           fundsList.find((f) =>
-            (d.name || "")
-              .toLowerCase()
-              .includes((f.name || "").split(" ")[0].toLowerCase()),
+            (d.name || '').toLowerCase().includes((f.name || '').split(' ')[0].toLowerCase())
           ));
       if (!fund && d.name && KNOWN_RV_FUND_FALLBACKS[d.name.trim()]) {
         fund = KNOWN_RV_FUND_FALLBACKS[d.name.trim()];
@@ -150,7 +142,7 @@ const PortfolioBuilder = () => {
           amount: null,
           percentage: d.percentage,
           name: d.name || fund.name,
-          isin: isin || (fund.isin || "").trim() || null,
+          isin: isin || (fund.isin || '').trim() || null,
           link: d.link || fund.link || null,
           volatility12M: d.volatility12M ?? fund.volatility12M ?? null,
           return12M: d.return12M ?? fund.return12M ?? null,
@@ -173,67 +165,55 @@ const PortfolioBuilder = () => {
       sections: [
         {
           number: 2,
-          title: tFn("portfolioBuilder.sections.monetarios.title"),
+          title: tFn('portfolioBuilder.sections.monetarios.title'),
           icon: PiggyBank,
-          description: DEFAULT_SECTION_DESCRIPTIONS[2] || "",
-          funds: byCategory("Monetarios"),
-          categoryKey: "Monetarios",
+          description: DEFAULT_SECTION_DESCRIPTIONS[2] || '',
+          funds: byCategory('Monetarios'),
+          categoryKey: 'Monetarios',
           tips: DEFAULT_SECTION_TIPS[2] || [],
           videos: DEFAULT_SECTION_VIDEOS[2] || [],
         },
         {
           number: 3,
-          title: tFn("portfolioBuilder.sections.rentaVariable.title"),
+          title: tFn('portfolioBuilder.sections.rentaVariable.title'),
           icon: TrendingUp,
-          description: DEFAULT_SECTION_DESCRIPTIONS[3] || "",
-          totalAmount:
-            allocation.categories?.find((c) => c.name === "RV")?.amount ??
-            30000,
+          description: DEFAULT_SECTION_DESCRIPTIONS[3] || '',
+          totalAmount: allocation.categories?.find((c) => c.name === 'RV')?.amount ?? 30000,
           distribution: (rvDist || []).map(enrichDistributionItem),
           funds: rvFundsOnlyExtras(),
-          categoryKey: "Renta Variable",
+          categoryKey: 'Renta Variable',
           tips: DEFAULT_SECTION_TIPS[3] || [],
           videos: DEFAULT_SECTION_VIDEOS[3] || [],
         },
         {
           number: 4,
-          title: tFn("portfolioBuilder.sections.rentaFija.title"),
+          title: tFn('portfolioBuilder.sections.rentaFija.title'),
           icon: DollarSign,
-          description: "",
-          note: "",
+          description: '',
+          note: '',
           subsections: [
             {
-              name: tFn(
-                "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
-              ),
-              description: tFn(
-                "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
-              ),
-              funds: byCategory("RF corto plazo"),
-              categoryKey: "RF corto plazo",
+              name: tFn('portfolioBuilder.sections.subsections.rfCortoPlazo.name'),
+              description: tFn('portfolioBuilder.sections.subsections.rfCortoPlazo.description'),
+              funds: byCategory('RF corto plazo'),
+              categoryKey: 'RF corto plazo',
             },
             {
-              name: tFn(
-                "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
-              ),
-              description: tFn(
-                "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
-              ),
-              funds: byCategory("RF medio plazo"),
-              categoryKey: "RF medio plazo",
+              name: tFn('portfolioBuilder.sections.subsections.rfMedioPlazo.name'),
+              description: tFn('portfolioBuilder.sections.subsections.rfMedioPlazo.description'),
+              funds: byCategory('RF medio plazo'),
+              categoryKey: 'RF medio plazo',
             },
           ],
           videos: DEFAULT_SECTION_VIDEOS[4] || [],
         },
         {
           number: 5,
-          title: tFn("portfolioBuilder.sections.alternativos.title"),
+          title: tFn('portfolioBuilder.sections.alternativos.title'),
           icon: Layers,
-          description: tFn(
-            "portfolioBuilder.sections.alternativos.description",
-          ),
-          funds: byCategory("Alternativos"),
-          categoryKey: "Alternativos",
+          description: tFn('portfolioBuilder.sections.alternativos.description'),
+          funds: byCategory('Alternativos'),
+          categoryKey: 'Alternativos',
           videos: DEFAULT_SECTION_VIDEOS[5] || [],
         },
       ],
@@ -250,7 +230,7 @@ const PortfolioBuilder = () => {
     setError(null);
     setForbidden(false);
     return api
-      .get("/portfolio-builder/config")
+      .get('/portfolio-builder/config')
       .then((res) => {
         const config = res.data;
         const processedData = buildPortfolioDataFromConfig(config, t);
@@ -261,12 +241,10 @@ const PortfolioBuilder = () => {
         const categories = (allocation.categories || []).map((cat) => ({
           name: cat.name,
           expectedReturn: cat.expectedReturn
-            ? parseFloat(String(cat.expectedReturn).replace("%", ""))
+            ? parseFloat(String(cat.expectedReturn).replace('%', ''))
             : 0,
-          weight: cat.weight
-            ? parseFloat(String(cat.weight).replace("%", ""))
-            : 0,
-          description: cat.description || "",
+          weight: cat.weight ? parseFloat(String(cat.weight).replace('%', '')) : 0,
+          description: cat.description || '',
         }));
 
         setCalculatorData((prev) => ({
@@ -275,22 +253,19 @@ const PortfolioBuilder = () => {
         }));
       })
       .catch((err) => {
-        console.error("Error cargando config Portfolio Builder:", err);
+        console.error('Error cargando config Portfolio Builder:', err);
         const status = err.response?.status;
         const message = err.response?.data?.message;
 
         if (status === 403) {
           setForbidden(true);
           setError(
-            message ||
-              "No tienes permisos para acceder al Portfolio Builder con esta cuenta.",
+            message || 'No tienes permisos para acceder al Portfolio Builder con esta cuenta.'
           );
         } else {
           setError(
             message ||
-              t("portfolioBuilder.errors.loadConfig") +
-                ": " +
-                (err.message || "Sin conexión"),
+              t('portfolioBuilder.errors.loadConfig') + ': ' + (err.message || 'Sin conexión')
           );
 
           const fallback = buildPortfolioDataFromConfig(null, t);
@@ -301,12 +276,10 @@ const PortfolioBuilder = () => {
             categories: allocation.categories.map((cat) => ({
               name: cat.name,
               expectedReturn: cat.expectedReturn
-                ? parseFloat(String(cat.expectedReturn).replace("%", ""))
+                ? parseFloat(String(cat.expectedReturn).replace('%', ''))
                 : 0,
-              weight: cat.weight
-                ? parseFloat(String(cat.weight).replace("%", ""))
-                : 0,
-              description: cat.description || "",
+              weight: cat.weight ? parseFloat(String(cat.weight).replace('%', '')) : 0,
+              description: cat.description || '',
             })),
           });
         }
@@ -322,44 +295,37 @@ const PortfolioBuilder = () => {
     if (!category) return;
     setAddingExtra(category);
     try {
-      const res = await api.post("/portfolio-builder/config/extra-fund", {
+      const res = await api.post('/portfolio-builder/config/extra-fund', {
         category,
-        ...(isin ? { isin: (isin || "").trim() } : {}),
+        ...(isin ? { isin: (isin || '').trim() } : {}),
       });
-      const {
-        extraFundIsinsByCategory,
-        excludedFundIsinsByCategory,
-        addedIsin,
-      } = res.data || {};
+      const { extraFundIsinsByCategory, excludedFundIsinsByCategory, addedIsin } = res.data || {};
       if (!addedIsin && !res.data) {
         setAddingExtra(null);
         return;
       }
-      const isinNorm = (addedIsin || "").trim();
+      const isinNorm = (addedIsin || '').trim();
       const catKey = String(category).trim();
       setPortfolioData((prev) => {
         if (!prev?.fundsList) return prev;
         const updatedFundsList = prev.fundsList.map((f) =>
-          (f.isin || "").trim() === isinNorm && f.category === catKey
+          (f.isin || '').trim() === isinNorm && f.category === catKey
             ? { ...f, showInSection: true }
-            : f,
+            : f
         );
         const rvSection = prev.sections?.find((s) => s.number === 3);
         const syntheticConfig = {
           allocation: prev.portfolioAllocation,
           rvDistribution: rvSection?.distribution ?? [],
           funds: updatedFundsList,
-          extraFundIsinsByCategory:
-            extraFundIsinsByCategory || prev.extraFundIsinsByCategory || {},
+          extraFundIsinsByCategory: extraFundIsinsByCategory || prev.extraFundIsinsByCategory || {},
           excludedFundIsinsByCategory:
-            excludedFundIsinsByCategory ??
-            prev.excludedFundIsinsByCategory ??
-            {},
+            excludedFundIsinsByCategory ?? prev.excludedFundIsinsByCategory ?? {},
         };
         return buildPortfolioDataFromConfig(syntheticConfig, t);
       });
     } catch (err) {
-      console.error("Error al añadir fondo extra:", err);
+      console.error('Error al añadir fondo extra:', err);
     } finally {
       setAddingExtra(null);
     }
@@ -368,36 +334,31 @@ const PortfolioBuilder = () => {
   const removeExtraFund = async (category, isin) => {
     if (!category || !isin) return;
     const catKey = String(category).trim();
-    const isinNorm = (isin || "").trim();
+    const isinNorm = (isin || '').trim();
     try {
-      const res = await api.delete("/portfolio-builder/config/extra-fund", {
+      const res = await api.delete('/portfolio-builder/config/extra-fund', {
         params: { category: catKey, isin: isinNorm },
       });
-      const { extraFundIsinsByCategory, excludedFundIsinsByCategory } =
-        res.data || {};
+      const { extraFundIsinsByCategory, excludedFundIsinsByCategory } = res.data || {};
       setPortfolioData((prev) => {
         if (!prev?.fundsList) return prev;
         const updatedFundsList = prev.fundsList.map((f) =>
-          f.category === catKey && (f.isin || "").trim() === isinNorm
+          f.category === catKey && (f.isin || '').trim() === isinNorm
             ? { ...f, showInSection: false }
-            : f,
+            : f
         );
         const syntheticConfig = {
           allocation: prev.portfolioAllocation,
-          rvDistribution:
-            prev.sections?.find((s) => s.number === 3)?.distribution ?? [],
+          rvDistribution: prev.sections?.find((s) => s.number === 3)?.distribution ?? [],
           funds: updatedFundsList,
-          extraFundIsinsByCategory:
-            extraFundIsinsByCategory ?? prev.extraFundIsinsByCategory ?? {},
+          extraFundIsinsByCategory: extraFundIsinsByCategory ?? prev.extraFundIsinsByCategory ?? {},
           excludedFundIsinsByCategory:
-            excludedFundIsinsByCategory ??
-            prev.excludedFundIsinsByCategory ??
-            {},
+            excludedFundIsinsByCategory ?? prev.excludedFundIsinsByCategory ?? {},
         };
         return buildPortfolioDataFromConfig(syntheticConfig, t);
       });
     } catch (err) {
-      console.error("Error al eliminar fondo extra:", err);
+      console.error('Error al eliminar fondo extra:', err);
     }
   };
 
@@ -420,7 +381,7 @@ const PortfolioBuilder = () => {
 
       const allocation = {
         totalAmountCalculated: calculatorData.totalAmount,
-        totalReturn: portfolioData.portfolioAllocation?.totalReturn ?? "5.73%",
+        totalReturn: portfolioData.portfolioAllocation?.totalReturn ?? '5.73%',
         categories: calculatorData.categories.map((cat) => ({
           name: cat.name,
           expectedReturn: `${cat.expectedReturn}%`,
@@ -431,16 +392,16 @@ const PortfolioBuilder = () => {
         })),
       };
 
-      await api.put("/portfolio-builder/config", {
+      await api.put('/portfolio-builder/config', {
         allocation,
         rvDistribution,
       });
-      setSaveMessage({ type: "success", text: "Configuración guardada" });
+      setSaveMessage({ type: 'success', text: 'Configuración guardada' });
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
       setSaveMessage({
-        type: "error",
-        text: err.response?.data?.message || err.message || "Error al guardar",
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Error al guardar',
       });
     } finally {
       setSaving(false);
@@ -450,7 +411,7 @@ const PortfolioBuilder = () => {
   // Parsear porcentaje "20%" o "20" -> número
   const parsePct = (p) => {
     if (p == null) return 0;
-    const s = String(p).replace("%", "").trim();
+    const s = String(p).replace('%', '').trim();
     const n = parseFloat(s);
     return Number.isFinite(n) ? n : 0;
   };
@@ -485,8 +446,7 @@ const PortfolioBuilder = () => {
           const currentPcts = dist.map((d) => parsePct(d.percentage));
           const defaultNewPct = 10;
           const sumExisting = currentPcts.reduce((a, b) => a + b, 0) || 100;
-          const scale =
-            sumExisting > 0 ? (100 - defaultNewPct) / sumExisting : 1;
+          const scale = sumExisting > 0 ? (100 - defaultNewPct) / sumExisting : 1;
           const newPcts = redistributePercentages([
             ...currentPcts.map((p) => p * scale),
             defaultNewPct,
@@ -496,13 +456,13 @@ const PortfolioBuilder = () => {
               ? { ...dist[i], percentage: `${newPcts[i]}%` }
               : {
                   percentage: `${newPcts[i]}%`,
-                  name: "",
+                  name: '',
                   isin: null,
                   link: null,
                   volatility12M: null,
                   return12M: null,
                   calculatedAmount: null,
-                },
+                }
           );
           return { ...s, distribution: newDist };
         }),
@@ -551,10 +511,10 @@ const PortfolioBuilder = () => {
 
   // Formatear moneda
   const formatCurrency = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return "0,00 €";
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
+    if (value === null || value === undefined || isNaN(value)) return '0,00 €';
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
       maximumFractionDigits: 0,
     }).format(value);
   };
@@ -575,18 +535,12 @@ const PortfolioBuilder = () => {
       };
     });
 
-    const totalReturn = categories.reduce(
-      (sum, cat) => sum + (cat.portfolioReturn || 0),
-      0,
-    );
-    const totalAmountCalculated = categories.reduce(
-      (sum, cat) => sum + (cat.amount || 0),
-      0,
-    );
+    const totalReturn = categories.reduce((sum, cat) => sum + (cat.portfolioReturn || 0), 0);
+    const totalAmountCalculated = categories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
 
     return {
       categories,
-      totalReturn: (totalReturn * 100).toFixed(2) + "%",
+      totalReturn: (totalReturn * 100).toFixed(2) + '%',
       totalAmountCalculated,
     };
   };
@@ -596,7 +550,7 @@ const PortfolioBuilder = () => {
   // Calcular la suma total de pesos
   const totalWeightSum = allocationValues.categories.reduce(
     (sum, cat) => sum + (parseFloat(cat.weight) || 0),
-    0,
+    0
   );
 
   // Calcular perfil de riesgo de la cartera
@@ -604,21 +558,21 @@ const PortfolioBuilder = () => {
     // Asignar valores de riesgo a cada categoría (1 = muy bajo, 5 = muy alto)
     const riskValues = {
       Monetarios: 1,
-      "RF Corto": 2,
-      "RF Medio": 3,
+      'RF Corto': 2,
+      'RF Medio': 3,
       RV: 5,
       Alternativos: 4,
     };
 
     const totalWeight = allocationValues.categories.reduce(
       (sum, cat) => sum + (parseFloat(cat.weight) || 0),
-      0,
+      0
     );
 
     if (totalWeight === 0) {
       return {
-        profile: t("portfolioBuilder.calculator.riskProfiles.unassigned"),
-        color: "gray",
+        profile: t('portfolioBuilder.calculator.riskProfiles.unassigned'),
+        color: 'gray',
       };
     }
 
@@ -632,20 +586,20 @@ const PortfolioBuilder = () => {
     // Clasificar el perfil de riesgo
     let profile, color;
     if (weightedRisk <= 1.5) {
-      profile = t("portfolioBuilder.calculator.riskProfiles.conservative");
-      color = "green";
+      profile = t('portfolioBuilder.calculator.riskProfiles.conservative');
+      color = 'green';
     } else if (weightedRisk <= 2.5) {
-      profile = t("portfolioBuilder.calculator.riskProfiles.moderate");
-      color = "blue";
+      profile = t('portfolioBuilder.calculator.riskProfiles.moderate');
+      color = 'blue';
     } else if (weightedRisk <= 3.5) {
-      profile = t("portfolioBuilder.calculator.riskProfiles.balanced");
-      color = "yellow";
+      profile = t('portfolioBuilder.calculator.riskProfiles.balanced');
+      color = 'yellow';
     } else if (weightedRisk <= 4.5) {
-      profile = t("portfolioBuilder.calculator.riskProfiles.aggressive");
-      color = "orange";
+      profile = t('portfolioBuilder.calculator.riskProfiles.aggressive');
+      color = 'orange';
     } else {
-      profile = t("portfolioBuilder.calculator.riskProfiles.veryAggressive");
-      color = "red";
+      profile = t('portfolioBuilder.calculator.riskProfiles.veryAggressive');
+      color = 'red';
     }
 
     return { profile, color, weightedRisk };
@@ -656,23 +610,20 @@ const PortfolioBuilder = () => {
   // Función para obtener el nombre de la categoría según la sección (nombres internos para cálculos)
   const getCategoryName = (section, subsection = null) => {
     if (section.number === 2) {
-      return "Monetarios";
+      return 'Monetarios';
     } else if (section.number === 3) {
-      return "RV";
+      return 'RV';
     } else if (section.number === 4 && subsection) {
-      if (
-        subsection.name === "Renta Fija Corto Plazo" ||
-        subsection.name === "RF Corto Plazo"
-      ) {
-        return "RF Corto";
+      if (subsection.name === 'Renta Fija Corto Plazo' || subsection.name === 'RF Corto Plazo') {
+        return 'RF Corto';
       } else if (
-        subsection.name === "Renta Fija Medio Plazo" ||
-        subsection.name === "RF Medio Plazo"
+        subsection.name === 'Renta Fija Medio Plazo' ||
+        subsection.name === 'RF Medio Plazo'
       ) {
-        return "RF Medio";
+        return 'RF Medio';
       }
     } else if (section.number === 5) {
-      return "Alternativos";
+      return 'Alternativos';
     }
     return null;
   };
@@ -680,11 +631,11 @@ const PortfolioBuilder = () => {
   // Función para obtener el nombre completo de la categoría para mostrar
   const getCategoryDisplayName = (categoryName) => {
     const displayNames = {
-      Monetarios: t("portfolioBuilder.categories.monetarios"),
-      "RF Corto": t("portfolioBuilder.categories.rfCorto"),
-      "RF Medio": t("portfolioBuilder.categories.rfMedio"),
-      RV: t("portfolioBuilder.categories.rv"),
-      Alternativos: t("portfolioBuilder.categories.alternativos"),
+      Monetarios: t('portfolioBuilder.categories.monetarios'),
+      'RF Corto': t('portfolioBuilder.categories.rfCorto'),
+      'RF Medio': t('portfolioBuilder.categories.rfMedio'),
+      RV: t('portfolioBuilder.categories.rv'),
+      Alternativos: t('portfolioBuilder.categories.alternativos'),
     };
     return displayNames[categoryName] || categoryName;
   };
@@ -692,69 +643,65 @@ const PortfolioBuilder = () => {
   // Función para traducir descripciones de categorías
   const translateCategoryDescription = (categoryName) => {
     const descriptions = {
-      Monetarios: t("portfolioBuilder.categories.descriptions.monetarios"),
-      "RF Corto": t("portfolioBuilder.categories.descriptions.rfCorto"),
-      "RF Medio": t("portfolioBuilder.categories.descriptions.rfMedio"),
-      RV: t("portfolioBuilder.categories.descriptions.rv"),
-      Alternativos: t("portfolioBuilder.categories.descriptions.alternativos"),
+      Monetarios: t('portfolioBuilder.categories.descriptions.monetarios'),
+      'RF Corto': t('portfolioBuilder.categories.descriptions.rfCorto'),
+      'RF Medio': t('portfolioBuilder.categories.descriptions.rfMedio'),
+      RV: t('portfolioBuilder.categories.descriptions.rv'),
+      Alternativos: t('portfolioBuilder.categories.descriptions.alternativos'),
     };
-    return descriptions[categoryName] || "";
+    return descriptions[categoryName] || '';
   };
 
   // Función para traducir títulos de secciones
   const translateSectionTitle = (sectionNumber, originalTitle) => {
     if (sectionNumber === 2) {
-      return t("portfolioBuilder.sections.monetarios.title");
+      return t('portfolioBuilder.sections.monetarios.title');
     } else if (sectionNumber === 3) {
-      return t("portfolioBuilder.sections.rentaVariable.title");
+      return t('portfolioBuilder.sections.rentaVariable.title');
     } else if (sectionNumber === 4) {
-      return t("portfolioBuilder.sections.rentaFija.title");
+      return t('portfolioBuilder.sections.rentaFija.title');
     } else if (sectionNumber === 5) {
-      return t("portfolioBuilder.sections.alternativos.title");
+      return t('portfolioBuilder.sections.alternativos.title');
     }
     return originalTitle;
   };
 
   // Función para traducir nombres de subsecciones
   const translateSubsectionName = (name) => {
-    if (name === "Renta Fija Corto Plazo" || name === "RF Corto Plazo") {
-      return t("portfolioBuilder.sections.subsections.rfCortoPlazo.name");
-    } else if (name === "Renta Fija Medio Plazo" || name === "RF Medio Plazo") {
-      return t("portfolioBuilder.sections.subsections.rfMedioPlazo.name");
+    if (name === 'Renta Fija Corto Plazo' || name === 'RF Corto Plazo') {
+      return t('portfolioBuilder.sections.subsections.rfCortoPlazo.name');
+    } else if (name === 'Renta Fija Medio Plazo' || name === 'RF Medio Plazo') {
+      return t('portfolioBuilder.sections.subsections.rfMedioPlazo.name');
     }
     return name;
   };
 
   // Función para traducir descripciones de subsecciones
   const translateSubsectionDescription = (name, originalDescription) => {
-    if (name === "Renta Fija Corto Plazo" || name === "RF Corto Plazo") {
-      return t(
-        "portfolioBuilder.sections.subsections.rfCortoPlazo.description",
-      );
-    } else if (name === "Renta Fija Medio Plazo" || name === "RF Medio Plazo") {
-      return t(
-        "portfolioBuilder.sections.subsections.rfMedioPlazo.description",
-      );
+    if (name === 'Renta Fija Corto Plazo' || name === 'RF Corto Plazo') {
+      return t('portfolioBuilder.sections.subsections.rfCortoPlazo.description');
+    } else if (name === 'Renta Fija Medio Plazo' || name === 'RF Medio Plazo') {
+      return t('portfolioBuilder.sections.subsections.rfMedioPlazo.description');
     }
-    return originalDescription || "";
+    return originalDescription || '';
   };
 
   // Función para traducir tips comunes
   const translateTip = (tip) => {
-    if (!tip) return "";
+    if (!tip) return '';
 
     // Traducir tips conocidos por patrones
-    if (tip.includes("En caso de caidas") || tip.includes("caidas fuertes")) {
-      return t("portfolioBuilder.tips.enCasoDeCaidas");
+    if (tip.includes('En caso de caidas') || tip.includes('caidas fuertes')) {
+      return t('portfolioBuilder.tips.enCasoDeCaidas');
     }
-    if (tip.includes("Siempre y cuando")) {
-      return t("portfolioBuilder.tips.siempreYCuando");
+    if (tip.includes('Siempre y cuando')) {
+      return t('portfolioBuilder.tips.siempreYCuando');
     }
-    if (tip.includes("Máxima rentabilidad")) {
-      return t("portfolioBuilder.tips.maximaRentabilidad");
+    if (tip.includes('Máxima rentabilidad')) {
+      return t('portfolioBuilder.tips.maximaRentabilidad');
     }
-    if (tip.includes("Inversión en empresas")) {
-      return t("portfolioBuilder.tips.inversionEnEmpresas");
+    if (tip.includes('Inversión en empresas')) {
+      return t('portfolioBuilder.tips.inversionEnEmpresas');
     }
 
     // Si no hay traducción específica, devolver el original
@@ -763,13 +710,13 @@ const PortfolioBuilder = () => {
 
   // Función para traducir descripciones comunes
   const translateDescription = (description) => {
-    if (!description) return "";
+    if (!description) return '';
 
-    if (description.includes("Máxima rentabilidad")) {
-      return t("portfolioBuilder.descriptions.maximaRentabilidad");
+    if (description.includes('Máxima rentabilidad')) {
+      return t('portfolioBuilder.descriptions.maximaRentabilidad');
     }
-    if (description.includes("Inversión en empresas")) {
-      return t("portfolioBuilder.descriptions.inversionEnEmpresas");
+    if (description.includes('Inversión en empresas')) {
+      return t('portfolioBuilder.descriptions.inversionEnEmpresas');
     }
 
     return description;
@@ -778,9 +725,7 @@ const PortfolioBuilder = () => {
   // Función para calcular el monto total de una categoría
   const calculateCategoryTotal = (categoryName) => {
     if (!categoryName) return 0;
-    const category = calculatorData.categories.find(
-      (cat) => cat.name === categoryName,
-    );
+    const category = calculatorData.categories.find((cat) => cat.name === categoryName);
     if (!category) return 0;
     const totalAmount = calculatorData.totalAmount || 0;
     const weight = parseFloat(category.weight) || 0;
@@ -828,7 +773,7 @@ const PortfolioBuilder = () => {
     setExpandedVideos((prev) => {
       const newSet = new Set(prev);
       const videoId =
-        typeof sectionIdentifier === "number"
+        typeof sectionIdentifier === 'number'
           ? `videos-${sectionIdentifier}`
           : `videos-${sectionIdentifier}`;
       if (newSet.has(videoId)) {
@@ -849,7 +794,7 @@ const PortfolioBuilder = () => {
       <div className="space-y-8">
         <div className="mb-2">
           <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-            {t("portfolioBuilder.title")}
+            {t('portfolioBuilder.title')}
           </h1>
         </div>
         <div className="card">
@@ -867,20 +812,19 @@ const PortfolioBuilder = () => {
         <div
           className={`max-w-xl w-full rounded-2xl border px-6 py-8 text-center ${
             isDark
-              ? "bg-[#18181b] border-[#27272a] text-gray-100"
-              : "bg-white border-gray-200 text-gray-900"
+              ? 'bg-[#18181b] border-[#27272a] text-gray-100'
+              : 'bg-white border-gray-200 text-gray-900'
           }`}
         >
           <div className="flex justify-center mb-4">
             <AlertCircle className="w-10 h-10 text-amber-500" />
           </div>
           <h1 className="text-xl font-semibold mb-2">
-            {t("portfolioBuilder.accessDeniedTitle") ||
-              "Acceso a Portfolio Builder restringido"}
+            {t('portfolioBuilder.accessDeniedTitle') || 'Acceso a Portfolio Builder restringido'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {error ||
-              "Esta cuenta no tiene acceso al Portfolio Builder. Contacta con Javier para que te otorgue permisos si lo considera necesario."}
+              'Esta cuenta no tiene acceso al Portfolio Builder. Contacta con Javier para que te otorgue permisos si lo considera necesario.'}
           </p>
         </div>
       </div>
@@ -895,10 +839,10 @@ const PortfolioBuilder = () => {
     <div className="space-y-8">
       <div className="mb-2">
         <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-          {t("portfolioBuilder.title")}
+          {t('portfolioBuilder.title')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 tracking-tight">
-          {t("portfolioBuilder.subtitle")}
+          {t('portfolioBuilder.subtitle')}
         </p>
       </div>
 
@@ -907,33 +851,30 @@ const PortfolioBuilder = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1">
             <button
-              onClick={() => toggleSection("calculator")}
+              onClick={() => toggleSection('calculator')}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             >
-              {expandedSections.has("calculator") ? (
+              {expandedSections.has('calculator') ? (
                 <ChevronDown className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
               ) : (
                 <ChevronRight className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
               )}
             </button>
-            <div
-              className="p-3 rounded-lg"
-              style={{ backgroundColor: "var(--user-color-600)" }}
-            >
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--user-color-600)' }}>
               <Calculator className="h-6 w-6 text-white" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {t("portfolioBuilder.calculator.title")}
+                {t('portfolioBuilder.calculator.title')}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t("portfolioBuilder.calculator.subtitle")}
+                {t('portfolioBuilder.calculator.subtitle')}
               </p>
             </div>
           </div>
         </div>
 
-        {expandedSections.has("calculator") && (
+        {expandedSections.has('calculator') && (
           <div className="mt-6">
             {/* Input del monto total */}
             <div
@@ -945,13 +886,13 @@ const PortfolioBuilder = () => {
                       borderColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.3)`,
                     }
                   : {
-                      backgroundColor: "var(--user-color-50)",
-                      borderColor: "var(--user-color-200)",
+                      backgroundColor: 'var(--user-color-50)',
+                      borderColor: 'var(--user-color-200)',
                     }
               }
             >
               <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                {t("portfolioBuilder.calculator.totalAmount")}
+                {t('portfolioBuilder.calculator.totalAmount')}
               </label>
               <input
                 type="number"
@@ -973,31 +914,28 @@ const PortfolioBuilder = () => {
                 <thead>
                   <tr className="bg-gray-100 dark:bg-[#1d1d1f]">
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.category")}
+                      {t('portfolioBuilder.calculator.category')}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.expectedReturn")}
+                      {t('portfolioBuilder.calculator.expectedReturn')}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.weight")}
+                      {t('portfolioBuilder.calculator.weight')}
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.portfolioReturn")}
+                      {t('portfolioBuilder.calculator.portfolioReturn')}
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.amount")}
+                      {t('portfolioBuilder.calculator.amount')}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                      {t("portfolioBuilder.calculator.description")}
+                      {t('portfolioBuilder.calculator.description')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {allocationValues.categories.map((category, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-gray-50 dark:hover:bg-[#1d1d1f]"
-                    >
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-[#1d1d1f]">
                       <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {getCategoryDisplayName(category.name)}
                       </td>
@@ -1014,27 +952,21 @@ const PortfolioBuilder = () => {
                             const newValue = parseFloat(e.target.value) || 0;
 
                             // Calcular la suma de los otros pesos (excluyendo el actual)
-                            const sumOfOthers =
-                              calculatorData.categories.reduce(
-                                (sum, cat, idx) => {
-                                  if (idx === index) return sum;
-                                  return sum + (parseFloat(cat.weight) || 0);
-                                },
-                                0,
-                              );
+                            const sumOfOthers = calculatorData.categories.reduce(
+                              (sum, cat, idx) => {
+                                if (idx === index) return sum;
+                                return sum + (parseFloat(cat.weight) || 0);
+                              },
+                              0
+                            );
 
                             // Calcular el máximo permitido para este peso
                             const maxAllowed = 100 - sumOfOthers;
 
                             // Limitar el valor al máximo permitido
-                            const limitedValue = Math.min(
-                              Math.max(0, newValue),
-                              maxAllowed,
-                            );
+                            const limitedValue = Math.min(Math.max(0, newValue), maxAllowed);
 
-                            const newCategories = [
-                              ...calculatorData.categories,
-                            ];
+                            const newCategories = [...calculatorData.categories];
                             newCategories[index].weight = limitedValue;
                             setCalculatorData({
                               ...calculatorData,
@@ -1043,9 +975,7 @@ const PortfolioBuilder = () => {
                           }}
                           className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1d1d1f] text-gray-900 dark:text-gray-100 text-center text-sm font-semibold"
                         />
-                        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-                          %
-                        </span>
+                        <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">%</span>
                       </td>
                       <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {(category.portfolioReturn * 100).toFixed(2)}%
@@ -1054,13 +984,12 @@ const PortfolioBuilder = () => {
                         {formatCurrency(category.amount)}
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 italic">
-                        {translateCategoryDescription(category.name) ||
-                          category.description}
+                        {translateCategoryDescription(category.name) || category.description}
                       </td>
                     </tr>
                   ))}
                   <tr
-                    className={`font-semibold ${totalWeightSum > 100 ? "bg-red-50 dark:bg-red-900/20" : ""}`}
+                    className={`font-semibold ${totalWeightSum > 100 ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                     style={
                       totalWeightSum <= 100
                         ? isDark
@@ -1068,22 +997,19 @@ const PortfolioBuilder = () => {
                               backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.1)`,
                             }
                           : {
-                              backgroundColor: "var(--user-color-50)",
+                              backgroundColor: 'var(--user-color-50)',
                             }
                         : {}
                     }
                   >
-                    <td
-                      className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100"
-                      colSpan="3"
-                    >
-                      {t("portfolioBuilder.calculator.total")}
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100" colSpan="3">
+                      {t('portfolioBuilder.calculator.total')}
                       {totalWeightSum !== 100 && (
                         <span
                           className={`ml-2 text-xs font-normal ${
                             totalWeightSum > 100
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-yellow-600 dark:text-yellow-400"
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-yellow-600 dark:text-yellow-400'
                           }`}
                         >
                           ({totalWeightSum.toFixed(1)}%)
@@ -1095,10 +1021,10 @@ const PortfolioBuilder = () => {
                       style={
                         isDark
                           ? {
-                              color: "var(--user-color-400)",
+                              color: 'var(--user-color-400)',
                             }
                           : {
-                              color: "var(--user-color-900)",
+                              color: 'var(--user-color-900)',
                             }
                       }
                     >
@@ -1109,30 +1035,30 @@ const PortfolioBuilder = () => {
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {t("portfolioBuilder.calculator.riskProfile")}
+                            {t('portfolioBuilder.calculator.riskProfile')}
                           </span>
                           <span
                             className={`px-2 py-1 rounded text-xs font-semibold ${
-                              riskProfile.color === "green"
-                                ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
-                                : riskProfile.color === "yellow"
-                                  ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200"
-                                  : riskProfile.color === "orange"
-                                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200"
-                                    : riskProfile.color === "red"
-                                      ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"
-                                      : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                              riskProfile.color === 'green'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                : riskProfile.color === 'yellow'
+                                  ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                                  : riskProfile.color === 'orange'
+                                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                                    : riskProfile.color === 'red'
+                                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
                             }`}
                             style={
-                              riskProfile.color === "blue"
+                              riskProfile.color === 'blue'
                                 ? isDark
                                   ? {
                                       backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.2)`,
-                                      color: "var(--user-color-300)",
+                                      color: 'var(--user-color-300)',
                                     }
                                   : {
-                                      backgroundColor: "var(--user-color-100)",
-                                      color: "var(--user-color-800)",
+                                      backgroundColor: 'var(--user-color-100)',
+                                      color: 'var(--user-color-800)',
                                     }
                                 : {}
                             }
@@ -1142,7 +1068,7 @@ const PortfolioBuilder = () => {
                         </div>
                         {totalWeightSum > 100 && (
                           <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                            {t("portfolioBuilder.calculator.weightSumWarning")}
+                            {t('portfolioBuilder.calculator.weightSumWarning')}
                           </span>
                         )}
                       </div>
@@ -1160,18 +1086,18 @@ const PortfolioBuilder = () => {
                 className="px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50"
                 style={
                   isDark
-                    ? { backgroundColor: "var(--user-color-600)" }
-                    : { backgroundColor: "var(--user-color-600)" }
+                    ? { backgroundColor: 'var(--user-color-600)' }
+                    : { backgroundColor: 'var(--user-color-600)' }
                 }
               >
-                {saving ? "Guardando…" : "Guardar cambios"}
+                {saving ? 'Guardando…' : 'Guardar cambios'}
               </button>
               {saveMessage && (
                 <span
                   className={`text-sm ${
-                    saveMessage.type === "success"
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
+                    saveMessage.type === 'success'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
                   }`}
                 >
                   {saveMessage.text}
@@ -1187,18 +1113,14 @@ const PortfolioBuilder = () => {
         .filter((section) => section.number !== 1)
         .flatMap((section) => {
           // Si es Renta Fija (sección 4), expandir las subsecciones como cards separadas
-          if (
-            section.number === 4 &&
-            section.subsections &&
-            section.subsections.length > 0
-          ) {
+          if (section.number === 4 && section.subsections && section.subsections.length > 0) {
             return section.subsections
               .sort((a, b) => {
                 // Ordenar: Renta Fija Corto Plazo primero, luego Renta Fija Medio Plazo
-                if (a.name === "Renta Fija Corto Plazo") return -1;
-                if (b.name === "Renta Fija Corto Plazo") return 1;
-                if (a.name === "Renta Fija Medio Plazo") return -1;
-                if (b.name === "Renta Fija Medio Plazo") return 1;
+                if (a.name === 'Renta Fija Corto Plazo') return -1;
+                if (b.name === 'Renta Fija Corto Plazo') return 1;
+                if (a.name === 'Renta Fija Medio Plazo') return -1;
+                if (b.name === 'Renta Fija Medio Plazo') return 1;
                 return 0;
               })
               .map((subsection) => ({
@@ -1211,8 +1133,7 @@ const PortfolioBuilder = () => {
                 },
                 subsectionName: subsection.name,
                 // Asignar números de orden para el sorting: Renta Fija Corto Plazo = 2, Renta Fija Medio Plazo = 3
-                subsectionOrder:
-                  subsection.name === "Renta Fija Corto Plazo" ? 2 : 3,
+                subsectionOrder: subsection.name === 'Renta Fija Corto Plazo' ? 2 : 3,
               }));
           }
           return [section];
@@ -1248,49 +1169,39 @@ const PortfolioBuilder = () => {
             (isSubsection && subsection?.categoryKey) || section?.categoryKey;
           // Función para formatear títulos con nombres completos
           const formatDisplayTitle = (title) => {
-            if (title.includes("RF Corto Plazo")) {
+            if (title.includes('RF Corto Plazo')) {
               return title.replace(
-                "RF Corto Plazo",
-                t("portfolioBuilder.sections.subsections.rfCortoPlazo.name"),
+                'RF Corto Plazo',
+                t('portfolioBuilder.sections.subsections.rfCortoPlazo.name')
               );
             }
-            if (title.includes("Renta Fija Corto Plazo")) {
-              return t(
-                "portfolioBuilder.sections.subsections.rfCortoPlazo.name",
-              );
+            if (title.includes('Renta Fija Corto Plazo')) {
+              return t('portfolioBuilder.sections.subsections.rfCortoPlazo.name');
             }
-            if (title.includes("RF Medio Plazo")) {
+            if (title.includes('RF Medio Plazo')) {
               return title.replace(
-                "RF Medio Plazo",
-                t("portfolioBuilder.sections.subsections.rfMedioPlazo.name"),
+                'RF Medio Plazo',
+                t('portfolioBuilder.sections.subsections.rfMedioPlazo.name')
               );
             }
-            if (title.includes("Renta Fija Medio Plazo")) {
-              return t(
-                "portfolioBuilder.sections.subsections.rfMedioPlazo.name",
-              );
+            if (title.includes('Renta Fija Medio Plazo')) {
+              return t('portfolioBuilder.sections.subsections.rfMedioPlazo.name');
             }
-            if (title.includes("(RV)")) {
-              return title.replace("(RV)", "");
+            if (title.includes('(RV)')) {
+              return title.replace('(RV)', '');
             }
             // Traducir títulos de secciones
-            if (
-              title.includes("Ahorro Remunerado") ||
-              title.includes("Fondos Monetarios")
-            ) {
-              return t("portfolioBuilder.sections.monetarios.title");
+            if (title.includes('Ahorro Remunerado') || title.includes('Fondos Monetarios')) {
+              return t('portfolioBuilder.sections.monetarios.title');
             }
-            if (
-              title.includes("Inversión a Largo Plazo") ||
-              title.includes("Fondos Indexados")
-            ) {
-              return t("portfolioBuilder.sections.rentaVariable.title");
+            if (title.includes('Inversión a Largo Plazo') || title.includes('Fondos Indexados')) {
+              return t('portfolioBuilder.sections.rentaVariable.title');
             }
-            if (title.includes("Renta Fija") || title.includes("Bonos")) {
-              return t("portfolioBuilder.sections.rentaFija.title");
+            if (title.includes('Renta Fija') || title.includes('Bonos')) {
+              return t('portfolioBuilder.sections.rentaFija.title');
             }
-            if (title.includes("Inversiones Alternativas")) {
-              return t("portfolioBuilder.sections.alternativos.title");
+            if (title.includes('Inversiones Alternativas')) {
+              return t('portfolioBuilder.sections.alternativos.title');
             }
             return title;
           };
@@ -1301,27 +1212,24 @@ const PortfolioBuilder = () => {
 
           // Función para formatear descripciones eliminando diminutivos y traduciendo
           const formatDescription = (description) => {
-            if (!description) return "";
+            if (!description) return '';
             let formatted = description
-              .replace(/\bRF\b/g, t("portfolioBuilder.categories.rfCorto"))
-              .replace(/\bRV\b/g, t("portfolioBuilder.categories.rv"))
-              .replace(/\bFM\b/g, "Fondo Monetario")
-              .replace(/RF Corto/g, t("portfolioBuilder.categories.rfCorto"))
-              .replace(/RF Medio/g, t("portfolioBuilder.categories.rfMedio"));
+              .replace(/\bRF\b/g, t('portfolioBuilder.categories.rfCorto'))
+              .replace(/\bRV\b/g, t('portfolioBuilder.categories.rv'))
+              .replace(/\bFM\b/g, 'Fondo Monetario')
+              .replace(/RF Corto/g, t('portfolioBuilder.categories.rfCorto'))
+              .replace(/RF Medio/g, t('portfolioBuilder.categories.rfMedio'));
             return formatted;
           };
 
           const displayDescription = isSubsection
-            ? translateSubsectionDescription(
-                subsection?.name,
-                subsection?.description,
-              )
+            ? translateSubsectionDescription(subsection?.name, subsection?.description)
             : translateDescription(section.description) ||
-              formatDescription(section.description || "");
+              formatDescription(section.description || '');
 
           const Icon = section.icon;
           const sectionId = isSubsection
-            ? `subsection-${section.number}-${subsection?.name?.replace(/\s+/g, "-")}`
+            ? `subsection-${section.number}-${subsection?.name?.replace(/\s+/g, '-')}`
             : `section-${section.number}`;
           const isExpanded = expandedSections.has(sectionId);
 
@@ -1336,10 +1244,7 @@ const PortfolioBuilder = () => {
           }
 
           return (
-            <div
-              key={isSubsection ? sectionId : section.number}
-              className="card"
-            >
+            <div key={isSubsection ? sectionId : section.number} className="card">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4 flex-1">
                   <button
@@ -1354,7 +1259,7 @@ const PortfolioBuilder = () => {
                   </button>
                   <div
                     className="p-3 rounded-lg flex-shrink-0"
-                    style={{ backgroundColor: "var(--user-color-600)" }}
+                    style={{ backgroundColor: 'var(--user-color-600)' }}
                   >
                     <Icon className="h-6 w-6 text-white" />
                   </div>
@@ -1363,17 +1268,13 @@ const PortfolioBuilder = () => {
                       {displayTitle}
                     </h2>
                     {displayDescription && (
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        {displayDescription}
-                      </p>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">{displayDescription}</p>
                     )}
                     {(isSubsection ? subsection?.note : section.note) && (
                       <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
                         <p className="text-sm text-amber-800 dark:text-amber-200">
                           <AlertCircle className="h-4 w-4 inline mr-2" />
-                          {translateTip(
-                            isSubsection ? subsection?.note : section.note,
-                          )}
+                          {translateTip(isSubsection ? subsection?.note : section.note)}
                         </p>
                       </div>
                     )}
@@ -1396,7 +1297,7 @@ const PortfolioBuilder = () => {
                                   backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.1)`,
                                 }
                               : {
-                                  backgroundColor: "var(--user-color-50)",
+                                  backgroundColor: 'var(--user-color-50)',
                                 }
                           }
                         >
@@ -1405,10 +1306,10 @@ const PortfolioBuilder = () => {
                             style={
                               isDark
                                 ? {
-                                    color: "var(--user-color-400)",
+                                    color: 'var(--user-color-400)',
                                   }
                                 : {
-                                    color: "var(--user-color-600)",
+                                    color: 'var(--user-color-600)',
                                   }
                             }
                           />
@@ -1424,20 +1325,20 @@ const PortfolioBuilder = () => {
                   {section.ratios && section.ratios.length > 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        {t("portfolioBuilder.sections.ratios.title")}
+                        {t('portfolioBuilder.sections.ratios.title')}
                       </h3>
                       <div className="overflow-x-auto">
                         <table className="min-w-full">
                           <thead className="bg-gray-100 dark:bg-[#1d1d1f]">
                             <tr>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {t("portfolioBuilder.sections.ratios.price")}
+                                {t('portfolioBuilder.sections.ratios.price')}
                               </th>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {t("portfolioBuilder.sections.ratios.rent")}
+                                {t('portfolioBuilder.sections.ratios.rent')}
                               </th>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {t("portfolioBuilder.sections.ratios.ratio")}
+                                {t('portfolioBuilder.sections.ratios.ratio')}
                               </th>
                             </tr>
                           </thead>
@@ -1465,7 +1366,7 @@ const PortfolioBuilder = () => {
                   {section.financing && section.financing.length > 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        {t("portfolioBuilder.sections.financing.title")}
+                        {t('portfolioBuilder.sections.financing.title')}
                       </h3>
                       <ul className="space-y-2">
                         {section.financing.map((item, idx) => (
@@ -1478,10 +1379,10 @@ const PortfolioBuilder = () => {
                               style={
                                 isDark
                                   ? {
-                                      color: "var(--user-color-400)",
+                                      color: 'var(--user-color-400)',
                                     }
                                   : {
-                                      color: "var(--user-color-600)",
+                                      color: 'var(--user-color-600)',
                                     }
                               }
                             >
@@ -1497,8 +1398,7 @@ const PortfolioBuilder = () => {
                   {/* Distribución de Capital para RV */}
                   {(() => {
                     // Para RV, priorizar distribution si existe, sino usar funds
-                    const hasDistribution =
-                      section.distribution && section.distribution.length > 0;
+                    const hasDistribution = section.distribution && section.distribution.length > 0;
                     const hasFunds = section.funds && section.funds.length > 0;
 
                     if (!hasDistribution && !hasFunds) return null;
@@ -1509,17 +1409,12 @@ const PortfolioBuilder = () => {
                     return (
                       <div className="mb-6">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                          {t(
-                            "portfolioBuilder.sections.capitalDistribution.title",
-                          )}
+                          {t('portfolioBuilder.sections.capitalDistribution.title')}
                           {dynamicTotal > 0 && (
                             <span className="ml-2 text-gray-600 dark:text-gray-400 font-normal">
-                              {t(
-                                "portfolioBuilder.sections.capitalDistribution.total",
-                                {
-                                  amount: formatCurrency(dynamicTotal),
-                                },
-                              )}
+                              {t('portfolioBuilder.sections.capitalDistribution.total', {
+                                amount: formatCurrency(dynamicTotal),
+                              })}
                             </span>
                           )}
                         </h3>
@@ -1529,11 +1424,8 @@ const PortfolioBuilder = () => {
                           <div className="space-y-3 mb-6">
                             {section.distribution.map((item, idx) => {
                               // Calcular la cantidad dinámicamente basada en el porcentaje
-                              const percentage = parseFloat(
-                                item.percentage?.replace("%", "") || 0,
-                              );
-                              const dynamicAmount =
-                                dynamicTotal * (percentage / 100);
+                              const percentage = parseFloat(item.percentage?.replace('%', '') || 0);
+                              const dynamicAmount = dynamicTotal * (percentage / 100);
 
                               return (
                                 <div
@@ -1543,13 +1435,11 @@ const PortfolioBuilder = () => {
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex-1 min-w-0">
                                       <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {item.name || "(Sin nombre)"}
+                                        {item.name || '(Sin nombre)'}
                                       </h4>
                                       {item.isin && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          {t(
-                                            "portfolioBuilder.sections.capitalDistribution.isin",
-                                          )}{" "}
+                                          {t('portfolioBuilder.sections.capitalDistribution.isin')}{' '}
                                           {item.isin}
                                         </p>
                                       )}
@@ -1575,15 +1465,15 @@ const PortfolioBuilder = () => {
                                         style={
                                           isDark
                                             ? {
-                                                color: "var(--user-color-400)",
+                                                color: 'var(--user-color-400)',
                                               }
                                             : {
-                                                color: "var(--user-color-600)",
+                                                color: 'var(--user-color-600)',
                                               }
                                         }
                                       >
                                         {t(
-                                          "portfolioBuilder.sections.capitalDistribution.viewFinect",
+                                          'portfolioBuilder.sections.capitalDistribution.viewFinect'
                                         )}
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
@@ -1591,9 +1481,7 @@ const PortfolioBuilder = () => {
                                     {section.number === 3 && (
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          removeRvFundFromDistribution(idx)
-                                        }
+                                        onClick={() => removeRvFundFromDistribution(idx)}
                                         className="text-sm text-red-600 dark:text-red-400 hover:underline"
                                       >
                                         Eliminar
@@ -1623,30 +1511,25 @@ const PortfolioBuilder = () => {
                         {hasFunds &&
                           (() => {
                             // Filtrar fondos que no están en distribution
-                            const additionalFunds = section.funds.filter(
-                              (fund) => {
-                                if (hasDistribution) {
-                                  return !section.distribution.some(
-                                    (dist) => dist.name === fund.name,
-                                  );
-                                }
-                                return true;
-                              },
-                            );
+                            const additionalFunds = section.funds.filter((fund) => {
+                              if (hasDistribution) {
+                                return !section.distribution.some(
+                                  (dist) => dist.name === fund.name
+                                );
+                              }
+                              return true;
+                            });
 
                             // Calcular el porcentaje total ya asignado en distribution
                             const assignedPercentage = hasDistribution
                               ? section.distribution.reduce((sum, dist) => {
-                                  const pct = parseFloat(
-                                    dist.percentage?.replace("%", "") || 0,
-                                  );
+                                  const pct = parseFloat(dist.percentage?.replace('%', '') || 0);
                                   return sum + pct;
                                 }, 0)
                               : 0;
 
                             // El porcentaje restante se distribuye entre los fondos adicionales
-                            const remainingPercentage =
-                              100 - assignedPercentage;
+                            const remainingPercentage = 100 - assignedPercentage;
                             const percentagePerFund =
                               additionalFunds.length > 0
                                 ? remainingPercentage / additionalFunds.length
@@ -1681,7 +1564,7 @@ const PortfolioBuilder = () => {
                                           <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                             {percentagePerFund > 0
                                               ? `${percentagePerFund.toFixed(1)}%`
-                                              : ""}
+                                              : ''}
                                           </p>
                                           {fundAmount && fundAmount > 0 && (
                                             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1695,8 +1578,8 @@ const PortfolioBuilder = () => {
                                           <div>
                                             <span className="text-gray-600 dark:text-gray-400">
                                               {t(
-                                                "portfolioBuilder.sections.capitalDistribution.vol12M",
-                                              )}{" "}
+                                                'portfolioBuilder.sections.capitalDistribution.vol12M'
+                                              )}{' '}
                                             </span>
                                             <span className="font-medium text-gray-900 dark:text-gray-100">
                                               {fund.volatility12M}
@@ -1707,8 +1590,8 @@ const PortfolioBuilder = () => {
                                           <div>
                                             <span className="text-gray-600 dark:text-gray-400">
                                               {t(
-                                                "portfolioBuilder.sections.capitalDistribution.r12M",
-                                              )}{" "}
+                                                'portfolioBuilder.sections.capitalDistribution.r12M'
+                                              )}{' '}
                                             </span>
                                             <span className="font-medium text-gray-900 dark:text-gray-100">
                                               {fund.return12M}
@@ -1726,17 +1609,15 @@ const PortfolioBuilder = () => {
                                             style={
                                               isDark
                                                 ? {
-                                                    color:
-                                                      "var(--user-color-400)",
+                                                    color: 'var(--user-color-400)',
                                                   }
                                                 : {
-                                                    color:
-                                                      "var(--user-color-600)",
+                                                    color: 'var(--user-color-600)',
                                                   }
                                             }
                                           >
                                             {t(
-                                              "portfolioBuilder.sections.capitalDistribution.viewDetails",
+                                              'portfolioBuilder.sections.capitalDistribution.viewDetails'
                                             )}
                                             <ExternalLink className="h-3 w-3" />
                                           </a>
@@ -1745,10 +1626,7 @@ const PortfolioBuilder = () => {
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              removeExtraFund(
-                                                currentCategoryKey,
-                                                fund.isin,
-                                              )
+                                              removeExtraFund(currentCategoryKey, fund.isin)
                                             }
                                             className="text-sm text-red-600 dark:text-red-400 hover:underline"
                                           >
@@ -1778,31 +1656,23 @@ const PortfolioBuilder = () => {
                       return (
                         <div className="mb-6">
                           <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                            {t(
-                              "portfolioBuilder.sections.capitalDistribution.title",
-                            )}
+                            {t('portfolioBuilder.sections.capitalDistribution.title')}
                             {dynamicTotal > 0 && (
                               <span className="ml-2 text-gray-600 dark:text-gray-400 font-normal">
-                                {t(
-                                  "portfolioBuilder.sections.capitalDistribution.total",
-                                  {
-                                    amount: formatCurrency(dynamicTotal),
-                                  },
-                                )}
+                                {t('portfolioBuilder.sections.capitalDistribution.total', {
+                                  amount: formatCurrency(dynamicTotal),
+                                })}
                               </span>
                             )}
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {subsection.funds.map((fund, idx) => {
-                              const fundAmount = calculateFundAmount(
-                                section,
-                                subsection,
-                              );
+                              const fundAmount = calculateFundAmount(section, subsection);
                               // Calcular el porcentaje equitativo para cada fondo
                               const percentagePerFund =
                                 subsection.funds.length > 0
                                   ? (100 / subsection.funds.length).toFixed(1)
-                                  : "0";
+                                  : '0';
 
                               return (
                                 <div
@@ -1816,35 +1686,32 @@ const PortfolioBuilder = () => {
                                       </h4>
                                       {fund.isin && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          {t(
-                                            "portfolioBuilder.sections.capitalDistribution.isin",
-                                          )}{" "}
+                                          {t('portfolioBuilder.sections.capitalDistribution.isin')}{' '}
                                           {fund.isin}
                                         </p>
                                       )}
                                       {fund.risk &&
-                                        subsection.name !==
-                                          "Renta Fija Corto Plazo" && (
+                                        subsection.name !== 'Renta Fija Corto Plazo' && (
                                           <span
                                             className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${
-                                              fund.risk.includes("alto")
-                                                ? "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200"
-                                                : fund.risk.includes("medio")
-                                                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
-                                                  : "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                                              fund.risk.includes('alto')
+                                                ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
+                                                : fund.risk.includes('medio')
+                                                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'
+                                                  : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200'
                                             }`}
                                           >
-                                            {fund.risk.includes("alto")
+                                            {fund.risk.includes('alto')
                                               ? t(
-                                                  "portfolioBuilder.calculator.riskProfiles.veryAggressive",
+                                                  'portfolioBuilder.calculator.riskProfiles.veryAggressive'
                                                 )
-                                              : fund.risk.includes("medio")
+                                              : fund.risk.includes('medio')
                                                 ? t(
-                                                    "portfolioBuilder.calculator.riskProfiles.moderate",
+                                                    'portfolioBuilder.calculator.riskProfiles.moderate'
                                                   )
-                                                : fund.risk.includes("bajo")
+                                                : fund.risk.includes('bajo')
                                                   ? t(
-                                                      "portfolioBuilder.calculator.riskProfiles.conservative",
+                                                      'portfolioBuilder.calculator.riskProfiles.conservative'
                                                     )
                                                   : fund.risk}
                                           </span>
@@ -1866,8 +1733,8 @@ const PortfolioBuilder = () => {
                                       <div>
                                         <span className="text-gray-600 dark:text-gray-400">
                                           {t(
-                                            "portfolioBuilder.sections.capitalDistribution.vol",
-                                          )}{" "}
+                                            'portfolioBuilder.sections.capitalDistribution.vol'
+                                          )}{' '}
                                         </span>
                                         <span className="font-medium text-gray-900 dark:text-gray-100">
                                           {fund.volatility12M}
@@ -1877,7 +1744,7 @@ const PortfolioBuilder = () => {
                                     {fund.return12M && (
                                       <div>
                                         <span className="text-gray-600 dark:text-gray-400">
-                                          R 12M:{" "}
+                                          R 12M:{' '}
                                         </span>
                                         <span className="font-medium text-gray-900 dark:text-gray-100">
                                           {fund.return12M}
@@ -1895,15 +1762,15 @@ const PortfolioBuilder = () => {
                                         style={
                                           isDark
                                             ? {
-                                                color: "var(--user-color-400)",
+                                                color: 'var(--user-color-400)',
                                               }
                                             : {
-                                                color: "var(--user-color-600)",
+                                                color: 'var(--user-color-600)',
                                               }
                                         }
                                       >
                                         {t(
-                                          "portfolioBuilder.sections.capitalDistribution.viewFinect",
+                                          'portfolioBuilder.sections.capitalDistribution.viewFinect'
                                         )}
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
@@ -1912,10 +1779,7 @@ const PortfolioBuilder = () => {
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          removeExtraFund(
-                                            currentCategoryKey,
-                                            fund.isin,
-                                          )
+                                          removeExtraFund(currentCategoryKey, fund.isin)
                                         }
                                         className="text-sm text-red-600 dark:text-red-400 hover:underline"
                                       >
@@ -1936,9 +1800,7 @@ const PortfolioBuilder = () => {
                     currentCategoryKey &&
                     (() => {
                       const availableToAdd = portfolioData.fundsList.filter(
-                        (f) =>
-                          f.category === currentCategoryKey &&
-                          f.showInSection !== true,
+                        (f) => f.category === currentCategoryKey && f.showInSection !== true
                       );
                       if (availableToAdd.length === 0) return null;
                       const isAdding = addingExtra === currentCategoryKey;
@@ -1950,33 +1812,25 @@ const PortfolioBuilder = () => {
                             disabled={isAdding}
                             className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:opacity-50"
                           >
-                            {isAdding
-                              ? "Añadiendo…"
-                              : "+ Añadir más (siguiente de la lista)"}
+                            {isAdding ? 'Añadiendo…' : '+ Añadir más (siguiente de la lista)'}
                           </button>
                         </div>
                       );
                     })()}
 
                   {(isSubsection ? subsection?.videos : section.videos) &&
-                    (isSubsection
-                      ? subsection.videos.length > 0
-                      : section.videos.length > 0) && (
+                    (isSubsection ? subsection.videos.length > 0 : section.videos.length > 0) && (
                       <div className="mt-6">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                            {t("portfolioBuilder.sections.videos.title")}
+                            {t('portfolioBuilder.sections.videos.title')}
                           </h3>
                           <button
-                            onClick={() =>
-                              toggleVideos(
-                                isSubsection ? sectionId : section.number,
-                              )
-                            }
+                            onClick={() => toggleVideos(isSubsection ? sectionId : section.number)}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                           >
                             {expandedVideos.has(
-                              `videos-${isSubsection ? sectionId : section.number}`,
+                              `videos-${isSubsection ? sectionId : section.number}`
                             ) ? (
                               <ChevronDown className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
                             ) : (
@@ -1985,35 +1839,32 @@ const PortfolioBuilder = () => {
                           </button>
                         </div>
                         {expandedVideos.has(
-                          `videos-${isSubsection ? sectionId : section.number}`,
+                          `videos-${isSubsection ? sectionId : section.number}`
                         ) && (
                           <div className="space-y-2">
-                            {(isSubsection
-                              ? subsection.videos
-                              : section.videos
-                            ).map((video, idx) => (
-                              <a
-                                key={idx}
-                                href={video.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-[#252525] transition-colors"
-                              >
-                                <Play className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {video.description ||
-                                      t(
-                                        "portfolioBuilder.sections.videos.viewVideo",
-                                      )}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {video.url}
-                                  </p>
-                                </div>
-                                <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                              </a>
-                            ))}
+                            {(isSubsection ? subsection.videos : section.videos).map(
+                              (video, idx) => (
+                                <a
+                                  key={idx}
+                                  href={video.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-[#252525] transition-colors"
+                                >
+                                  <Play className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                      {video.description ||
+                                        t('portfolioBuilder.sections.videos.viewVideo')}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      {video.url}
+                                    </p>
+                                  </div>
+                                  <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                </a>
+                              )
+                            )}
                           </div>
                         )}
                       </div>

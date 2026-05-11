@@ -1,5 +1,5 @@
-import { Sun, Moon } from "lucide-react";
-import { useTheme } from "../contexts/ThemeContext";
+import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ThemeToggle = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -19,12 +19,12 @@ const ThemeToggle = () => {
         <Sun
           size={18}
           strokeWidth={2}
-          className={`absolute inset-0 transition-all duration-300 ${isDark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`}
+          className={`absolute inset-0 transition-all duration-300 ${isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`}
         />
         <Moon
           size={18}
           strokeWidth={2}
-          className={`transition-all duration-300 ${isDark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`}
+          className={`transition-all duration-300 ${isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'}`}
         />
       </div>
     </button>

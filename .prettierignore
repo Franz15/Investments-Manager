@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+build
+frontend/dist
+backend/dist
+.vscode
+.idea
+.git
+*.log
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

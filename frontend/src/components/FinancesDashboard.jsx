@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -7,16 +7,16 @@ import {
   ArrowUp,
   ArrowDown,
   Plus,
-} from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import { es } from "date-fns/locale";
-import api from "../services/api";
-import LoadingSpinner from "./LoadingSpinner";
-import { useTranslation } from "../contexts/TranslationContext";
-import QuickTransactionForm from "./QuickTransactionForm";
-import TransactionDetailModal from "./TransactionDetailModal";
-import BudgetDetailModal from "./BudgetDetailModal";
-import FinancialAnalysis from "./FinancialAnalysis";
+} from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { es } from 'date-fns/locale';
+import api from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
+import { useTranslation } from '../contexts/TranslationContext';
+import QuickTransactionForm from './QuickTransactionForm';
+import TransactionDetailModal from './TransactionDetailModal';
+import BudgetDetailModal from './BudgetDetailModal';
+import FinancialAnalysis from './FinancialAnalysis';
 
 const FinancesDashboard = ({ businessId = null }) => {
   const { t } = useTranslation();
@@ -44,25 +44,24 @@ const FinancesDashboard = ({ businessId = null }) => {
       const endOfCurrentMonth = endOfMonth(now);
 
       const params = {
-        startDate: format(startOfCurrentMonth, "yyyy-MM-dd"),
-        endDate: format(endOfCurrentMonth, "yyyy-MM-dd"),
+        startDate: format(startOfCurrentMonth, 'yyyy-MM-dd'),
+        endDate: format(endOfCurrentMonth, 'yyyy-MM-dd'),
       };
 
       if (businessId) {
         params.business = businessId;
       } else {
-        params.business = "null"; // Personal
+        params.business = 'null'; // Personal
       }
 
-      const [statsRes, budgetsRes, forecastsRes, transactionsRes] =
-        await Promise.all([
-          api.get("/transactions/statistics/summary", { params }),
-          api.get("/budgets", { params: { business: params.business } }),
-          api.get("/forecasts", { params: { business: params.business } }),
-          api.get("/transactions", {
-            params: { ...params },
-          }),
-        ]);
+      const [statsRes, budgetsRes, forecastsRes, transactionsRes] = await Promise.all([
+        api.get('/transactions/statistics/summary', { params }),
+        api.get('/budgets', { params: { business: params.business } }),
+        api.get('/forecasts', { params: { business: params.business } }),
+        api.get('/transactions', {
+          params: { ...params },
+        }),
+      ]);
 
       setStatistics(statsRes.data);
       setBudgets(budgetsRes.data);
@@ -71,19 +70,17 @@ const FinancesDashboard = ({ businessId = null }) => {
 
       // Obtener estadísticas de presupuestos activos
       const activeBudgets = budgetsRes.data.filter((b) => b.isActive);
-      const budgetStatsPromises = activeBudgets
-        .slice(0, 3)
-        .map(async (budget) => {
-          try {
-            const budgetStatsRes = await api.get(`/budgets/${budget._id}`);
-            return {
-              budgetId: budget._id,
-              stats: budgetStatsRes.data.statistics,
-            };
-          } catch (error) {
-            return { budgetId: budget._id, stats: null };
-          }
-        });
+      const budgetStatsPromises = activeBudgets.slice(0, 3).map(async (budget) => {
+        try {
+          const budgetStatsRes = await api.get(`/budgets/${budget._id}`);
+          return {
+            budgetId: budget._id,
+            stats: budgetStatsRes.data.statistics,
+          };
+        } catch (error) {
+          return { budgetId: budget._id, stats: null };
+        }
+      });
 
       const budgetStatsResults = await Promise.all(budgetStatsPromises);
       const statsMap = {};
@@ -114,16 +111,14 @@ const FinancesDashboard = ({ businessId = null }) => {
           className="btn-secondary flex items-center gap-2"
         >
           <Calendar className="h-5 w-5" />
-          {showAnalysis
-            ? t("financialAnalysis.hideAnalysis")
-            : t("financialAnalysis.showAnalysis")}
+          {showAnalysis ? t('financialAnalysis.hideAnalysis') : t('financialAnalysis.showAnalysis')}
         </button>
         <button
           onClick={() => setShowQuickForm(true)}
           className="btn-primary flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
         >
           <Plus className="h-5 w-5" />
-          {t("quickTransaction.addTransaction")}
+          {t('quickTransaction.addTransaction')}
         </button>
       </div>
 
@@ -136,16 +131,16 @@ const FinancesDashboard = ({ businessId = null }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t("financesDashboard.totalIncome")}
+                {t('financesDashboard.totalIncome')}
               </p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
                 }).format(statistics.totalIncome)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("financesDashboard.monthly")}
+                {t('financesDashboard.monthly')}
               </p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-400" />
@@ -155,16 +150,16 @@ const FinancesDashboard = ({ businessId = null }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t("financesDashboard.totalExpenses")}
+                {t('financesDashboard.totalExpenses')}
               </p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
                 }).format(statistics.totalExpenses)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("financesDashboard.monthly")}
+                {t('financesDashboard.monthly')}
               </p>
             </div>
             <TrendingDown className="h-8 w-8 text-red-400" />
@@ -174,22 +169,22 @@ const FinancesDashboard = ({ businessId = null }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t("financesDashboard.balance")}
+                {t('financesDashboard.balance')}
               </p>
               <p
                 className={`text-2xl font-bold mt-1 ${
                   statistics.balance >= 0
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-red-600 dark:text-red-400"
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
                 }`}
               >
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR',
                 }).format(statistics.balance)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("financesDashboard.monthly")}
+                {t('financesDashboard.monthly')}
               </p>
             </div>
             <DollarSign className="h-8 w-8 text-gray-400" />
@@ -199,13 +194,13 @@ const FinancesDashboard = ({ businessId = null }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t("financesDashboard.transactions")}
+                {t('financesDashboard.transactions')}
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {statistics.transactionCount}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("financesDashboard.monthly")}
+                {t('financesDashboard.monthly')}
               </p>
             </div>
             <Calendar className="h-8 w-8 text-gray-400" />
@@ -217,7 +212,7 @@ const FinancesDashboard = ({ businessId = null }) => {
       {budgets.filter((b) => b.isActive).length > 0 && (
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("financesDashboard.activeBudgets")}
+            {t('financesDashboard.activeBudgets')}
           </h3>
           <div className="space-y-3">
             {budgets
@@ -241,23 +236,23 @@ const FinancesDashboard = ({ businessId = null }) => {
                           {budget.name}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {budget.category?.name || "-"}
+                          {budget.category?.name || '-'}
                         </p>
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 block">
-                          {new Intl.NumberFormat("es-ES", {
-                            style: "currency",
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
                             currency: budget.currency,
                           }).format(budget.amount)}
                         </span>
                         {stats && (
                           <span className="text-xs text-red-600">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
                               currency: budget.currency,
-                            }).format(stats.spent)}{" "}
-                            {t("financesDashboard.spent")}
+                            }).format(stats.spent)}{' '}
+                            {t('financesDashboard.spent')}
                           </span>
                         )}
                       </div>
@@ -266,17 +261,17 @@ const FinancesDashboard = ({ businessId = null }) => {
                       <div
                         className={`h-2 rounded-full ${
                           percentageUsed >= 100
-                            ? "bg-red-600"
+                            ? 'bg-red-600'
                             : percentageUsed >= 80
-                              ? "bg-orange-600"
-                              : "bg-green-600"
+                              ? 'bg-orange-600'
+                              : 'bg-green-600'
                         }`}
                         style={{ width: `${Math.min(percentageUsed, 100)}%` }}
                       ></div>
                     </div>
                     {stats && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {percentageUsed.toFixed(1)}% {t("budgets.usage")}
+                        {percentageUsed.toFixed(1)}% {t('budgets.usage')}
                       </p>
                     )}
                   </div>
@@ -290,7 +285,7 @@ const FinancesDashboard = ({ businessId = null }) => {
       {recentTransactions.length > 0 && (
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {t("financesDashboard.recentTransactions")}
+            {t('financesDashboard.recentTransactions')}
           </h3>
           <div className="space-y-2">
             {recentTransactions.map((transaction) => (
@@ -303,7 +298,7 @@ const FinancesDashboard = ({ businessId = null }) => {
                 className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {transaction.type === "income" ? (
+                  {transaction.type === 'income' ? (
                     <ArrowUp className="h-5 w-5 text-green-600" />
                   ) : (
                     <ArrowDown className="h-5 w-5 text-red-600" />
@@ -313,7 +308,7 @@ const FinancesDashboard = ({ businessId = null }) => {
                       {transaction.description || transaction.category}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {format(new Date(transaction.date), "dd MMM yyyy", {
+                      {format(new Date(transaction.date), 'dd MMM yyyy', {
                         locale: es,
                       })}
                     </p>
@@ -321,14 +316,12 @@ const FinancesDashboard = ({ businessId = null }) => {
                 </div>
                 <p
                   className={`font-semibold ${
-                    transaction.type === "income"
-                      ? "text-green-600"
-                      : "text-red-600"
+                    transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                   }`}
                 >
-                  {transaction.type === "income" ? "+" : "-"}
-                  {new Intl.NumberFormat("es-ES", {
-                    style: "currency",
+                  {transaction.type === 'income' ? '+' : '-'}
+                  {new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
                     currency: transaction.currency,
                   }).format(transaction.amount)}
                 </p>

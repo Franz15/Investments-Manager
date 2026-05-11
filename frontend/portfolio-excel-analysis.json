@@ -1008,19 +1008,7 @@
     },
     "Cartera1": {
       "data": [
-        [
-          null,
-          null,
-          "Tipos de Inversiones",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Tipos de Inversiones", null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
         [
           null,
@@ -1050,19 +1038,7 @@
           null
         ],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          "Cosas a saber",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Cosas a saber", null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
         [
           null,
@@ -1078,48 +1054,12 @@
           null
         ],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          "Precio",
-          "Alquiler",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
-        [
-          null,
-          null,
-          "200000",
-          "1000",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Precio", "Alquiler", null, null, null, null, null, null, null],
+        [null, null, "200000", "1000", null, null, null, null, null, null, null],
         [null, null, "150000", "750", null, null, null, null, null, null, null],
         [null, null, "100000", "500", null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          "Finaciación",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Finaciación", null, null, null, null, null, null, null, null],
         [
           null,
           null,
@@ -1133,19 +1073,7 @@
           "codigo: pizarra",
           null
         ],
-        [
-          null,
-          null,
-          "Cuanto más dinero mejor",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Cuanto más dinero mejor", null, null, null, null, null, null, null, null],
         [
           null,
           null,
@@ -1377,19 +1305,7 @@
           null
         ],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          "Pestañas",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, "Pestañas", null, null, null, null, null, null, null, null],
         [
           null,
           null,
@@ -1500,19 +1416,7 @@
         [null, null, null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, "5.73%", "6870", null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          "Monetarios",
-          "0",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, null, "Monetarios", "0", null, null, null, null, null, null],
         [
           null,
           null,
@@ -1527,19 +1431,7 @@
           null
         ],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          "RF Corto",
-          "48000",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, null, "RF Corto", "48000", null, null, null, null, null, null],
         [
           null,
           null,
@@ -1580,19 +1472,7 @@
           null
         ],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          "RF Medio",
-          "30000",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, null, "RF Medio", "30000", null, null, null, null, null, null],
         [
           null,
           null,
@@ -1686,35 +1566,11 @@
           null,
           null
         ],
-        [
-          null,
-          null,
-          "15%",
-          "Heptagon",
-          null,
-          null,
-          null,
-          null,
-          "4500",
-          null,
-          null
-        ],
+        [null, null, "15%", "Heptagon", null, null, null, null, "4500", null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          "Alternativos",
-          "12000",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
+        [null, null, null, "Alternativos", "12000", null, null, null, null, null, null],
         [
           null,
           null,
@@ -1781,62 +1637,14 @@
         [null, null, null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, "Costes"],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          "1475.045455"
-        ],
+        [null, null, null, null, null, null, null, null, null, null, "1475.045455"],
         [null, null, null, null, null, null, null, null, null, null, "600"],
-        [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          "2075.045455"
-        ],
+        [null, null, null, null, null, null, null, null, null, null, "2075.045455"],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          "Obtienes"
-        ],
+        [null, null, null, null, null, null, null, null, null, null, "Obtienes"],
         [null, null, null, null, null, null, null, null, null, null, "9600"],
         [null, null, null, null, null, null, null, null, null, null, null],
-        [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          "7524.954545"
-        ],
+        [null, null, null, null, null, null, null, null, null, null, "7524.954545"],
         [null, null, null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null, null, "6.02%"]
       ],
