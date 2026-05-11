@@ -12,32 +12,56 @@ import {
   ShieldCheck,
   Briefcase,
   PiggyBank,
+  BarChart3,
+  BookOpen,
+  Target,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useUserColor } from '../hooks/useUserColor';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useBusiness } from '../contexts/BusinessContext';
 import ThemeToggle from './ThemeToggle';
+import TradeClimbLogo from './Logo';
 import packageJson from '../../package.json';
+
+/* ── Sidebar design tokens — resolved via CSS vars at runtime ────
+   Active states use the user's profile color (--user-color-*).
+   Light/dark surfaces use --sidebar-* vars defined in index.css.
+   ────────────────────────────────────────────────────────────── */
+const S = {
+  bg: 'var(--sidebar-bg)',
+  border: 'var(--sidebar-border)',
+  /* Active = user profile color */
+  activeText: 'var(--user-color-600)',
+  activeBg: 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)',
+  activeBorder: 'rgba(var(--user-color-600-rgb, 201,150,26), 0.2)',
+  /* Rest */
+  inactiveText: 'var(--sidebar-inactive)',
+  hoverBg: 'var(--sidebar-hover-bg)',
+  hoverText: 'var(--sidebar-hover-text)',
+  sectionText: 'var(--sidebar-section-text)',
+  divider: 'var(--sidebar-divider)',
+};
 
 const Layout = ({ children }) => {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return saved ? JSON.parse(saved) : false;
-  });
-  const { currentUser, logout } = useUser();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { currentUser, logout } = useUser();
   const { businesses, selectedBusiness, selectBusiness } = useBusiness();
-  const [businessesExpanded, setBusinessesExpanded] = useState(() => {
-    const saved = localStorage.getItem('businessesExpanded');
-    return saved ? JSON.parse(saved) : false;
-  });
-  useUserColor(); // Aplicar color del usuario como variables CSS
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    JSON.parse(localStorage.getItem('sidebarCollapsed') ?? 'false')
+  );
+  const [businessesExpanded, setBusinessesExpanded] = useState(() =>
+    JSON.parse(localStorage.getItem('businessesExpanded') ?? 'false')
+  );
+
+  useUserColor(); // applies --user-color-* CSS vars
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
@@ -47,16 +71,23 @@ const Layout = ({ children }) => {
     localStorage.setItem('businessesExpanded', JSON.stringify(businessesExpanded));
   }, [businessesExpanded]);
 
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'javier';
-
   const hasPortfolioBuilderAccess =
     isAdmin || (currentUser?.permissions?.portfolioBuilder && currentUser?.id !== 'test-dca');
 
+  /* ── Navigation groups — original structure ─────────────────── */
   const investmentsSection = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
@@ -66,605 +97,486 @@ const Layout = ({ children }) => {
 
   const financesSection = [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }];
 
-  const navigation = [
-    ...investmentsSection,
-    ...financesSection,
+  const extraSection = [
     ...(hasPortfolioBuilderAccess
       ? [{ name: t('sidebar.portfolioBuilder'), href: '/portfolio-builder', icon: Building2 }]
       : []),
+    { name: t('sidebar.budgets') || 'Presupuestos', href: '/budgets', icon: Target },
+    { name: t('sidebar.forecasts') || 'Previsiones', href: '/forecasts', icon: BarChart3 },
+    { name: t('sidebar.reports') || 'Informes', href: '/reports', icon: BookOpen },
     ...(isAdmin
-      ? [
-          {
-            name: t('sidebar.adminAccess') || 'Gestión accesos',
-            href: '/admin/access',
-            icon: ShieldCheck,
-          },
-        ]
+      ? [{ name: t('sidebar.adminAccess') || 'Accesos', href: '/admin/access', icon: ShieldCheck }]
       : []),
-    {
-      name: currentUser?.name || t('sidebar.profile'),
-      href: '/profile',
-      icon: User,
-    },
+    { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
   ];
 
+  /* Flat list for current-page detection */
+  const allSectionItems = [...investmentsSection, ...financesSection, ...extraSection];
+
+  /* Bottom nav (mobile) — 5 primary routes */
+  const bottomNavItems = [
+    { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
+    { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
+    { name: t('sidebar.investments'), href: '/investments', icon: TrendingUp },
+    { name: t('sidebar.finances'), href: '/finances', icon: PiggyBank },
+    { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
+  ];
+
+  /* Current page label for mobile header */
+  const currentPage = allSectionItems.find((item) =>
+    item.href === '/'
+      ? location.pathname === '/'
+      : location.pathname === item.href || location.pathname.startsWith(item.href + '/')
+  );
+
+  /* ── Helpers ────────────────────────────────────────────────── */
+  const isActive = (href) =>
+    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+
+  /* ── Sidebar nav link ───────────────────────────────────────── */
+  const NavLink = ({ item, collapsed, onClick }) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+
+    return (
+      <Link
+        to={item.href}
+        onClick={onClick}
+        title={collapsed ? item.name : undefined}
+        className="sidebar-link"
+        style={{
+          color: active ? S.activeText : S.inactiveText,
+          background: active ? S.activeBg : 'transparent',
+          boxShadow: active ? `inset 0 0 0 1px ${S.activeBorder}` : 'none',
+          justifyContent: collapsed ? 'center' : undefined,
+          paddingLeft: collapsed ? '0' : undefined,
+          paddingRight: collapsed ? '0' : undefined,
+        }}
+        onMouseEnter={(e) => {
+          if (!active) {
+            e.currentTarget.style.background = S.hoverBg;
+            e.currentTarget.style.color = S.hoverText;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!active) {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = S.inactiveText;
+          }
+        }}
+      >
+        <Icon
+          strokeWidth={active ? 2.25 : 1.75}
+          style={{ color: active ? S.activeText : 'inherit' }}
+          className={`flex-shrink-0 transition-all duration-150 ${
+            collapsed ? 'h-5 w-5' : 'mr-2.5 h-4 w-4'
+          }`}
+        />
+        <span
+          className="flex-1 overflow-hidden whitespace-nowrap transition-all duration-200"
+          style={{
+            maxWidth: collapsed ? 0 : '160px',
+            opacity: collapsed ? 0 : 1,
+            transform: collapsed ? 'translateX(4px)' : 'translateX(0)',
+          }}
+        >
+          {item.name}
+        </span>
+        {active && !collapsed && (
+          <div
+            className="w-1 h-1 rounded-full flex-shrink-0 ml-1"
+            style={{ background: S.activeText }}
+          />
+        )}
+      </Link>
+    );
+  };
+
+  /* ── Sidebar internals ──────────────────────────────────────── */
+  const SidebarBody = ({ collapsed, onClose }) => (
+    <>
+      <nav className="flex-1 overflow-y-auto" style={{ padding: collapsed ? '12px 8px' : '12px' }}>
+        {/* Inversiones section */}
+        {!collapsed && (
+          <p className="section-title px-2 mb-1.5">{t('sidebar.investmentsSection')}</p>
+        )}
+        <div className="space-y-0.5">
+          {investmentsSection.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
+          ))}
+        </div>
+
+        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+
+        {/* Finanzas section */}
+        {!collapsed && <p className="section-title px-2 mb-1.5">{t('sidebar.financesSection')}</p>}
+        <div className="space-y-0.5">
+          {financesSection.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
+          ))}
+        </div>
+
+        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+
+        {/* Businesses dropdown */}
+        {!collapsed ? (
+          <>
+            <button
+              onClick={() => {
+                setBusinessesExpanded((v) => !v);
+                if (!businessesExpanded) navigate('/businesses');
+              }}
+              className="sidebar-link w-full text-left"
+              style={{
+                color: isActive('/businesses') || selectedBusiness ? S.activeText : S.inactiveText,
+                background:
+                  isActive('/businesses') || selectedBusiness ? S.activeBg : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive('/businesses') && !selectedBusiness) {
+                  e.currentTarget.style.background = S.hoverBg;
+                  e.currentTarget.style.color = S.hoverText;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive('/businesses') && !selectedBusiness) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = S.inactiveText;
+                }
+              }}
+            >
+              <Briefcase
+                className="mr-2.5 h-4 w-4 flex-shrink-0"
+                strokeWidth={1.75}
+                style={{ color: 'inherit' }}
+              />
+              <span className="flex-1 text-[0.8125rem]">{t('sidebar.businesses')}</span>
+              {businessesExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+              )}
+            </button>
+
+            {businessesExpanded && (
+              <div
+                className="ml-3 mt-0.5 pl-3 space-y-0.5"
+                style={{ borderLeft: `1px solid ${S.divider}` }}
+              >
+                <BusinessBtn
+                  label={t('businesses.personal') || 'Personal'}
+                  icon={<User className="h-3 w-3 flex-shrink-0" />}
+                  active={selectedBusiness === 'personal' || !selectedBusiness}
+                  onClick={() => {
+                    selectBusiness('personal');
+                    navigate('/businesses');
+                    onClose?.();
+                  }}
+                />
+                {businesses
+                  .filter((b) => b.isActive)
+                  .map((b) => (
+                    <BusinessBtn
+                      key={b._id}
+                      label={b.name}
+                      icon={
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ background: b.color }}
+                        />
+                      }
+                      active={selectedBusiness === b._id}
+                      color={b.color}
+                      onClick={() => {
+                        selectBusiness(b._id);
+                        navigate('/businesses');
+                        onClose?.();
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <NavLink
+            item={{ name: t('sidebar.businesses'), href: '/businesses', icon: Briefcase }}
+            collapsed
+            onClick={onClose}
+          />
+        )}
+
+        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+
+        {/* Extra items — no section header */}
+        <div className="space-y-0.5">
+          {extraSection.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
+          ))}
+        </div>
+      </nav>
+
+      {/* Logout */}
+      {currentUser && (
+        <div className="p-3" style={{ borderTop: `1px solid ${S.divider}` }}>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center rounded-lg transition-all duration-150"
+            style={{
+              padding: collapsed ? '8px' : '8px 12px',
+              color: S.inactiveText,
+              justifyContent: collapsed ? 'center' : undefined,
+            }}
+            title={collapsed ? t('sidebar.logout') : undefined}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.08)';
+              e.currentTarget.style.color = '#EF4444';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = S.inactiveText;
+            }}
+          >
+            <LogOut
+              className={`flex-shrink-0 ${collapsed ? 'h-4.5 w-4.5' : 'h-4 w-4'}`}
+              strokeWidth={1.75}
+            />
+            {!collapsed && (
+              <span className="ml-2.5 text-sm font-medium">{t('sidebar.logout')}</span>
+            )}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  /* ── Business dropdown button ───────────────────────────────── */
+  const BusinessBtn = ({ label, icon, active, color, onClick }) => (
+    <button
+      onClick={onClick}
+      className="w-full text-left px-3 py-1.5 rounded-lg text-[0.8125rem] transition-all duration-150 flex items-center gap-2"
+      style={{
+        color: active ? color || S.activeText : S.inactiveText,
+        background: active
+          ? `${color || 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)'}`
+          : 'transparent',
+        fontWeight: active ? 500 : 400,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = S.hoverBg;
+          e.currentTarget.style.color = S.hoverText;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = S.inactiveText;
+        }
+      }}
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+
+  /* ════════════════════════════════════════════════════════════════
+     RENDER
+     ════════════════════════════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1d1d1f]">
-      {/* Sidebar móvil */}
+    <div className="min-h-screen" style={{ background: 'var(--tc-bg)' }}>
+      {/* ── Mobile sidebar overlay ──────────────────────────────── */}
       <div
-        className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
       >
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
           onClick={() => setSidebarOpen(false)}
         />
         <div
-          className={`fixed inset-y-0 left-0 flex w-72 flex-col bg-white/70 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl border-r border-gray-200/30 dark:border-[#404040]/30 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-          style={{ backdropFilter: 'blur(20px) saturate(180%)' }}
+          className={`absolute inset-y-0 left-0 flex w-64 flex-col transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          style={{ background: S.bg, borderRight: `1px solid ${S.border}` }}
         >
-          <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200 dark:border-[#404040]">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-7 h-7 rounded flex items-center justify-center"
-                style={{ backgroundColor: 'var(--user-color-600)' }}
+          {/* Mobile sidebar header */}
+          <div
+            className="flex h-14 items-center justify-between px-4 flex-shrink-0"
+            style={{ borderBottom: `1px solid ${S.border}` }}
+          >
+            <div className="flex items-center gap-2.5">
+              <TradeClimbLogo
+                size={22}
+                style={{ color: S.activeText }}
+                className="text-[color:var(--user-color-600)]"
+              />
+              <span
+                className="font-semibold tracking-tight text-[0.875rem]"
+                style={{ color: 'var(--tc-text-1)' }}
               >
-                <Wallet className="h-4 w-4 text-white" strokeWidth={2} />
-              </div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
                 {t('sidebar.appName')}
-              </h1>
+              </span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#404040] text-gray-500 dark:text-gray-400 transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: S.inactiveText }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = S.hoverBg;
+                e.currentTarget.style.color = S.hoverText;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = S.inactiveText;
+              }}
             >
-              <X size={18} strokeWidth={2} />
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
-          <nav className="flex-1 space-y-2 px-4 py-6 overflow-y-auto">
-            {/* Sección Inversiones */}
-            <div className="px-2 py-1 mb-2">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t('sidebar.investmentsSection')}
-              </span>
-            </div>
-            {investmentsSection.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'}`}
-                >
-                  <Icon
-                    className={`mr-3 h-4 w-4 transition-colors ${isActive ? '' : 'text-gray-500 dark:text-gray-400'}`}
-                    style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                    strokeWidth={2}
-                  />
-                  <span className="flex-1">{item.name}</span>
-                  {isActive && (
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: 'var(--user-color-600)' }}
-                    ></div>
-                  )}
-                </Link>
-              );
-            })}
-
-            {/* Separador */}
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-
-            {/* Sección Finanzas */}
-            <div className="px-2 py-1 mb-2">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t('sidebar.financesSection')}
-              </span>
-            </div>
-            {financesSection.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'}`}
-                >
-                  <Icon
-                    className={`mr-3 h-4 w-4 transition-colors ${isActive ? '' : 'text-gray-500 dark:text-gray-400'}`}
-                    style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                    strokeWidth={2}
-                  />
-                  <span className="flex-1">{item.name}</span>
-                  {isActive && (
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: 'var(--user-color-600)' }}
-                    ></div>
-                  )}
-                </Link>
-              );
-            })}
-
-            {/* Negocios desplegable */}
-            <div>
-              <button
-                onClick={() => {
-                  setBusinessesExpanded(!businessesExpanded);
-                  if (!businessesExpanded) {
-                    navigate('/businesses');
-                  }
-                }}
-                className={`sidebar-link group w-full text-left ${
-                  location.pathname === '/businesses' ||
-                  (selectedBusiness !== null && selectedBusiness !== undefined)
-                    ? 'sidebar-link-active'
-                    : 'sidebar-link-inactive'
-                }`}
-              >
-                <Briefcase
-                  className={`mr-3 h-4 w-4 transition-colors ${
-                    location.pathname === '/businesses' ||
-                    (selectedBusiness !== null && selectedBusiness !== undefined)
-                      ? ''
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                  style={
-                    location.pathname === '/businesses' ||
-                    (selectedBusiness !== null && selectedBusiness !== undefined)
-                      ? { color: 'var(--user-color-600)' }
-                      : {}
-                  }
-                  strokeWidth={2}
-                />
-                <span className="flex-1">{t('sidebar.businesses')}</span>
-                {businessesExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                )}
-              </button>
-              {businessesExpanded && (
-                <div className="ml-4 mt-1 space-y-1">
-                  {/* Personal */}
-                  <button
-                    onClick={() => {
-                      selectBusiness('personal');
-                      navigate('/businesses');
-                      setSidebarOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                      selectedBusiness === 'personal'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <User className="h-3 w-3" />
-                    {t('businesses.personal')}
-                  </button>
-                  {/* Lista de negocios */}
-                  {businesses
-                    .filter((b) => b.isActive)
-                    .map((business) => (
-                      <button
-                        key={business._id}
-                        onClick={() => {
-                          selectBusiness(business._id);
-                          navigate('/businesses');
-                          setSidebarOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                          selectedBusiness === business._id
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
-                        style={
-                          selectedBusiness === business._id
-                            ? {
-                                backgroundColor: `${business.color}20`,
-                                color: business.color,
-                              }
-                            : {}
-                        }
-                      >
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: business.color }}
-                        ></div>
-                        {business.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            {/* Separador */}
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-
-            {/* Perfil */}
-            {navigation
-              .filter((item) => item.href === '/profile')
-              .map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'}`}
-                  >
-                    <Icon
-                      className={`mr-3 h-4 w-4 transition-colors ${isActive ? '' : 'text-gray-500 dark:text-gray-400'}`}
-                      style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                      strokeWidth={2}
-                    />
-                    <span className="flex-1">{item.name}</span>
-                    {isActive && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: 'var(--user-color-600)' }}
-                      ></div>
-                    )}
-                  </Link>
-                );
-              })}
-          </nav>
-          {currentUser && (
-            <div className="p-4 border-t border-gray-200 dark:border-[#404040]">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-[#404040] transition-colors text-left opacity-70 hover:opacity-100"
-              >
-                <LogOut className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('sidebar.logout')}
-                </span>
-              </button>
-            </div>
-          )}
+          <SidebarBody collapsed={false} onClose={() => setSidebarOpen(false)} />
         </div>
       </div>
 
-      {/* Sidebar desktop */}
+      {/* ── Desktop sidebar — theme-aware ───────────────────────── */}
       <div
-        className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}
+        className={`hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          sidebarCollapsed ? 'lg:w-[64px]' : 'lg:w-56'
+        }`}
+        style={{ background: S.bg, borderRight: `1px solid ${S.border}`, zIndex: 30 }}
       >
+        {/* Desktop sidebar header */}
         <div
-          className="flex flex-col flex-grow bg-white/70 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl border-r border-gray-200/30 dark:border-[#404040]/30"
-          style={{ backdropFilter: 'blur(20px) saturate(180%)' }}
+          className={`flex h-14 items-center flex-shrink-0 transition-all duration-200 ${
+            sidebarCollapsed ? 'justify-center px-2' : 'px-4 gap-3'
+          }`}
+          style={{ borderBottom: `1px solid ${S.border}` }}
         >
-          <div
-            className={`flex h-16 items-center justify-between border-b border-gray-200/50 dark:border-[#404040]/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'px-2' : 'px-6'}`}
-          >
-            <div
-              className={`flex items-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'w-full justify-center gap-0' : 'flex-1 gap-3'}`}
-            >
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className={`rounded flex items-center justify-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer flex-shrink-0 ${sidebarCollapsed ? 'w-7 h-7' : 'w-10 h-10'}`}
-                style={{
-                  backgroundColor: 'var(--user-color-600)',
-                }}
-                onMouseEnter={(e) => (e.target.style.backgroundColor = 'var(--user-color-700)')}
-                onMouseLeave={(e) => (e.target.style.backgroundColor = 'var(--user-color-600)')}
-                aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-              >
-                <Wallet
-                  className={`text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'h-4 w-4' : 'h-6 w-6'}`}
-                  strokeWidth={2}
-                />
-              </button>
-              <h1
-                className={`text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 scale-95' : 'max-w-[200px] opacity-100 scale-100'}`}
-              >
-                {t('sidebar.appName')}
-              </h1>
-            </div>
-            <div
-              className={`flex items-center transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'max-w-0 opacity-0 scale-95 overflow-hidden' : 'max-w-[50px] opacity-100 scale-100'}`}
-            >
-              <ThemeToggle />
-            </div>
-          </div>
-          <nav
-            className={`flex-1 space-y-2 overflow-y-auto transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'px-2 py-6' : 'px-4 py-6'}`}
-          >
-            {/* Sección Inversiones */}
-            {!sidebarCollapsed && (
-              <div className="px-2 py-1 mb-2">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t('sidebar.investmentsSection')}
-                </span>
-              </div>
-            )}
-            {investmentsSection.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'} transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-                  title={sidebarCollapsed ? item.name : ''}
-                >
-                  <Icon
-                    className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${!isActive ? 'text-gray-500 dark:text-gray-400' : ''} ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-4 w-4'}`}
-                    style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                    strokeWidth={2}
-                  />
-                  <span
-                    className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0'}`}
-                  >
-                    {item.name}
-                  </span>
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${isActive && !sidebarCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}
-                    style={{ backgroundColor: 'var(--user-color-600)' }}
-                  ></div>
-                </Link>
-              );
-            })}
-
-            {/* Separador */}
-            {!sidebarCollapsed && (
-              <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            )}
-
-            {/* Sección Finanzas */}
-            {!sidebarCollapsed && (
-              <div className="px-2 py-1 mb-2">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t('sidebar.financesSection')}
-                </span>
-              </div>
-            )}
-            {financesSection.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'} transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-                  title={sidebarCollapsed ? item.name : ''}
-                >
-                  <Icon
-                    className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${!isActive ? 'text-gray-500 dark:text-gray-400' : ''} ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-4 w-4'}`}
-                    style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                    strokeWidth={2}
-                  />
-                  <span
-                    className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0'}`}
-                  >
-                    {item.name}
-                  </span>
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${isActive && !sidebarCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}
-                    style={{ backgroundColor: 'var(--user-color-600)' }}
-                  ></div>
-                </Link>
-              );
-            })}
-
-            {/* Negocios desplegable */}
-            {!sidebarCollapsed && (
-              <div>
-                <button
-                  onClick={() => {
-                    setBusinessesExpanded(!businessesExpanded);
-                    if (!businessesExpanded) {
-                      navigate('/businesses');
-                    }
-                  }}
-                  className={`sidebar-link group w-full text-left ${
-                    location.pathname === '/businesses' ||
-                    (selectedBusiness !== null && selectedBusiness !== undefined)
-                      ? 'sidebar-link-active'
-                      : 'sidebar-link-inactive'
-                  } transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]`}
-                >
-                  <Briefcase
-                    className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${
-                      location.pathname === '/businesses' ||
-                      (selectedBusiness !== null && selectedBusiness !== undefined)
-                        ? ''
-                        : 'text-gray-500 dark:text-gray-400'
-                    } mr-3 h-4 w-4`}
-                    style={
-                      location.pathname === '/businesses' ||
-                      (selectedBusiness !== null && selectedBusiness !== undefined)
-                        ? { color: 'var(--user-color-600)' }
-                        : {}
-                    }
-                    strokeWidth={2}
-                  />
-                  <span className="flex-1">{t('sidebar.businesses')}</span>
-                  {businessesExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                  )}
-                </button>
-                {businessesExpanded && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {/* Personal */}
-                    <button
-                      onClick={() => {
-                        selectBusiness('personal');
-                        navigate('/businesses');
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                        selectedBusiness === 'personal'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <User className="h-3 w-3" />
-                      {t('businesses.personal')}
-                    </button>
-                    {/* Lista de negocios */}
-                    {businesses
-                      .filter((b) => b.isActive)
-                      .map((business) => (
-                        <button
-                          key={business._id}
-                          onClick={() => {
-                            selectBusiness(business._id);
-                            navigate('/businesses');
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                            selectedBusiness === business._id
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                          }`}
-                          style={
-                            selectedBusiness === business._id
-                              ? {
-                                  backgroundColor: `${business.color}20`,
-                                  color: business.color,
-                                }
-                              : {}
-                          }
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: business.color }}
-                          ></div>
-                          {business.name}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {sidebarCollapsed && (
-              <Link
-                to="/businesses"
-                className="sidebar-link group sidebar-link-inactive justify-center px-0"
-                title={t('sidebar.businesses')}
-              >
-                <Briefcase
-                  className="h-5 w-5 mx-0 text-gray-500 dark:text-gray-400"
-                  strokeWidth={2}
-                />
-              </Link>
-            )}
-
-            {/* Separador */}
-            {!sidebarCollapsed && (
-              <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
-            )}
-
-            {/* Perfil */}
-            {navigation
-              .filter((item) => item.href === '/profile')
-              .map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`sidebar-link group ${isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'} transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-                    title={sidebarCollapsed ? item.name : ''}
-                  >
-                    <Icon
-                      className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${!isActive ? 'text-gray-500 dark:text-gray-400' : ''} ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-4 w-4'}`}
-                      style={isActive ? { color: 'var(--user-color-600)' } : {}}
-                      strokeWidth={2}
-                    />
-                    <span
-                      className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0'}`}
-                    >
-                      {item.name}
-                    </span>
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${isActive && !sidebarCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}
-                      style={{ backgroundColor: 'var(--user-color-600)' }}
-                    ></div>
-                  </Link>
-                );
-              })}
-          </nav>
-          {currentUser && (
-            <div
-              className={`p-4 border-t border-gray-200/50 dark:border-[#404040]/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'px-2' : ''}`}
-            >
-              <button
-                onClick={handleLogout}
-                className={`w-full flex items-center rounded hover:bg-gray-100/50 dark:hover:bg-[#404040]/50 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] opacity-70 hover:opacity-100 ${sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2'} text-gray-500 dark:text-gray-400`}
-                title={sidebarCollapsed ? t('sidebar.logout') : ''}
-              >
-                <LogOut
-                  className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex-shrink-0 ${sidebarCollapsed ? 'h-5 w-5 mx-0' : 'mr-3 h-6 w-6'}`}
-                  strokeWidth={2}
-                />
-                <span
-                  className={`flex-1 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden whitespace-nowrap ${sidebarCollapsed ? 'max-w-0 opacity-0 translate-x-2' : 'max-w-[150px] opacity-100 translate-x-0 text-xs'}`}
-                >
-                  {t('sidebar.logout')}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Contenido principal */}
-      <div
-        className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}
-      >
-        {/* Header móvil */}
-        <div
-          className="sticky top-0 z-30 flex h-16 bg-white/70 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl border-b border-gray-200/30 dark:border-[#404040]/30 lg:hidden"
-          style={{ backdropFilter: 'blur(20px) saturate(180%)' }}
-        >
+          {/* Logo button — uses profile accent color */}
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="px-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none transition-colors"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: 'var(--user-color-600)', width: 32, height: 32 }}
+            aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(var(--user-color-600-rgb, 201,150,26), 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <Menu size={24} />
+            <TradeClimbLogo size={20} />
           </button>
-          <div className="flex items-center justify-between flex-1 px-4">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {t('sidebar.appName')}
-            </h1>
+
+          {/* App name */}
+          <span
+            className="font-semibold tracking-tight transition-all duration-200 overflow-hidden whitespace-nowrap"
+            style={{
+              fontSize: '0.875rem',
+              color: 'var(--tc-text-1)',
+              maxWidth: sidebarCollapsed ? 0 : '160px',
+              opacity: sidebarCollapsed ? 0 : 1,
+            }}
+          >
+            {t('sidebar.appName')}
+          </span>
+
+          <div
+            className="ml-auto transition-all duration-200 overflow-hidden"
+            style={{ maxWidth: sidebarCollapsed ? 0 : '40px', opacity: sidebarCollapsed ? 0 : 1 }}
+          >
             <ThemeToggle />
           </div>
         </div>
 
-        {/* Contenido */}
-        <main className="p-8 pb-20 mb-2">{children}</main>
+        <SidebarBody collapsed={sidebarCollapsed} onClose={undefined} />
 
-        {/* Footer */}
-        <footer
-          className={`fixed bottom-0 right-0 z-40 border-t border-gray-200/30 dark:border-[#404040]/30 bg-white/50 dark:bg-[#2c2c2e]/70 backdrop-blur-2xl transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidebarCollapsed ? 'lg:left-20' : 'lg:left-64'} left-0`}
+        {/* Version badge — profile accent color */}
+        {!sidebarCollapsed && (
+          <div
+            className="px-4 py-2.5 flex-shrink-0"
+            style={{ borderTop: `1px solid ${S.divider}` }}
+          >
+            <p
+              className="text-[10px] font-medium"
+              style={{ color: 'var(--user-color-600)', opacity: 0.6 }}
+            >
+              v{packageJson.version} · {t('sidebar.developmentVersion') || 'dev'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Main content ─────────────────────────────────────────── */}
+      <div
+        className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          sidebarCollapsed ? 'lg:pl-[64px]' : 'lg:pl-56'
+        }`}
+      >
+        {/* Mobile top header */}
+        <div
+          className="sticky top-0 z-30 flex h-14 items-center gap-3 px-4 lg:hidden"
           style={{
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            background: 'var(--tc-surface)',
+            borderBottom: '1px solid var(--tc-border)',
           }}
         >
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-end max-w-7xl mx-auto">
-              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-medium text-gray-600 dark:text-gray-400">
-                  {t('sidebar.appName')}
-                </span>
-                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-[#525252]"></span>
-                <span className="font-mono font-medium text-gray-600 dark:text-gray-400">
-                  v{packageJson.version}
-                </span>
-                <span className="w-1 h-1 rounded-full bg-amber-500 dark:bg-amber-600"></span>
-                <span className="font-normal">{t('sidebar.developmentVersion')}</span>
-              </div>
-            </div>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="-ml-1 p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--tc-text-2)' }}
+          >
+            <Menu size={20} strokeWidth={2} />
+          </button>
+
+          <div className="flex-1 flex items-center justify-between">
+            <span
+              className="font-semibold tracking-tight"
+              style={{ fontSize: '0.9375rem', color: 'var(--tc-text-1)' }}
+            >
+              {currentPage?.name || t('sidebar.appName')}
+            </span>
+            <ThemeToggle />
           </div>
-        </footer>
+        </div>
+
+        {/* Page content */}
+        <main className="p-4 pb-28 lg:p-6 lg:pb-8">{children}</main>
       </div>
+
+      {/* ── Mobile bottom navigation ─────────────────────────────── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden flex items-center px-2"
+        style={{
+          background: 'var(--tc-surface)',
+          borderTop: '1px solid var(--tc-border)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+          paddingTop: '4px',
+        }}
+      >
+        {bottomNavItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="bottom-nav-item"
+              style={{ color: active ? 'var(--user-color-600)' : 'var(--tc-text-3)' }}
+            >
+              <Icon
+                className={`transition-all duration-150 ${active ? 'scale-110' : ''}`}
+                size={20}
+                strokeWidth={active ? 2.25 : 1.75}
+              />
+              <span className="text-[10px] font-medium" style={{ opacity: active ? 1 : 0.6 }}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };
