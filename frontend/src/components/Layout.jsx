@@ -87,16 +87,17 @@ const Layout = ({ children }) => {
   const hasPortfolioBuilderAccess =
     isAdmin || (currentUser?.permissions?.portfolioBuilder && currentUser?.id !== 'test-dca');
 
-  /* ── Navigation groups ──────────────────────────────────────── */
-  const coreItems = [
+  /* ── Navigation groups — original structure ─────────────────── */
+  const investmentsSection = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
     { name: t('sidebar.investments'), href: '/investments', icon: TrendingUp },
     { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
-    { name: t('sidebar.finances'), href: '/finances', icon: PiggyBank },
   ];
 
-  const toolItems = [
+  const financesSection = [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }];
+
+  const extraSection = [
     ...(hasPortfolioBuilderAccess
       ? [{ name: t('sidebar.portfolioBuilder'), href: '/portfolio-builder', icon: Building2 }]
       : []),
@@ -109,6 +110,9 @@ const Layout = ({ children }) => {
     { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
   ];
 
+  /* Flat list for current-page detection */
+  const allSectionItems = [...investmentsSection, ...financesSection, ...extraSection];
+
   /* Bottom nav (mobile) — 5 primary routes */
   const bottomNavItems = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
@@ -119,8 +123,7 @@ const Layout = ({ children }) => {
   ];
 
   /* Current page label for mobile header */
-  const allItems = [...coreItems, ...toolItems];
-  const currentPage = allItems.find((item) =>
+  const currentPage = allSectionItems.find((item) =>
     item.href === '/'
       ? location.pathname === '/'
       : location.pathname === item.href || location.pathname.startsWith(item.href + '/')
@@ -193,14 +196,22 @@ const Layout = ({ children }) => {
   const SidebarBody = ({ collapsed, onClose }) => (
     <>
       <nav className="flex-1 overflow-y-auto" style={{ padding: collapsed ? '12px 8px' : '12px' }}>
-        {/* Core section */}
+        {/* Inversiones section */}
         {!collapsed && (
-          <p className="section-title px-2 mb-1.5">
-            {t('sidebar.investmentsSection') || 'Principal'}
-          </p>
+          <p className="section-title px-2 mb-1.5">{t('sidebar.investmentsSection')}</p>
         )}
         <div className="space-y-0.5">
-          {coreItems.map((item) => (
+          {investmentsSection.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
+          ))}
+        </div>
+
+        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+
+        {/* Finanzas section */}
+        {!collapsed && <p className="section-title px-2 mb-1.5">{t('sidebar.financesSection')}</p>}
+        <div className="space-y-0.5">
+          {financesSection.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
           ))}
         </div>
@@ -296,9 +307,9 @@ const Layout = ({ children }) => {
 
         <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
 
-        {/* Tool items — no section header */}
+        {/* Extra items — no section header */}
         <div className="space-y-0.5">
-          {toolItems.map((item) => (
+          {extraSection.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
           ))}
         </div>
