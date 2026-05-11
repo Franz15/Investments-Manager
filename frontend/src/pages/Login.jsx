@@ -1,39 +1,39 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { useUser } from "../contexts/UserContext";
-import { Wallet, Lock, User } from "lucide-react";
-import api from "../services/api";
-import { useTranslation } from "../contexts/TranslationContext";
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { Wallet, Lock, User } from 'lucide-react';
+import api from '../services/api';
+import { useTranslation } from '../contexts/TranslationContext';
 
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, currentUser } = useUser();
-  const [userId, setUserId] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
-      navigate("/", { replace: true });
+      navigate('/', { replace: true });
     }
   }, [currentUser, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/login", {
+      const response = await api.post('/auth/login', {
         userId: userId.trim().toLowerCase(),
         password,
       });
       login(response.data.user, response.data.token);
-      navigate("/");
+      navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || t("login.error"));
+      setError(err.response?.data?.message || t('login.error'));
     } finally {
       setLoading(false);
     }
@@ -47,11 +47,9 @@ const Login = () => {
             <Wallet className="h-7 w-7 text-white" strokeWidth={2} />
           </div>
           <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-            {t("sidebar.appName")}
+            {t('sidebar.appName')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
-            {t("login.subtitle")}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">{t('login.subtitle')}</p>
         </div>
 
         <form onSubmit={handleLogin} className="card space-y-5">
@@ -60,7 +58,7 @@ const Login = () => {
               htmlFor="userId"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              {t("login.username")}
+              {t('login.username')}
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -70,7 +68,7 @@ const Login = () => {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full input-field pl-10"
-                placeholder={t("login.usernamePlaceholder")}
+                placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 autoFocus
                 required
@@ -83,7 +81,7 @@ const Login = () => {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              {t("login.password")}
+              {t('login.password')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -93,7 +91,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full input-field pl-10"
-                placeholder={t("login.passwordPlaceholder")}
+                placeholder={t('login.passwordPlaceholder')}
                 autoComplete="current-password"
                 required
               />
@@ -114,10 +112,10 @@ const Login = () => {
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>{t("common.loading")}</span>
+                <span>{t('common.loading')}</span>
               </>
             ) : (
-              t("login.login")
+              t('login.login')
             )}
           </button>
         </form>

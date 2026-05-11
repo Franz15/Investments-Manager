@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useUser } from "../contexts/UserContext";
+import { useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
 
 /**
  * Hook que convierte un color hexadecimal a RGB
@@ -54,9 +54,9 @@ function rgbToHex(rgb) {
   return `#${[rgb.r, rgb.g, rgb.b]
     .map((x) => {
       const hex = x.toString(16);
-      return hex.length === 1 ? "0" + hex : hex;
+      return hex.length === 1 ? '0' + hex : hex;
     })
-    .join("")}`;
+    .join('')}`;
 }
 
 /**
@@ -64,7 +64,7 @@ function rgbToHex(rgb) {
  */
 export function useUserColor() {
   const { currentUser } = useUser();
-  const userColor = currentUser?.color || "#0284c7"; // Fallback a primary-600
+  const userColor = currentUser?.color || '#0284c7'; // Fallback a primary-600
 
   useEffect(() => {
     const root = document.documentElement;
@@ -83,23 +83,20 @@ export function useUserColor() {
     const color900 = mixWithBlack(rgb, 0.5);
 
     // Aplicar variables CSS
-    root.style.setProperty("--user-color-50", rgbToHex(color50));
-    root.style.setProperty("--user-color-100", rgbToHex(color100));
-    root.style.setProperty("--user-color-200", rgbToHex(color200));
-    root.style.setProperty("--user-color-300", rgbToHex(color300));
-    root.style.setProperty("--user-color-400", rgbToHex(color400));
-    root.style.setProperty("--user-color-500", rgbToHex(color500));
-    root.style.setProperty("--user-color-600", rgbToHex(color600));
-    root.style.setProperty("--user-color-700", rgbToHex(color700));
-    root.style.setProperty("--user-color-800", rgbToHex(color800));
-    root.style.setProperty("--user-color-900", rgbToHex(color900));
-    root.style.setProperty("--user-color", userColor);
+    root.style.setProperty('--user-color-50', rgbToHex(color50));
+    root.style.setProperty('--user-color-100', rgbToHex(color100));
+    root.style.setProperty('--user-color-200', rgbToHex(color200));
+    root.style.setProperty('--user-color-300', rgbToHex(color300));
+    root.style.setProperty('--user-color-400', rgbToHex(color400));
+    root.style.setProperty('--user-color-500', rgbToHex(color500));
+    root.style.setProperty('--user-color-600', rgbToHex(color600));
+    root.style.setProperty('--user-color-700', rgbToHex(color700));
+    root.style.setProperty('--user-color-800', rgbToHex(color800));
+    root.style.setProperty('--user-color-900', rgbToHex(color900));
+    root.style.setProperty('--user-color', userColor);
 
     // También guardar RGB para uso en rgba()
-    root.style.setProperty(
-      "--user-color-600-rgb",
-      `${color600.r}, ${color600.g}, ${color600.b}`,
-    );
+    root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);
   }, [userColor]);
 
   return userColor;

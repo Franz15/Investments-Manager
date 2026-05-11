@@ -21,6 +21,7 @@ const debtSchema = new mongoose.Schema(
         "car_loan",
         "credit_card",
         "student_loan",
+        "pledge",
         "other",
       ],
     },
@@ -71,6 +72,21 @@ const debtSchema = new mongoose.Schema(
       enum: ["active", "paid", "default"],
       default: "active",
     },
+    amortizationType: {
+      type: String,
+      enum: ["french", "fixed_principal", "bullet", "other"],
+      default: "french",
+    },
+    isGoodDebt: {
+      type: Boolean,
+      default: false,
+    },
+    collateral: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Investment",
+      },
+    ],
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubAccount",
