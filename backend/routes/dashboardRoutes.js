@@ -5,6 +5,7 @@ import Transaction from "../models/Transaction.js";
 import Investment from "../models/Investment.js";
 import Debt from "../models/Debt.js";
 import InvestmentHistory from "../models/InvestmentHistory.js";
+import Business from "../models/Business.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import { getQuote } from "../services/quoteService.js";
 import { getLatestDailyVariation } from "../services/dailyVariationService.js";
@@ -59,30 +60,43 @@ router.use(authenticateToken);
 // GET estadísticas del dashboard
 router.get("/stats", async (req, res) => {
   try {
-    // Total de cuentas del usuario
-    const totalAccounts = await Account.countDocuments({ user: req.userId });
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Total de cuentas del usuario (según filtro)
+    const totalAccounts = await Account.countDocuments(accountQuery);
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
 
     // Balance total de todas las subcuentas (efectivo + ahorro) del usuario
+    // Solo de cuentas que cumplen el filtro
     const cashSavingsSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const investmentSubAccounts = await SubAccount.find({
       user: req.userId,
       type: "investment",
+      account: { $in: filteredAccountIds },
     });
     const totalCashSavings =
       cashSavingsSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0) +
       investmentSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
 
     // Total de inversiones del usuario (valor actual de las inversiones)
-    // Solo obtener inversiones que tienen account (requerido)
+    // Solo obtener inversiones que tienen account (requerido) y que cumplen el filtro
     const investments = await Investment.find({
       user: req.userId,
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -116,25 +130,10 @@ router.get("/stats", async (req, res) => {
       }
     }, 0);
 
-    // Transacciones del mes actual del usuario
+    // Calcular rentabilidad de inversiones en el mes en curso
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const monthlyTransactions = await Transaction.find({
-      user: req.userId,
-      date: { $gte: startOfMonth, $lte: endOfMonth },
-    });
-
-    const monthlyIncome = monthlyTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const monthlyExpenses = monthlyTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    // Calcular rentabilidad de inversiones en el mes en curso
     // Obtener el valor de las inversiones al inicio del mes
     const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
       .default;
@@ -230,21 +229,21 @@ router.get("/stats", async (req, res) => {
 
     // Total de deudas activas del usuario
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
-    const totalDebts = activeDebts.reduce(
-      (sum, debt) => sum + debt.remainingAmount,
-      0,
-    );
+    const totalDebts = activeDebts.reduce((sum, d) => sum + d.remainingAmount, 0);
+    const totalGoodDebts = activeDebts
+      .filter((d) => d.isGoodDebt)
+      .reduce((sum, d) => sum + d.remainingAmount, 0);
+    const totalBadDebts = totalDebts - totalGoodDebts;
     const totalMonthlyDebtPayments = activeDebts.reduce(
       (sum, debt) => sum + debt.monthlyPayment,
       0,
     );
 
-    // Patrimonio neto = Balance total - Deudas
-    const netWorth = totalBalance - totalDebts;
+    // Patrimonio neto = Balance total - Deuda mala (la buena tiene activo asociado)
+    const netWorth = totalBalance - totalBadDebts;
 
-    // Balance mensual = Ingresos - Gastos + Rentabilidad de inversiones del mes
-    const monthlyBalance =
-      monthlyIncome - monthlyExpenses + monthlyInvestmentReturn;
+    // Balance mensual = Rentabilidad de inversiones del mes (sin incluir ingresos/gastos de finanzas)
+    const monthlyBalance = monthlyInvestmentReturn;
 
     // Capital aportado real: TODAS las operaciones del usuario (no solo inversiones activas)
     const allHistoryForStats = await InvestmentHistory.find({
@@ -304,9 +303,9 @@ router.get("/stats", async (req, res) => {
       totalInvestments,
       totalProfitLoss,
       totalDebts,
+      totalGoodDebts,
+      totalBadDebts,
       totalMonthlyDebtPayments,
-      monthlyIncome,
-      monthlyExpenses,
       monthlyInvestmentReturn: parseFloat(monthlyInvestmentReturn.toFixed(2)),
       monthlyBalance: parseFloat(monthlyBalance.toFixed(2)),
       totalCashSavings: parseFloat(totalCashSavings.toFixed(2)),
@@ -681,18 +680,28 @@ function getLocalDateKey(d) {
 // Enfoque acumulativo: calcula el balance histórico aplicando todas las operaciones en orden cronológico
 router.get("/balance-daily", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
     const DailyVariation = (await import("../models/DailyVariation.js"))
       .default;
     const SubAccount = (await import("../models/SubAccount.js")).default;
     const Debt = (await import("../models/Debt.js")).default;
 
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const perfInvestments = await Investment.find({
       user: req.userId,
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     });
 
     if (perfInvestments.length === 0) {
@@ -730,14 +739,16 @@ router.get("/balance-daily", async (req, res) => {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // Obtener balance actual de cash
+    // Obtener balance actual de cash (solo de cuentas que cumplen el filtro)
     const cashSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const investmentSubAccounts = await SubAccount.find({
       user: req.userId,
       type: "investment",
+      account: { $in: filteredAccountIds },
     });
     const currentCashBalance = cashSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
@@ -1320,14 +1331,24 @@ router.get("/investments-by-type", async (req, res) => {
 // GET distribución por clase de activo (Renta Fija, Renta Variable, Cash)
 router.get("/distribution-by-asset-class", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones del usuario
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1361,9 +1382,11 @@ router.get("/distribution-by-asset-class", async (req, res) => {
     });
 
     // Obtener total de cash (efectivo + ahorro) del usuario
+    // Solo de cuentas que cumplen el filtro
     const cashSubAccounts = await SubAccount.find({
       user: req.userId,
       type: { $in: ["cash", "savings"] },
+      account: { $in: filteredAccountIds },
     });
     const totalCash = cashSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
@@ -1441,13 +1464,21 @@ router.get("/distribution-by-asset-type", async (req, res) => {
 // GET distribución detallada por inversión individual
 router.get("/investments-detailed", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null;
+    }
+
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1548,8 +1579,17 @@ router.get("/investments-detailed", async (req, res) => {
 // GET distribución por banco y subcuentas
 router.get("/distribution-by-bank", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    // Construir query para cuentas según el filtro
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null; // Solo cuentas personales
+    }
+
     // Obtener todas las cuentas del usuario con sus subcuentas
-    const accounts = await Account.find({ user: req.userId })
+    const accounts = await Account.find(accountQuery)
       .populate({
         path: "subAccounts",
         select: "name type balance currency",
@@ -1557,14 +1597,14 @@ router.get("/distribution-by-bank", async (req, res) => {
       })
       .sort({ bankName: 1 });
 
+    // Obtener IDs de cuentas que cumplen el filtro
+    const filteredAccountIds = accounts.map((acc) => acc._id);
+
     // Obtener todas las inversiones del usuario para calcular valores de subcuentas de inversión
     const investments = await Investment.find({
       user: req.userId,
       status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     })
       .populate({
         path: "subAccount",
@@ -1944,10 +1984,21 @@ router.get("/accounts-summary", async (req, res) => {
 // GET rendimiento anualizado (CAGR) y comparación con S&P 500
 router.get("/performance", async (req, res) => {
   try {
+    const { includeBusinessAccounts } = req.query;
+    const includeBusiness = includeBusinessAccounts === "true";
+
+    const accountQuery = { user: req.userId };
+    if (!includeBusiness) {
+      accountQuery.business = null;
+    }
+
+    const filteredAccounts = await Account.find(accountQuery).select("_id");
+    const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
     // Nueva lógica unificada basada en DailyVariation
     const perfInvestments = await Investment.find({
       user: req.userId,
-      account: { $exists: true, $ne: null },
+      account: { $exists: true, $ne: null, $in: filteredAccountIds },
     });
 
     if (perfInvestments.length === 0) {
@@ -2220,6 +2271,101 @@ router.get("/performance", async (req, res) => {
       years: parseFloat(perfYears.toFixed(2)),
       sp500Comparison: perfSp500Comparison,
       historicalReturns,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET estadísticas de transacciones por contexto (personal y negocios)
+router.get("/transactions-by-context", async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = endDate
+      ? new Date(endDate)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Obtener todos los negocios del usuario
+    const businesses = await Business.find({
+      user: req.userId,
+      isActive: true,
+    });
+
+    // Calcular estadísticas para personal (business = null)
+    const personalTransactions = await Transaction.find({
+      user: req.userId,
+      business: null,
+      date: { $gte: start, $lte: end },
+    });
+
+    const personalIncome = personalTransactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const personalExpenses = personalTransactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const personalBalance = personalIncome - personalExpenses;
+
+    const contexts = [
+      {
+        id: "personal",
+        name: "Personal",
+        type: "personal",
+        income: personalIncome,
+        expenses: personalExpenses,
+        balance: personalBalance,
+        transactionCount: personalTransactions.length,
+      },
+    ];
+
+    // Calcular estadísticas para cada negocio
+    for (const business of businesses) {
+      const businessTransactions = await Transaction.find({
+        user: req.userId,
+        business: business._id,
+        date: { $gte: start, $lte: end },
+      });
+
+      const businessIncome = businessTransactions
+        .filter((t) => t.type === "income")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const businessExpenses = businessTransactions
+        .filter((t) => t.type === "expense")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const businessBalance = businessIncome - businessExpenses;
+
+      contexts.push({
+        id: business._id.toString(),
+        name: business.name,
+        type: "business",
+        color: business.color,
+        income: businessIncome,
+        expenses: businessExpenses,
+        balance: businessBalance,
+        transactionCount: businessTransactions.length,
+      });
+    }
+
+    // Calcular total general
+    const totalIncome = contexts.reduce((sum, ctx) => sum + ctx.income, 0);
+    const totalExpenses = contexts.reduce((sum, ctx) => sum + ctx.expenses, 0);
+    const totalBalance = totalIncome - totalExpenses;
+
+    res.json({
+      contexts,
+      totals: {
+        income: totalIncome,
+        expenses: totalExpenses,
+        balance: totalBalance,
+      },
+      period: {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

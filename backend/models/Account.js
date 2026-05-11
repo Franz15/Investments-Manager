@@ -41,6 +41,11 @@ const accountSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    business: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      default: null, // null = personal
+    },
   },
   {
     timestamps: true,
@@ -55,5 +60,8 @@ accountSchema.virtual("subAccounts", {
 });
 
 accountSchema.set("toJSON", { virtuals: true });
+
+// Índice compuesto para búsquedas eficientes
+accountSchema.index({ user: 1, isActive: 1, business: 1 });
 
 export default mongoose.model("Account", accountSchema);

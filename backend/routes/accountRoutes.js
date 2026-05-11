@@ -15,8 +15,21 @@ router.use(authenticateToken);
 // GET todas las cuentas con sus subcuentas
 router.get("/", async (req, res) => {
   try {
-    const accounts = await Account.find({ user: req.userId })
+    const { business } = req.query;
+    const query = { user: req.userId };
+
+    // Filtro por negocio
+    if (business !== undefined) {
+      if (business === "null" || business === "") {
+        query.business = null;
+      } else {
+        query.business = business;
+      }
+    }
+
+    const accounts = await Account.find(query)
       .sort({ createdAt: -1 })
+      .populate("business", "name color")
       .populate({
         path: "subAccounts",
         select: "name type balance currency",
