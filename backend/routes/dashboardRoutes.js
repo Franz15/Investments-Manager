@@ -133,6 +133,7 @@ router.get("/stats", async (req, res) => {
     // Calcular rentabilidad de inversiones en el mes en curso
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     // Obtener el valor de las inversiones al inicio del mes
     const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
       .default;
@@ -744,6 +745,7 @@ router.get("/balance-daily", async (req, res) => {
     const investmentSubAccounts = await SubAccount.find({
       user: req.userId,
       type: "investment",
+      account: { $in: filteredAccountIds },
     });
     const currentCashBalance = cashSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
@@ -887,18 +889,6 @@ router.get("/balance-daily", async (req, res) => {
 
       initialCash = Math.max(0, initialCash);
     }
-
-    // Obtener subcuentas de inversión (dinero disponible para invertir)
-    // Solo de cuentas que cumplen el filtro
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: "investment",
-      account: { $in: filteredAccountIds },
-    });
-    const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
-      (sum, subAcc) => sum + subAcc.balance,
-      0,
-    );
 
     // Obtener deudas actuales (no tenemos histórico de deudas)
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });

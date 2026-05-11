@@ -12,7 +12,9 @@ export const BusinessProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBusinesses();
+    const token = localStorage.getItem("authToken");
+    if (token) fetchBusinesses();
+    else setLoading(false);
   }, []);
 
   useEffect(() => {

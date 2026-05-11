@@ -455,6 +455,7 @@ const Dashboard = () => {
         api.get("/dashboard/balance-daily", { params }),
         api.get("/investment-history/evolution?months=6"),
         api.get("/dashboard/distribution-by-asset-class", { params }),
+        api.get("/dashboard/distribution-by-asset-type", { params }),
         api.get("/dashboard/investments-detailed", { params }),
         api.get("/dashboard/distribution-by-bank", { params }),
         api.get("/dashboard/performance", { params }),
