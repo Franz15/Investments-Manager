@@ -5,60 +5,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════════════════════════════════════════════
-   LIGHT-MODE WARMTH BRIDGE
-   CSS placed outside @layer wins over @layer utilities in cascade.
-   Using :root:not(.dark) ensures dark: Tailwind variants are never
-   overridden — they still apply correctly inside .dark context.
-   This makes every page use the warm design-token palette without
-   editing any individual page component.
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── Backgrounds ─────────────────────────────────────────────────── */
+/* ── bg-white bridge (only remaining override needed) ───────────── */
+/* The gray scale is now warm in tailwind.config.js — all bg-gray-*  */
+/* classes are warm automatically. Only bg-white needs a bridge       */
+/* since Tailwind's white is hardcoded to #FFFFFF.                    */
 :root:not(.dark) .bg-white {
-  background-color: var(--tc-surface);
-}
-:root:not(.dark) .bg-gray-50 {
-  background-color: var(--tc-surface-2);
-}
-:root:not(.dark) .bg-gray-100 {
-  background-color: var(--tc-surface-3);
-}
-
-/* ── Borders ─────────────────────────────────────────────────────── */
-:root:not(.dark) .border-gray-50,
-:root:not(.dark) .border-gray-100,
-:root:not(.dark) .border-gray-200 {
-  border-color: var(--tc-border);
-}
-
-/* ── Dividers ────────────────────────────────────────────────────── */
-:root:not(.dark) .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
-:root:not(.dark) .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--tc-border);
-}
-
-/* ── Text ────────────────────────────────────────────────────────── */
-:root:not(.dark) .text-gray-900,
-:root:not(.dark) .text-gray-800,
-:root:not(.dark) .text-gray-700 {
-  color: var(--tc-text-1);
-}
-:root:not(.dark) .text-gray-600,
-:root:not(.dark) .text-gray-500 {
-  color: var(--tc-text-2);
-}
-:root:not(.dark) .text-gray-400,
-:root:not(.dark) .text-gray-300 {
-  color: var(--tc-text-3);
-}
-
-/* ── Hover states that flip to white/gray ────────────────────────── */
-:root:not(.dark) .hover\:bg-gray-50:hover {
-  background-color: var(--tc-surface-2);
-}
-:root:not(.dark) .hover\:bg-gray-100:hover {
-  background-color: var(--tc-surface-3);
+  background-color: #fff8f0; /* barely-warm white, matches gray-50 vicinity */
 }
 
 /* ═══════════════════════════════════════════════════════════════════
