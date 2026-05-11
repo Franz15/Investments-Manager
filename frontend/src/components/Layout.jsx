@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Wallet,
-  ArrowLeftRight,
   TrendingUp,
   AlertCircle,
   Menu,
@@ -11,9 +10,8 @@ import {
   LogOut,
   Building2,
   ShieldCheck,
-  DollarSign,
-  Calendar,
   Briefcase,
+  PiggyBank,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -72,13 +70,7 @@ const Layout = ({ children }) => {
   ];
 
   const financesSection = [
-    {
-      name: t("sidebar.transactions"),
-      href: "/transactions",
-      icon: ArrowLeftRight,
-    },
-    { name: t("sidebar.budgets"), href: "/budgets", icon: DollarSign },
-    { name: t("sidebar.forecasts"), href: "/forecasts", icon: Calendar },
+    { name: t("sidebar.finances"), href: "/finances", icon: PiggyBank },
   ];
 
   const navigation = [

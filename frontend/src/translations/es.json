@@ -38,8 +38,10 @@
     "transactions": "Transacciones",
     "debts": "Deudas",
     "portfolioBuilder": "Portfolio Builder",
+    "finances": "Finanzas",
     "budgets": "Presupuestos",
     "forecasts": "Previsiones",
+    "reports": "Informes",
     "businesses": "Negocios",
     "profile": "Perfil",
     "logout": "Cerrar Sesión",
@@ -47,6 +49,40 @@
     "adminAccess": "Gestión de accesos",
     "investmentsSection": "Inversiones",
     "financesSection": "Finanzas"
+  },
+  "finances": {
+    "title": "Finanzas",
+    "subtitle": "Resumen del mes",
+    "savingsRate": "Tasa de Ahorro",
+    "topExpenses": "Gastos por Categoría",
+    "noExpenses": "Sin gastos este mes",
+    "noTransactions": "Sin transacciones este mes",
+    "viewAll": "Ver todo",
+    "viewBudgets": "Ver presupuestos",
+    "uncategorized": "Sin categoría",
+    "toAssign": "Para asignar",
+    "overBudget": "Presupuesto excedido",
+    "monthlyIncome": "Ingresos mensuales est.",
+    "monthlyExpenses": "Gastos mensuales est.",
+    "tabs": {
+      "budget": "Presupuesto",
+      "transactions": "Transacciones",
+      "reports": "Informes",
+      "forecasts": "Previsiones"
+    }
+  },
+  "reports": {
+    "title": "Informes",
+    "subtitle": "Análisis histórico de tus finanzas",
+    "incomeVsExpenses": "Ingresos vs Gastos",
+    "spendingByCategory": "Gastos por Categoría",
+    "savingsEvolution": "Evolución de la Tasa de Ahorro",
+    "noData": "Sin datos para este período",
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "savings": "Ahorro",
+    "savingsRate": "Tasa de ahorro",
+    "avgSavingsRate": "Tasa de Ahorro Media"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -557,6 +593,10 @@
     "filters": "Filtros",
     "search": "Buscar",
     "searchPlaceholder": "Buscar...",
+    "filterAll": "Todo",
+    "filterIncome": "Ingresos",
+    "filterExpense": "Gastos",
+    "filterTransfer": "Transferencias",
     "allAccounts": "Todas",
     "allSubAccounts": "Todas",
     "allTypes": "Todos",
@@ -775,7 +815,8 @@
     "context": "Contexto",
     "allContexts": "Todos",
     "personal": "Personal",
-    "business": "Negocio"
+    "business": "Negocio",
+    "unbudgeted": "Sin presupuesto asignado"
   },
   "forecasts": {
     "title": "Previsiones",
