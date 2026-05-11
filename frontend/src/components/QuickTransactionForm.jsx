@@ -8,6 +8,7 @@ const QuickTransactionForm = ({
   onClose,
   businessId = null,
   onSuccess,
+  defaultDate = null,
 }) => {
   const { t } = useTranslation();
   const [subAccounts, setSubAccounts] = useState([]);
@@ -25,17 +26,16 @@ const QuickTransactionForm = ({
   useEffect(() => {
     if (isOpen) {
       fetchData();
-      // Resetear formulario
       setFormData({
         subAccount: "",
         type: "expense",
         category: "",
         amount: "",
         description: "",
-        date: new Date().toISOString().split("T")[0],
+        date: defaultDate || new Date().toISOString().split("T")[0],
       });
     }
-  }, [isOpen, businessId]);
+  }, [isOpen, businessId, defaultDate]);
 
   const fetchData = async () => {
     try {
