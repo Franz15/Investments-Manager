@@ -15,22 +15,30 @@
     /* ── Brand ─────────────────────────────────────────────────── */
     --tc-gold: #c9961a;
     --tc-gold-light: #f5d898; /* logo background sand */
-    --tc-gold-dim: rgba(201, 150, 26, 0.1);
-    --tc-gold-glow: rgba(201, 150, 26, 0.25);
+    --tc-gold-dim: rgba(201, 150, 26, 0.08);
     --tc-gold-rgb: 201, 150, 26;
 
-    /* ── Light mode surfaces ───────────────────────────────────── */
-    --tc-bg: #f8f7f2; /* warm off-white */
+    /* ── Light mode surfaces (warm parchment — logo sand at ~25% over white) */
+    --tc-bg: #fdf5e7; /* logo sand #F5D898 @ 25% over white → editorial warm cream */
     --tc-surface: #ffffff;
-    --tc-surface-2: #f2f1eb;
-    --tc-surface-3: #eaeae3;
-    --tc-border: rgba(20, 20, 18, 0.08);
-    --tc-border-strong: rgba(20, 20, 18, 0.15);
+    --tc-surface-2: #f7f0e0;
+    --tc-surface-3: #ede5d0;
+    --tc-border: rgba(40, 30, 10, 0.09);
+    --tc-border-strong: rgba(40, 30, 10, 0.16);
 
     /* ── Light mode text ───────────────────────────────────────── */
-    --tc-text-1: #0f0f0d;
-    --tc-text-2: #64645e;
-    --tc-text-3: #a5a59f;
+    --tc-text-1: #1a1710; /* warm near-black — FT ink */
+    --tc-text-2: #6b6558;
+    --tc-text-3: #a89e8e;
+
+    /* ── Sidebar — light mode (aged-paper, one tone darker than bg) */
+    --sidebar-bg: #f4ebcf; /* logo sand at ~45% over white → visible warm parchment */
+    --sidebar-border: rgba(40, 30, 10, 0.09);
+    --sidebar-inactive: #8c8070;
+    --sidebar-hover-bg: rgba(40, 30, 10, 0.05);
+    --sidebar-hover-text: #2e2a22;
+    --sidebar-section-text: #c4b9a5;
+    --sidebar-divider: rgba(40, 30, 10, 0.07);
 
     /* ── Semantic ──────────────────────────────────────────────── */
     --tc-success: #10b981;
@@ -41,7 +49,7 @@
 
   .dark {
     /* ── Dark mode surfaces ────────────────────────────────────── */
-    --tc-bg: #09090b; /* near black, warm undertone */
+    --tc-bg: #09090b;
     --tc-surface: #111113;
     --tc-surface-2: #1a1a1e;
     --tc-surface-3: #222228;
@@ -49,9 +57,18 @@
     --tc-border-strong: rgba(255, 255, 255, 0.12);
 
     /* ── Dark mode text ────────────────────────────────────────── */
-    --tc-text-1: #f2f0eb; /* warm white */
+    --tc-text-1: #f2f0eb;
     --tc-text-2: #8c8c88;
     --tc-text-3: #4a4a48;
+
+    /* ── Sidebar — dark mode ───────────────────────────────────── */
+    --sidebar-bg: #0d0d10;
+    --sidebar-border: rgba(255, 255, 255, 0.055);
+    --sidebar-inactive: #6e6e6a;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.045);
+    --sidebar-hover-text: #d0d0cc;
+    --sidebar-section-text: #333330;
+    --sidebar-divider: rgba(255, 255, 255, 0.05);
   }
 
   /* ── Base resets ─────────────────────────────────────────────── */
@@ -182,38 +199,20 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 @layer components {
-  /* ─── Cards ─────────────────────────────────────────────────── */
+  /* ─── Cards — FT editorial: flat, border-driven, no lift ─────── */
   .card {
     background: var(--tc-surface);
     border: 1px solid var(--tc-border);
-    border-radius: 14px;
+    border-radius: 10px;
     padding: 1.5rem;
-    transition:
-      box-shadow 0.2s ease,
-      transform 0.2s ease,
-      border-color 0.2s ease;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.05),
-      0 4px 12px rgba(0, 0, 0, 0.03);
-  }
-
-  .dark .card {
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.2),
-      0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: border-color 0.18s ease;
   }
 
   .card:hover {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.08),
-      0 12px 28px rgba(0, 0, 0, 0.05);
-    transform: translateY(-1px);
+    border-color: var(--tc-border-strong);
   }
 
   .dark .card:hover {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.3),
-      0 12px 28px rgba(0, 0, 0, 0.22);
     border-color: rgba(255, 255, 255, 0.1);
   }
 
@@ -221,56 +220,17 @@
     @apply card cursor-pointer;
   }
 
-  /* ─── Stat Cards (financial KPI) ─────────────────────────────── */
+  /* ─── Stat Cards (financial KPI) — clean, no glow ────────────── */
   .stat-card {
-    position: relative;
-    overflow: hidden;
     background: var(--tc-surface);
     border: 1px solid var(--tc-border);
-    border-radius: 14px;
+    border-radius: 10px;
     padding: 1.5rem;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.05),
-      0 4px 12px rgba(0, 0, 0, 0.03);
-  }
-
-  /* Subtle gold tint in top-left corner */
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: -40px;
-    left: -40px;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(201, 150, 26, 0.07) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .dark .stat-card {
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.2),
-      0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .dark .stat-card::before {
-    background: radial-gradient(circle, rgba(201, 150, 26, 0.1) 0%, transparent 70%);
+    transition: border-color 0.18s ease;
   }
 
   .stat-card:hover {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.08),
-      0 12px 28px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-    border-color: rgba(201, 150, 26, 0.18);
-  }
-
-  .dark .stat-card:hover {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.3),
-      0 12px 28px rgba(0, 0, 0, 0.22);
-    border-color: rgba(201, 150, 26, 0.22);
+    border-color: rgba(var(--tc-gold-rgb), 0.22);
   }
 
   /* ─── Buttons ────────────────────────────────────────────────── */
@@ -505,8 +465,7 @@
       0 8px 24px rgba(0, 0, 0, 0.35);
   }
 
-  /* ─── Sidebar navigation ─────────────────────────────────────── */
-  /* Sidebar is ALWAYS dark — hardcoded dark colors in Layout.jsx */
+  /* ─── Sidebar navigation — theme-aware via CSS vars ─────────── */
   .sidebar-link {
     display: flex;
     align-items: center;
@@ -520,28 +479,13 @@
     white-space: nowrap;
   }
 
-  .sidebar-link-active {
-    background: rgba(201, 150, 26, 0.12);
-    color: #c9961a;
-    box-shadow: inset 0 0 0 1px rgba(201, 150, 26, 0.2);
-  }
-
-  .sidebar-link-inactive {
-    color: #7a7a76;
-  }
-
-  .sidebar-link-inactive:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #d4d4d0;
-  }
-
   /* ─── Section titles ─────────────────────────────────────────── */
   .section-title {
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.09em;
     text-transform: uppercase;
-    color: #3a3a38;
+    color: var(--sidebar-section-text);
     line-height: 1;
   }
 

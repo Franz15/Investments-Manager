@@ -27,18 +27,23 @@ import ThemeToggle from './ThemeToggle';
 import TradeClimbLogo from './Logo';
 import packageJson from '../../package.json';
 
-/* ── Sidebar always-dark design tokens ──────────────────────────── */
+/* ── Sidebar design tokens — resolved via CSS vars at runtime ────
+   Active states use the user's profile color (--user-color-*).
+   Light/dark surfaces use --sidebar-* vars defined in index.css.
+   ────────────────────────────────────────────────────────────── */
 const S = {
-  bg: '#0D0D10',
-  border: 'rgba(255,255,255,0.055)',
-  activeText: '#C9961A',
-  activeBg: 'rgba(201,150,26,0.11)',
-  activeBorder: 'rgba(201,150,26,0.22)',
-  inactiveText: '#6E6E6A',
-  hoverBg: 'rgba(255,255,255,0.045)',
-  hoverText: '#D0D0CC',
-  sectionText: '#333330',
-  divider: 'rgba(255,255,255,0.05)',
+  bg: 'var(--sidebar-bg)',
+  border: 'var(--sidebar-border)',
+  /* Active = user profile color */
+  activeText: 'var(--user-color-600)',
+  activeBg: 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)',
+  activeBorder: 'rgba(var(--user-color-600-rgb, 201,150,26), 0.2)',
+  /* Rest */
+  inactiveText: 'var(--sidebar-inactive)',
+  hoverBg: 'var(--sidebar-hover-bg)',
+  hoverText: 'var(--sidebar-hover-text)',
+  sectionText: 'var(--sidebar-section-text)',
+  divider: 'var(--sidebar-divider)',
 };
 
 const Layout = ({ children }) => {
@@ -56,7 +61,7 @@ const Layout = ({ children }) => {
     JSON.parse(localStorage.getItem('businessesExpanded') ?? 'false')
   );
 
-  useUserColor(); // applies --user-color-* CSS vars (defaults to TradeClimb gold)
+  useUserColor(); // applies --user-color-* CSS vars
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
@@ -104,7 +109,7 @@ const Layout = ({ children }) => {
     { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
   ];
 
-  /* Bottom nav (mobile) — 5 most-used items */
+  /* Bottom nav (mobile) — 5 primary routes */
   const bottomNavItems = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
@@ -187,13 +192,10 @@ const Layout = ({ children }) => {
   /* ── Sidebar internals ──────────────────────────────────────── */
   const SidebarBody = ({ collapsed, onClose }) => (
     <>
-      <nav
-        className="flex-1 overflow-y-auto py-3"
-        style={{ padding: collapsed ? '12px 8px' : '12px' }}
-      >
+      <nav className="flex-1 overflow-y-auto" style={{ padding: collapsed ? '12px 8px' : '12px' }}>
         {/* Core section */}
         {!collapsed && (
-          <p className="section-title px-2 mb-1.5" style={{ color: S.sectionText }}>
+          <p className="section-title px-2 mb-1.5">
             {t('sidebar.investmentsSection') || 'Principal'}
           </p>
         )}
@@ -239,9 +241,9 @@ const Layout = ({ children }) => {
               />
               <span className="flex-1 text-[0.8125rem]">{t('sidebar.businesses')}</span>
               {businessesExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+                <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
               )}
             </button>
 
@@ -294,12 +296,7 @@ const Layout = ({ children }) => {
 
         <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
 
-        {/* Tools section */}
-        {!collapsed && (
-          <p className="section-title px-2 mb-1.5" style={{ color: S.sectionText }}>
-            {t('sidebar.tools') || 'Herramientas'}
-          </p>
-        )}
+        {/* Tool items — no section header */}
         <div className="space-y-0.5">
           {toolItems.map((item) => (
             <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
@@ -312,7 +309,7 @@ const Layout = ({ children }) => {
         <div className="p-3" style={{ borderTop: `1px solid ${S.divider}` }}>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center rounded-lg transition-all duration-150 group"
+            className="w-full flex items-center rounded-lg transition-all duration-150"
             style={{
               padding: collapsed ? '8px' : '8px 12px',
               color: S.inactiveText,
@@ -348,7 +345,9 @@ const Layout = ({ children }) => {
       className="w-full text-left px-3 py-1.5 rounded-lg text-[0.8125rem] transition-all duration-150 flex items-center gap-2"
       style={{
         color: active ? color || S.activeText : S.inactiveText,
-        background: active ? `${color || '#C9961A'}1A` : 'transparent',
+        background: active
+          ? `${color || 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)'}`
+          : 'transparent',
         fontWeight: active ? 500 : 400,
       }}
       onMouseEnter={(e) => {
@@ -382,7 +381,7 @@ const Layout = ({ children }) => {
       >
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
           onClick={() => setSidebarOpen(false)}
         />
         <div
@@ -396,13 +395,19 @@ const Layout = ({ children }) => {
             className="flex h-14 items-center justify-between px-4 flex-shrink-0"
             style={{ borderBottom: `1px solid ${S.border}` }}
           >
-            <TradeClimbLogo
-              size={26}
-              withText
-              textSize="text-[0.8125rem]"
-              className="text-white"
-              textClassName="text-white/90"
-            />
+            <div className="flex items-center gap-2.5">
+              <TradeClimbLogo
+                size={22}
+                style={{ color: S.activeText }}
+                className="text-[color:var(--user-color-600)]"
+              />
+              <span
+                className="font-semibold tracking-tight text-[0.875rem]"
+                style={{ color: 'var(--tc-text-1)' }}
+              >
+                {t('sidebar.appName')}
+              </span>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1.5 rounded-lg transition-colors"
@@ -423,7 +428,7 @@ const Layout = ({ children }) => {
         </div>
       </div>
 
-      {/* ── Desktop sidebar (always dark) ───────────────────────── */}
+      {/* ── Desktop sidebar — theme-aware ───────────────────────── */}
       <div
         className={`hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           sidebarCollapsed ? 'lg:w-[64px]' : 'lg:w-56'
@@ -437,13 +442,14 @@ const Layout = ({ children }) => {
           }`}
           style={{ borderBottom: `1px solid ${S.border}` }}
         >
+          {/* Logo button — uses profile accent color */}
           <button
             onClick={() => setSidebarCollapsed((v) => !v)}
             className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors"
-            style={{ color: '#C9961A', width: 32, height: 32 }}
+            style={{ color: 'var(--user-color-600)', width: 32, height: 32 }}
             aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(201,150,26,0.1)';
+              e.currentTarget.style.background = 'rgba(var(--user-color-600-rgb, 201,150,26), 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -452,16 +458,17 @@ const Layout = ({ children }) => {
             <TradeClimbLogo size={20} />
           </button>
 
+          {/* App name */}
           <span
-            className="font-bold tracking-[0.12em] uppercase transition-all duration-200 overflow-hidden whitespace-nowrap"
+            className="font-semibold tracking-tight transition-all duration-200 overflow-hidden whitespace-nowrap"
             style={{
-              fontSize: '0.75rem',
-              color: 'rgba(255,255,255,0.88)',
+              fontSize: '0.875rem',
+              color: 'var(--tc-text-1)',
               maxWidth: sidebarCollapsed ? 0 : '160px',
               opacity: sidebarCollapsed ? 0 : 1,
             }}
           >
-            TradeClimb
+            {t('sidebar.appName')}
           </span>
 
           <div
@@ -474,13 +481,16 @@ const Layout = ({ children }) => {
 
         <SidebarBody collapsed={sidebarCollapsed} onClose={undefined} />
 
-        {/* Version badge */}
+        {/* Version badge — profile accent color */}
         {!sidebarCollapsed && (
           <div
             className="px-4 py-2.5 flex-shrink-0"
             style={{ borderTop: `1px solid ${S.divider}` }}
           >
-            <p className="text-[10px]" style={{ color: '#2E2E2C' }}>
+            <p
+              className="text-[10px] font-medium"
+              style={{ color: 'var(--user-color-600)', opacity: 0.6 }}
+            >
               v{packageJson.version} · {t('sidebar.developmentVersion') || 'dev'}
             </p>
           </div>
@@ -497,8 +507,7 @@ const Layout = ({ children }) => {
         <div
           className="sticky top-0 z-30 flex h-14 items-center gap-3 px-4 lg:hidden"
           style={{
-            background: 'rgba(var(--tc-surface-rgb, 255,255,255), 0.85)',
-            backdropFilter: 'blur(20px) saturate(160%)',
+            background: 'var(--tc-surface)',
             borderBottom: '1px solid var(--tc-border)',
           }}
         >
@@ -515,7 +524,7 @@ const Layout = ({ children }) => {
               className="font-semibold tracking-tight"
               style={{ fontSize: '0.9375rem', color: 'var(--tc-text-1)' }}
             >
-              {currentPage?.name || 'TradeClimb'}
+              {currentPage?.name || t('sidebar.appName')}
             </span>
             <ThemeToggle />
           </div>
@@ -526,74 +535,36 @@ const Layout = ({ children }) => {
       </div>
 
       {/* ── Mobile bottom navigation ─────────────────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
-        {/* Light mode */}
-        <div
-          className="dark:hidden flex items-center px-2"
-          style={{
-            background: 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(24px) saturate(160%)',
-            borderTop: '1px solid rgba(0,0,0,0.06)',
-            paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
-            paddingTop: '4px',
-          }}
-        >
-          {bottomNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="bottom-nav-item"
-                style={{ color: active ? 'var(--tc-gold)' : '#8A8A84' }}
-              >
-                <Icon
-                  className={`transition-all duration-150 ${active ? 'scale-110' : ''}`}
-                  size={20}
-                  strokeWidth={active ? 2.25 : 1.75}
-                />
-                <span className="text-[10px] font-medium" style={{ opacity: active ? 1 : 0.6 }}>
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Dark mode */}
-        <div
-          className="hidden dark:flex items-center px-2"
-          style={{
-            background: 'rgba(13,13,16,0.95)',
-            backdropFilter: 'blur(24px) saturate(160%)',
-            borderTop: `1px solid ${S.border}`,
-            paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
-            paddingTop: '4px',
-          }}
-        >
-          {bottomNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="bottom-nav-item"
-                style={{ color: active ? '#C9961A' : '#4E4E4A' }}
-              >
-                <Icon
-                  className={`transition-all duration-150 ${active ? 'scale-110' : ''}`}
-                  size={20}
-                  strokeWidth={active ? 2.25 : 1.75}
-                />
-                <span className="text-[10px] font-medium" style={{ opacity: active ? 1 : 0.5 }}>
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden flex items-center px-2"
+        style={{
+          background: 'var(--tc-surface)',
+          borderTop: '1px solid var(--tc-border)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+          paddingTop: '4px',
+        }}
+      >
+        {bottomNavItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="bottom-nav-item"
+              style={{ color: active ? 'var(--user-color-600)' : 'var(--tc-text-3)' }}
+            >
+              <Icon
+                className={`transition-all duration-150 ${active ? 'scale-110' : ''}`}
+                size={20}
+                strokeWidth={active ? 2.25 : 1.75}
+              />
+              <span className="text-[10px] font-medium" style={{ opacity: active ? 1 : 0.6 }}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );
