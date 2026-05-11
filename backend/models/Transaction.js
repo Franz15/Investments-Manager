@@ -56,6 +56,11 @@ const transactionSchema = new mongoose.Schema(
       ref: "Business",
       default: null, // null = personal
     },
+    debt: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Debt",
+      default: null,
+    },
   },
   {
     timestamps: true,

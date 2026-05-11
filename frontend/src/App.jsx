@@ -1,28 +1,23 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { UserProvider, useUser } from "./contexts/UserContext";
-import { TranslationProvider } from "./contexts/TranslationContext";
-import { BusinessProvider } from "./contexts/BusinessContext";
-import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Accounts from "./pages/Accounts";
-import Transactions from "./pages/Transactions";
-import Investments from "./pages/Investments";
-import Debts from "./pages/Debts";
-import Budgets from "./pages/Budgets";
-import Forecasts from "./pages/Forecasts";
-import Businesses from "./pages/Businesses";
-import Profile from "./pages/Profile";
-import PortfolioBuilder from "./pages/PortfolioBuilder";
-import AdminAccess from "./pages/AdminAccess";
-import Finances from "./pages/Finances";
-import Reports from "./pages/Reports";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { UserProvider, useUser } from './contexts/UserContext';
+import { TranslationProvider } from './contexts/TranslationContext';
+import { BusinessProvider } from './contexts/BusinessContext';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Accounts from './pages/Accounts';
+import Transactions from './pages/Transactions';
+import Investments from './pages/Investments';
+import Debts from './pages/Debts';
+import Budgets from './pages/Budgets';
+import Forecasts from './pages/Forecasts';
+import Businesses from './pages/Businesses';
+import Profile from './pages/Profile';
+import PortfolioBuilder from './pages/PortfolioBuilder';
+import AdminAccess from './pages/AdminAccess';
+import Finances from './pages/Finances';
+import Reports from './pages/Reports';
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useUser();

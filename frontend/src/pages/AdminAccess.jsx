@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { ShieldCheck, Loader2, Lock, Clock } from "lucide-react";
-import api from "../services/api";
-import { useTranslation } from "../contexts/TranslationContext";
-import { useUser } from "../contexts/UserContext";
+import { useEffect, useState } from 'react';
+import { ShieldCheck, Loader2, Lock, Clock } from 'lucide-react';
+import api from '../services/api';
+import { useTranslation } from '../contexts/TranslationContext';
+import { useUser } from '../contexts/UserContext';
 
 /**
  * Formatea una fecha como tiempo relativo (ej: "hace 2 horas", "hace 3 días")
  */
 function formatTimeAgo(dateStr, t) {
-  if (!dateStr) return t("adminAccess.lastLoginNever") || "Nunca";
+  if (!dateStr) return t('adminAccess.lastLoginNever') || 'Nunca';
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now - date;
@@ -28,17 +28,17 @@ function formatTimeAgo(dateStr, t) {
     time = `${diffDays}d`;
   } else {
     // Mostrar fecha directa si es muy antiguo
-    return date.toLocaleDateString("es-ES", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   }
 
-  const template = t("adminAccess.lastLoginAgo") || "hace {time}";
-  return template.replace("{time}", time);
+  const template = t('adminAccess.lastLoginAgo') || 'hace {time}';
+  return template.replace('{time}', time);
 }
 
 const AdminAccess = () => {
@@ -55,16 +55,13 @@ const AdminAccess = () => {
     setLoading(true);
     setError(null);
     api
-      .get("/users")
+      .get('/users')
       .then((res) => {
         setUsers(res.data || []);
       })
       .catch((err) => {
-        console.error("Error al cargar usuarios para admin:", err);
-        setError(
-          err.response?.data?.message ||
-            "No se ha podido cargar la lista de usuarios.",
-        );
+        console.error('Error al cargar usuarios para admin:', err);
+        setError(err.response?.data?.message || 'No se ha podido cargar la lista de usuarios.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -81,14 +78,11 @@ const AdminAccess = () => {
         },
       });
       const updated = res.data;
-      setUsers((prev) =>
-        prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
-      );
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
     } catch (err) {
-      console.error("Error al actualizar permisos de usuario:", err);
+      console.error('Error al actualizar permisos de usuario:', err);
       setError(
-        err.response?.data?.message ||
-          "No se han podido actualizar los permisos del usuario.",
+        err.response?.data?.message || 'No se han podido actualizar los permisos del usuario.'
       );
     } finally {
       setSavingUserId(null);
@@ -109,18 +103,13 @@ const AdminAccess = () => {
         },
       });
       const updated = res.data;
-      setUsers((prev) =>
-        prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
-      );
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
     } catch (err) {
-      console.error(
-        "Error al actualizar permiso de cambio de contraseña:",
-        err,
-      );
+      console.error('Error al actualizar permiso de cambio de contraseña:', err);
       setError(
         err.response?.data?.message ||
-          t("adminAccess.resetPasswordError") ||
-          "No se han podido actualizar los permisos del usuario.",
+          t('adminAccess.resetPasswordError') ||
+          'No se han podido actualizar los permisos del usuario.'
       );
     } finally {
       setSavingUserId(null);
@@ -137,25 +126,24 @@ const AdminAccess = () => {
       setResetInfo({
         userId: user.id,
         message: data.generatedPassword
-          ? t("adminAccess.resetPasswordGenerated", {
+          ? t('adminAccess.resetPasswordGenerated', {
               password: data.generatedPassword,
             })
-          : t("adminAccess.resetPasswordSuccess"),
+          : t('adminAccess.resetPasswordSuccess'),
       });
     } catch (err) {
-      console.error("Error al resetear contraseña de usuario:", err);
+      console.error('Error al resetear contraseña de usuario:', err);
       setError(
         err.response?.data?.message ||
-          t("adminAccess.resetPasswordError") ||
-          "No se ha podido resetear la contraseña del usuario.",
+          t('adminAccess.resetPasswordError') ||
+          'No se ha podido resetear la contraseña del usuario.'
       );
     } finally {
       setResettingUserId(null);
     }
   };
 
-  const isCurrentAdmin =
-    currentUser?.role === "admin" || currentUser?.id === "javier";
+  const isCurrentAdmin = currentUser?.role === 'admin' || currentUser?.id === 'javier';
 
   if (!isCurrentAdmin) {
     return (
@@ -165,12 +153,12 @@ const AdminAccess = () => {
             <ShieldCheck className="w-10 h-10 text-amber-500" />
           </div>
           <h1 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
-            {t("adminAccess.forbiddenTitle") ||
-              "Solo Javier o un administrador puede acceder a este panel"}
+            {t('adminAccess.forbiddenTitle') ||
+              'Solo Javier o un administrador puede acceder a este panel'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t("adminAccess.forbiddenDescription") ||
-              "No tienes permisos suficientes para gestionar accesos."}
+            {t('adminAccess.forbiddenDescription') ||
+              'No tienes permisos suficientes para gestionar accesos.'}
           </p>
         </div>
       </div>
@@ -186,11 +174,11 @@ const AdminAccess = () => {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              {t("adminAccess.title") || "Gestión de accesos"}
+              {t('adminAccess.title') || 'Gestión de accesos'}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("adminAccess.subtitle") ||
-                "Activa o desactiva el acceso a las distintas partes de la aplicación para cada usuario."}
+              {t('adminAccess.subtitle') ||
+                'Activa o desactiva el acceso a las distintas partes de la aplicación para cada usuario.'}
             </p>
           </div>
         </div>
@@ -210,14 +198,12 @@ const AdminAccess = () => {
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#27272a] dark:bg-[#18181b] overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-[#27272a] flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              {t("adminAccess.usersHeader") || "Usuarios"}
+              {t('adminAccess.usersHeader') || 'Usuarios'}
             </span>
             {loading && (
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span>
-                  {t("adminAccess.loading") || "Cargando usuarios..."}
-                </span>
+                <span>{t('adminAccess.loading') || 'Cargando usuarios...'}</span>
               </div>
             )}
           </div>
@@ -226,10 +212,7 @@ const AdminAccess = () => {
             {users.map((user) => {
               const isSelf = user.id === currentUser?.id;
               return (
-                <div
-                  key={user.id}
-                  className="px-4 py-3 flex items-center justify-between gap-4"
-                >
+                <div key={user.id} className="px-4 py-3 flex items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -237,35 +220,33 @@ const AdminAccess = () => {
                       </span>
                       <span className="text-xs text-gray-400">
                         @{user.id}
-                        {isSelf ? " · tú" : ""}
+                        {isSelf ? ' · tú' : ''}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-2 text-xs">
                       <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-[#27272a] dark:text-gray-300">
-                        {t("adminAccess.roleLabel") || "Rol"}:{" "}
-                        {user.role === "admin"
-                          ? t("adminAccess.roleAdmin") || "admin"
-                          : t("adminAccess.roleUser") || "usuario"}
+                        {t('adminAccess.roleLabel') || 'Rol'}:{' '}
+                        {user.role === 'admin'
+                          ? t('adminAccess.roleAdmin') || 'admin'
+                          : t('adminAccess.roleUser') || 'usuario'}
                       </span>
-                      {user.id === "test-dca" && (
+                      {user.id === 'test-dca' && (
                         <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                          {t("adminAccess.testAccount") || "Cuenta de test"}
+                          {t('adminAccess.testAccount') || 'Cuenta de test'}
                         </span>
                       )}
                       {user.lastLogin && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                           <Clock className="w-3 h-3" />
-                          {t("adminAccess.lastLogin") ||
-                            "Última conexión"}:{" "}
+                          {t('adminAccess.lastLogin') || 'Última conexión'}:{' '}
                           {formatTimeAgo(user.lastLogin, t)}
                         </span>
                       )}
                       {!user.lastLogin && user.id !== currentUser?.id && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
                           <Clock className="w-3 h-3" />
-                          {t("adminAccess.lastLogin") ||
-                            "Última conexión"}:{" "}
-                          {t("adminAccess.lastLoginNever") || "Nunca"}
+                          {t('adminAccess.lastLogin') || 'Última conexión'}:{' '}
+                          {t('adminAccess.lastLoginNever') || 'Nunca'}
                         </span>
                       )}
                     </div>
@@ -273,16 +254,15 @@ const AdminAccess = () => {
                   {isSelf ? (
                     // Javier: sin switches ni reset sobre sí mismo
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {t("adminAccess.mainAdminLabel") ||
-                        "Administrador principal (permisos fijos)"}
+                      {t('adminAccess.mainAdminLabel') ||
+                        'Administrador principal (permisos fijos)'}
                     </div>
                   ) : (
                     <div className="flex items-center gap-6">
                       {/* Columna: Portfolio Builder */}
                       <div className="flex flex-col items-end gap-1 min-w-[120px]">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t("adminAccess.portfolioBuilderLabel") ||
-                            "Portfolio Builder"}
+                          {t('adminAccess.portfolioBuilderLabel') || 'Portfolio Builder'}
                         </span>
                         <button
                           type="button"
@@ -290,16 +270,14 @@ const AdminAccess = () => {
                           disabled={savingUserId === user.id}
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             user.permissions?.portfolioBuilder
-                              ? "bg-emerald-500"
-                              : "bg-gray-300 dark:bg-gray-600"
+                              ? 'bg-emerald-500'
+                              : 'bg-gray-300 dark:bg-gray-600'
                           } disabled:opacity-60 disabled:cursor-not-allowed`}
                           aria-pressed={user.permissions?.portfolioBuilder}
                         >
                           <span
                             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              user.permissions?.portfolioBuilder
-                                ? "translate-x-5"
-                                : "translate-x-0"
+                              user.permissions?.portfolioBuilder ? 'translate-x-5' : 'translate-x-0'
                             }`}
                           />
                         </button>
@@ -308,8 +286,8 @@ const AdminAccess = () => {
                       {/* Columna: Permitir cambio de contraseña */}
                       <div className="flex flex-col items-end gap-1 min-w-[140px]">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t("adminAccess.canChangePasswordLabel") ||
-                            "Permitir cambio de contraseña"}
+                          {t('adminAccess.canChangePasswordLabel') ||
+                            'Permitir cambio de contraseña'}
                         </span>
                         <button
                           type="button"
@@ -317,18 +295,16 @@ const AdminAccess = () => {
                           disabled={savingUserId === user.id}
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             (user.permissions?.canChangePassword ?? true)
-                              ? "bg-emerald-500"
-                              : "bg-gray-300 dark:bg-gray-600"
+                              ? 'bg-emerald-500'
+                              : 'bg-gray-300 dark:bg-gray-600'
                           } disabled:opacity-60 disabled:cursor-not-allowed`}
-                          aria-pressed={
-                            user.permissions?.canChangePassword ?? true
-                          }
+                          aria-pressed={user.permissions?.canChangePassword ?? true}
                         >
                           <span
                             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                               (user.permissions?.canChangePassword ?? true)
-                                ? "translate-x-5"
-                                : "translate-x-0"
+                                ? 'translate-x-5'
+                                : 'translate-x-0'
                             }`}
                           />
                         </button>
@@ -337,8 +313,7 @@ const AdminAccess = () => {
                       {/* Columna: Resetear contraseña */}
                       <div className="flex flex-col items-end gap-1 min-w-[140px]">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t("adminAccess.resetPasswordLabel") ||
-                            "Resetear contraseña"}
+                          {t('adminAccess.resetPasswordLabel') || 'Resetear contraseña'}
                         </span>
                         <button
                           type="button"
@@ -351,9 +326,7 @@ const AdminAccess = () => {
                           ) : (
                             <Lock className="w-3 h-3" />
                           )}
-                          <span>
-                            {t("adminAccess.resetPasswordButton") || "Resetear"}
-                          </span>
+                          <span>{t('adminAccess.resetPasswordButton') || 'Resetear'}</span>
                         </button>
                       </div>
                     </div>
@@ -364,7 +337,7 @@ const AdminAccess = () => {
 
             {!loading && users.length === 0 && (
               <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                {t("adminAccess.empty") || "No se han encontrado usuarios."}
+                {t('adminAccess.empty') || 'No se han encontrado usuarios.'}
               </div>
             )}
           </div>

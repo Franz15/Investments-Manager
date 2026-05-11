@@ -702,7 +702,13 @@
     "title": "Afegir Transacció Ràpida",
     "addTransaction": "Afegir Transacció",
     "type": "Tipus",
-    "descriptionPlaceholder": "Ex: Compra supermercat, Pagament nòmina..."
+    "descriptionPlaceholder": "Ex: Compra supermercat, Pagament nòmina...",
+    "associateDebt": "Associar a deute (opcional)",
+    "noDebt": "Sense vincular",
+    "pending": "pendent",
+    "linkedDebt": "Deute vinculat",
+    "manualAdjustment": "Ajust manual",
+    "linkedPayments": "Pagaments vinculats"
   },
   "financialAnalysis": {
     "showAnalysis": "Veure Anàlisi",
@@ -745,7 +751,36 @@
       "personalLoan": "Préstec Personal",
       "carLoan": "Préstec de Cotxe",
       "studentLoan": "Préstec Estudiantil",
+      "pledge": "Penyora",
       "other": "Altres"
+    },
+    "goodDebt": "Deute bo",
+    "badDebt": "Deute dolent",
+    "goodDebtHint": "No es descompta del balanç total (té un actiu associat)",
+    "goodDebtNotDeducted": "no descomptat",
+    "collateral": "Garanties penyorades",
+    "amortizationType": "Tipus d'amortització",
+    "amortizationTypes": {
+      "french": "Francesa (quota fixa)",
+      "fixedPrincipal": "Capital fix",
+      "bullet": "Bullet (només interessos)",
+      "other": "Altres"
+    },
+    "payment": {
+      "paymentType": "Tipus de pagament",
+      "types": {
+        "scheduled": "Ordinari",
+        "early_partial": "Anticipat parcial",
+        "early_total": "Cancel·lació total"
+      },
+      "earlyRepaymentMode": "Què ajustar?",
+      "modes": {
+        "reduce_payment": "Reduir quota",
+        "reduce_term": "Reduir termini"
+      },
+      "capitalPortion": "Capital:",
+      "interestPortion": "Interès:",
+      "confirm": "Confirmar pagament"
     },
     "totalAmount": "Import Total",
     "remainingAmount": "Import Restant",
@@ -756,8 +791,11 @@
     "namePlaceholder": "Ex: Hipoteca, Préstec Cotxe",
     "deleteConfirm": "Estàs segur d'eliminar aquest deute?",
     "activeDebts": "Deutes Actius",
-    "totalAmountLabel": "Import Total:",
+    "totalAmountLabel": "Capital total:",
     "remainingLabel": "Pendent:",
+    "totalCost": "Cost total (amb interessos):",
+    "totalInterest": "Interessos totals:",
+    "autoCalculated": "(auto)",
     "monthlyPaymentLabel": "Quota Mensual:",
     "interestRateLabel": "Taxa d'Interès:",
     "modals": {

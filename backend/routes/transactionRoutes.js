@@ -2,7 +2,26 @@ import express from "express";
 import Transaction from "../models/Transaction.js";
 import SubAccount from "../models/SubAccount.js";
 import Account from "../models/Account.js";
+import Debt from "../models/Debt.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
+
+// Reduce debt.remainingAmount by amount. Marks as paid if reaches 0.
+async function applyDebtPayment(debtId, userId, amount) {
+  const debt = await Debt.findOne({ _id: debtId, user: userId });
+  if (!debt || debt.status === "paid") return;
+  debt.remainingAmount = Math.max(0, debt.remainingAmount - amount);
+  if (debt.remainingAmount <= 0) debt.status = "paid";
+  await debt.save();
+}
+
+// Reverse a previously applied debt payment.
+async function reverseDebtPayment(debtId, userId, amount) {
+  const debt = await Debt.findOne({ _id: debtId, user: userId });
+  if (!debt) return;
+  debt.remainingAmount = Math.min(debt.totalAmount, debt.remainingAmount + amount);
+  if (debt.status === "paid" && debt.remainingAmount > 0) debt.status = "active";
+  await debt.save();
+}
 
 const router = express.Router();
 
@@ -20,6 +39,7 @@ router.get("/", async (req, res) => {
       type,
       category,
       business,
+      debt,
     } = req.query;
     const query = { user: req.userId };
 
@@ -54,6 +74,10 @@ router.get("/", async (req, res) => {
       }
     }
 
+    if (debt) {
+      query.debt = debt;
+    }
+
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = new Date(startDate);
@@ -77,6 +101,7 @@ router.get("/", async (req, res) => {
         },
       })
       .populate("business", "name color")
+      .populate("debt", "name type remainingAmount totalAmount")
       .sort({ date: -1 });
     res.json(transactions);
   } catch (error) {
@@ -397,7 +422,8 @@ router.get("/:id", async (req, res) => {
           match: { user: req.userId },
         },
       })
-      .populate("business", "name color");
+      .populate("business", "name color")
+      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
     if (!transaction) {
       return res.status(404).json({ message: "Transacción no encontrada" });
     }
@@ -488,18 +514,15 @@ router.post("/", async (req, res) => {
     // Para transferencias, no actualizamos el balance aqu? (se maneja en el frontend con dos transacciones)
     await targetSubAccount.save();
 
-    const populatedTransaction = await Transaction.findById(
-      savedTransaction._id,
-    )
-      .populate({
-        path: "account",
-      })
-      .populate({
-        path: "subAccount",
-        populate: {
-          path: "account",
-        },
-      });
+    // Si la transacción está vinculada a una deuda, reducir el importe pendiente
+    if (req.body.debt && req.body.type === "expense") {
+      await applyDebtPayment(req.body.debt, req.userId, parseFloat(req.body.amount));
+    }
+
+    const populatedTransaction = await Transaction.findById(savedTransaction._id)
+      .populate({ path: "account" })
+      .populate({ path: "subAccount", populate: { path: "account" } })
+      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
     res.status(201).json(populatedTransaction);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -628,6 +651,21 @@ router.put("/:id", async (req, res) => {
 
     await newSubAccount.save();
 
+    // Sincronizar deuda: revertir efecto de la deuda anterior, aplicar la nueva
+    const oldDebtId = oldTransaction.debt?.toString?.() || oldTransaction.debt;
+    const newDebtId = req.body.debt !== undefined
+      ? (req.body.debt || null)
+      : oldDebtId;
+    const oldAmount = oldTransaction.amount;
+    const newAmountVal = req.body.amount !== undefined ? parseFloat(req.body.amount) : oldAmount;
+
+    if (oldDebtId && oldTransaction.type === "expense") {
+      await reverseDebtPayment(oldDebtId, req.userId, oldAmount);
+    }
+    if (newDebtId && (req.body.type || oldTransaction.type) === "expense") {
+      await applyDebtPayment(newDebtId, req.userId, newAmountVal);
+    }
+
     // Actualizar la transacción
     const updateData = {
       ...req.body,
@@ -637,24 +675,16 @@ router.put("/:id", async (req, res) => {
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     )
-      .populate({
-        path: "account",
-        match: { user: req.userId },
-      })
+      .populate({ path: "account", match: { user: req.userId } })
       .populate({
         path: "subAccount",
         match: { user: req.userId },
-        populate: {
-          path: "account",
-          match: { user: req.userId },
-        },
+        populate: { path: "account", match: { user: req.userId } },
       })
-      .populate("business", "name color");
+      .populate("business", "name color")
+      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
     if (!transaction) {
       return res.status(404).json({ message: "Transacción no encontrada" });
     }
@@ -691,6 +721,11 @@ router.delete("/:id", async (req, res) => {
         }
         await subAccount.save();
       }
+    }
+
+    // Si la transacción estaba vinculada a una deuda, restaurar el importe pendiente
+    if (transaction.debt && transaction.type === "expense") {
+      await reverseDebtPayment(transaction.debt, req.userId, transaction.amount);
     }
 
     await Transaction.findByIdAndDelete(req.params.id);

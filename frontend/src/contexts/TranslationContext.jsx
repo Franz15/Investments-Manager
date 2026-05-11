@@ -1,20 +1,14 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
-import esTranslationsData from "../translations/es.json";
-import catTranslationsData from "../translations/cat.json";
-import { useUser } from "./UserContext";
-import api from "../services/api";
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import esTranslationsData from '../translations/es.json';
+import catTranslationsData from '../translations/cat.json';
+import { useUser } from './UserContext';
+import api from '../services/api';
 
 const defaultT = (key) => key;
 
 const TranslationContext = createContext({
   t: defaultT,
-  language: "es",
+  language: 'es',
   setLanguage: () => {},
 });
 
@@ -23,7 +17,7 @@ export const useTranslation = () => {
   if (!context || !context.t) {
     return {
       t: defaultT,
-      language: "es",
+      language: 'es',
       setLanguage: () => {},
     };
   }
@@ -34,13 +28,11 @@ export const TranslationProvider = ({ children }) => {
   const { currentUser, updateUser } = useUser();
 
   const [language, setLanguageState] = useState(() => {
-    return currentUser?.language || "es";
+    return currentUser?.language || 'es';
   });
   const [translations, setTranslations] = useState(() => {
-    const lang = currentUser?.language || "es";
-    return lang === "cat"
-      ? catTranslationsData || {}
-      : esTranslationsData || {};
+    const lang = currentUser?.language || 'es';
+    return lang === 'cat' ? catTranslationsData || {} : esTranslationsData || {};
   });
 
   // Al cambiar de usuario (login o restore), usar su idioma guardado
@@ -48,13 +40,13 @@ export const TranslationProvider = ({ children }) => {
     if (currentUser?.language) {
       setLanguageState(currentUser.language);
     } else {
-      setLanguageState("es");
+      setLanguageState('es');
     }
   }, [currentUser?.id]);
 
   // Cargar traducciones cuando cambie el idioma
   useEffect(() => {
-    if (language === "cat") {
+    if (language === 'cat') {
       setTranslations(catTranslationsData || {});
     } else {
       setTranslations(esTranslationsData || {});
@@ -63,35 +55,35 @@ export const TranslationProvider = ({ children }) => {
 
   const setLanguage = useCallback(
     async (newLanguage) => {
-      if (!["es", "cat"].includes(newLanguage)) return;
+      if (!['es', 'cat'].includes(newLanguage)) return;
       setLanguageState(newLanguage);
 
       if (currentUser) {
         try {
-          await api.patch("/users/me/language", { language: newLanguage });
+          await api.patch('/users/me/language', { language: newLanguage });
           updateUser({ ...currentUser, language: newLanguage });
         } catch (err) {
-          console.error("Error al guardar idioma:", err);
+          console.error('Error al guardar idioma:', err);
         }
       }
     },
-    [currentUser, updateUser],
+    [currentUser, updateUser]
   );
 
   const t = (key, params = {}) => {
-    if (!translations || typeof translations !== "object") return key;
-    const keys = key.split(".");
+    if (!translations || typeof translations !== 'object') return key;
+    const keys = key.split('.');
     let value = translations;
     for (const k of keys) {
-      if (value && typeof value === "object" && k in value) {
+      if (value && typeof value === 'object' && k in value) {
         value = value[k];
       } else {
         return key;
       }
     }
-    if (typeof value === "string" && Object.keys(params).length > 0) {
+    if (typeof value === 'string' && Object.keys(params).length > 0) {
       return value.replace(/\{(\w+)\}/g, (match, paramKey) =>
-        params[paramKey] !== undefined ? params[paramKey] : match,
+        params[paramKey] !== undefined ? params[paramKey] : match
       );
     }
     return value || key;

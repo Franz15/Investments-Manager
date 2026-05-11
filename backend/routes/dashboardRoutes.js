@@ -229,17 +229,18 @@ router.get("/stats", async (req, res) => {
 
     // Total de deudas activas del usuario
     const activeDebts = await Debt.find({ user: req.userId, status: "active" });
-    const totalDebts = activeDebts.reduce(
-      (sum, debt) => sum + debt.remainingAmount,
-      0,
-    );
+    const totalDebts = activeDebts.reduce((sum, d) => sum + d.remainingAmount, 0);
+    const totalGoodDebts = activeDebts
+      .filter((d) => d.isGoodDebt)
+      .reduce((sum, d) => sum + d.remainingAmount, 0);
+    const totalBadDebts = totalDebts - totalGoodDebts;
     const totalMonthlyDebtPayments = activeDebts.reduce(
       (sum, debt) => sum + debt.monthlyPayment,
       0,
     );
 
-    // Patrimonio neto = Balance total - Deudas
-    const netWorth = totalBalance - totalDebts;
+    // Patrimonio neto = Balance total - Deuda mala (la buena tiene activo asociado)
+    const netWorth = totalBalance - totalBadDebts;
 
     // Balance mensual = Rentabilidad de inversiones del mes (sin incluir ingresos/gastos de finanzas)
     const monthlyBalance = monthlyInvestmentReturn;
@@ -302,6 +303,8 @@ router.get("/stats", async (req, res) => {
       totalInvestments,
       totalProfitLoss,
       totalDebts,
+      totalGoodDebts,
+      totalBadDebts,
       totalMonthlyDebtPayments,
       monthlyInvestmentReturn: parseFloat(monthlyInvestmentReturn.toFixed(2)),
       monthlyBalance: parseFloat(monthlyBalance.toFixed(2)),

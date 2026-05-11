@@ -1,12 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  parseISO,
-} from "date-fns";
-import { es } from "date-fns/locale";
+import { useEffect, useState, useCallback } from 'react';
+import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
   BarChart,
   Bar,
@@ -21,15 +15,13 @@ import {
   Area,
   CartesianGrid,
   Legend,
-} from "recharts";
-import api from "../services/api";
-import LoadingSpinner from "../components/LoadingSpinner";
-import { useTranslation } from "../contexts/TranslationContext";
+} from 'recharts';
+import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from '../contexts/TranslationContext';
 
 const fmt = (n) =>
-  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
-    n ?? 0,
-  );
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n ?? 0);
 
 const fmtCompact = (n) => {
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}k€`;
@@ -37,22 +29,22 @@ const fmtCompact = (n) => {
 };
 
 const PERIODS = [
-  { key: "3m", label: "3M", months: 3 },
-  { key: "6m", label: "6M", months: 6 },
-  { key: "1y", label: "1A", months: 12 },
+  { key: '3m', label: '3M', months: 3 },
+  { key: '6m', label: '6M', months: 6 },
+  { key: '1y', label: '1A', months: 12 },
 ];
 
 const CATEGORY_COLORS = [
-  "#0284c7",
-  "#16a34a",
-  "#dc2626",
-  "#d97706",
-  "#7c3aed",
-  "#0891b2",
-  "#be185d",
-  "#b45309",
-  "#4f46e5",
-  "#059669",
+  '#0284c7',
+  '#16a34a',
+  '#dc2626',
+  '#d97706',
+  '#7c3aed',
+  '#0891b2',
+  '#be185d',
+  '#b45309',
+  '#4f46e5',
+  '#059669',
 ];
 
 const CustomBarTooltip = ({ active, payload, label }) => {
@@ -62,9 +54,7 @@ const CustomBarTooltip = ({ active, payload, label }) => {
       className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm shadow-lg"
       style={{ minWidth: 160 }}
     >
-      <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1 capitalize">
-        {label}
-      </p>
+      <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1 capitalize">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} style={{ color: entry.color }}>
           {entry.name}: {fmt(entry.value)}
@@ -90,7 +80,7 @@ const CustomPieTooltip = ({ active, payload }) => {
 
 const Reports = () => {
   const { t } = useTranslation();
-  const [activePeriod, setActivePeriod] = useState("6m");
+  const [activePeriod, setActivePeriod] = useState('6m');
   const [periodData, setPeriodData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,47 +93,42 @@ const Reports = () => {
       const startDate = startOfMonth(subMonths(new Date(), period.months - 1));
 
       const [periodRes, catRes] = await Promise.all([
-        api.get("/transactions/statistics/by-period", {
+        api.get('/transactions/statistics/by-period', {
           params: {
-            period: "monthly",
-            startDate: format(startDate, "yyyy-MM-dd"),
-            endDate: format(endDate, "yyyy-MM-dd"),
-            business: "null",
+            period: 'monthly',
+            startDate: format(startDate, 'yyyy-MM-dd'),
+            endDate: format(endDate, 'yyyy-MM-dd'),
+            business: 'null',
           },
         }),
-        api.get("/transactions/statistics/by-category", {
+        api.get('/transactions/statistics/by-category', {
           params: {
-            startDate: format(startDate, "yyyy-MM-dd"),
-            endDate: format(endDate, "yyyy-MM-dd"),
-            type: "expense",
-            business: "null",
+            startDate: format(startDate, 'yyyy-MM-dd'),
+            endDate: format(endDate, 'yyyy-MM-dd'),
+            type: 'expense',
+            business: 'null',
           },
         }),
       ]);
 
       const rawPeriod = periodRes.data?.basePeriod?.data ?? [];
       const formatted = rawPeriod.map((row) => ({
-        label: format(parseISO(`${row.period}-01`), "MMM yy", { locale: es }),
+        label: format(parseISO(`${row.period}-01`), 'MMM yy', { locale: es }),
         income: Math.round(row.income * 100) / 100,
         expenses: Math.round(row.expenses * 100) / 100,
         savings: Math.round(Math.max(row.income - row.expenses, 0) * 100) / 100,
         savingsRate:
-          row.income > 0
-            ? Math.round(((row.income - row.expenses) / row.income) * 100)
-            : 0,
+          row.income > 0 ? Math.round(((row.income - row.expenses) / row.income) * 100) : 0,
       }));
       setPeriodData(formatted);
 
-      const totalExp = (catRes.data || []).reduce(
-        (s, c) => s + (c.expenses || 0),
-        0,
-      );
+      const totalExp = (catRes.data || []).reduce((s, c) => s + (c.expenses || 0), 0);
       const cats = (catRes.data || [])
         .filter((c) => c.expenses > 0)
         .sort((a, b) => b.expenses - a.expenses)
         .slice(0, 10)
         .map((c) => ({
-          name: c.category || "Sin categoría",
+          name: c.category || 'Sin categoría',
           value: Math.round(c.expenses * 100) / 100,
           pct: totalExp > 0 ? Math.round((c.expenses / totalExp) * 100) : 0,
         }));
@@ -164,8 +149,7 @@ const Reports = () => {
   const totalIncome = periodData.reduce((s, r) => s + r.income, 0);
   const totalExpenses = periodData.reduce((s, r) => s + r.expenses, 0);
   const totalSavings = Math.max(totalIncome - totalExpenses, 0);
-  const avgSavingsRate =
-    totalIncome > 0 ? Math.round((totalSavings / totalIncome) * 100) : 0;
+  const avgSavingsRate = totalIncome > 0 ? Math.round((totalSavings / totalIncome) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -173,11 +157,9 @@ const Reports = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-            {t("reports.title")}
+            {t('reports.title')}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {t("reports.subtitle")}
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('reports.subtitle')}</p>
         </div>
 
         {/* Period selector */}
@@ -188,8 +170,8 @@ const Reports = () => {
               onClick={() => setActivePeriod(p.key)}
               className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-150 ${
                 activePeriod === p.key
-                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {p.label}
@@ -202,7 +184,7 @@ const Reports = () => {
       <div className="grid grid-cols-3 gap-4">
         <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-            {t("reports.income")}
+            {t('reports.income')}
           </p>
           <p className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">
             {fmt(totalIncome)}
@@ -210,7 +192,7 @@ const Reports = () => {
         </div>
         <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-            {t("reports.expenses")}
+            {t('reports.expenses')}
           </p>
           <p className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">
             {fmt(totalExpenses)}
@@ -218,15 +200,15 @@ const Reports = () => {
         </div>
         <div className="card text-center">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-            {t("reports.avgSavingsRate")}
+            {t('reports.avgSavingsRate')}
           </p>
           <p
             className={`text-lg font-bold tabular-nums ${
               avgSavingsRate >= 20
-                ? "text-green-600 dark:text-green-400"
+                ? 'text-green-600 dark:text-green-400'
                 : avgSavingsRate >= 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-red-600 dark:text-red-400"
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-red-600 dark:text-red-400'
             }`}
           >
             {avgSavingsRate}%
@@ -237,33 +219,23 @@ const Reports = () => {
       {/* Income vs Expenses bar chart */}
       <div className="card">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-5">
-          {t("reports.incomeVsExpenses")}
+          {t('reports.incomeVsExpenses')}
         </h3>
         {periodData.length === 0 ? (
-          <p className="text-sm text-gray-400 py-8 text-center">
-            {t("reports.noData")}
-          </p>
+          <p className="text-sm text-gray-400 py-8 text-center">{t('reports.noData')}</p>
         ) : (
           <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={periodData}
-                barCategoryGap="30%"
-                barGap={2}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(0,0,0,0.06)"
-                  vertical={false}
-                />
+              <BarChart data={periodData} barCategoryGap="30%" barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={fmtCompact}
@@ -273,11 +245,11 @@ const Reports = () => {
                 <Legend
                   wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
                   formatter={(v) =>
-                    v === "income"
-                      ? t("reports.income")
-                      : v === "expenses"
-                        ? t("reports.expenses")
-                        : t("reports.savings")
+                    v === 'income'
+                      ? t('reports.income')
+                      : v === 'expenses'
+                        ? t('reports.expenses')
+                        : t('reports.savings')
                   }
                 />
                 <Bar
@@ -305,12 +277,10 @@ const Reports = () => {
         {/* Spending by category */}
         <div className="card">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-5">
-            {t("reports.spendingByCategory")}
+            {t('reports.spendingByCategory')}
           </h3>
           {categoryData.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">
-              {t("reports.noData")}
-            </p>
+            <p className="text-sm text-gray-400 py-6 text-center">{t('reports.noData')}</p>
           ) : (
             <div className="flex gap-6 items-start">
               <div style={{ width: 160, height: 160, flexShrink: 0 }}>
@@ -326,10 +296,7 @@ const Reports = () => {
                       strokeWidth={0}
                     >
                       {categoryData.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
-                        />
+                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
@@ -342,8 +309,7 @@ const Reports = () => {
                     <div
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{
-                        backgroundColor:
-                          CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                        backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
                       }}
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">
@@ -362,61 +328,41 @@ const Reports = () => {
         {/* Savings rate evolution */}
         <div className="card">
           <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-5">
-            {t("reports.savingsEvolution")}
+            {t('reports.savingsEvolution')}
           </h3>
           {periodData.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">
-              {t("reports.noData")}
-            </p>
+            <p className="text-sm text-gray-400 py-6 text-center">{t('reports.noData')}</p>
           ) : (
             <div style={{ height: 160 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={periodData}>
                   <defs>
-                    <linearGradient
-                      id="savingsGrad"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="var(--user-color-600)"
-                        stopOpacity={0.2}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--user-color-600)"
-                        stopOpacity={0}
-                      />
+                    <linearGradient id="savingsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--user-color-600)" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="var(--user-color-600)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(0,0,0,0.06)"
-                    vertical={false}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => `${v}%`}
-                    domain={[0, "dataMax + 10"]}
+                    domain={[0, 'dataMax + 10']}
                     width={40}
                   />
                   <Tooltip
-                    formatter={(v) => [`${v}%`, t("reports.savingsRate")]}
+                    formatter={(v) => [`${v}%`, t('reports.savingsRate')]}
                     contentStyle={{
                       fontSize: 12,
                       borderRadius: 4,
-                      border: "1px solid rgba(0,0,0,0.1)",
+                      border: '1px solid rgba(0,0,0,0.1)',
                     }}
                   />
                   <Area
@@ -425,7 +371,7 @@ const Reports = () => {
                     stroke="var(--user-color-600)"
                     strokeWidth={2}
                     fill="url(#savingsGrad)"
-                    dot={{ r: 3, fill: "var(--user-color-600)" }}
+                    dot={{ r: 3, fill: 'var(--user-color-600)' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -435,20 +381,15 @@ const Reports = () => {
           {/* Table below chart */}
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-1">
             {periodData.slice(-4).map((row) => (
-              <div
-                key={row.label}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="text-gray-500 dark:text-gray-400 capitalize">
-                  {row.label}
-                </span>
+              <div key={row.label} className="flex items-center justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400 capitalize">{row.label}</span>
                 <span
                   className={`font-semibold tabular-nums ${
                     row.savingsRate >= 20
-                      ? "text-green-600 dark:text-green-400"
+                      ? 'text-green-600 dark:text-green-400'
                       : row.savingsRate >= 0
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "text-red-600 dark:text-red-400"
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-red-600 dark:text-red-400'
                   }`}
                 >
                   {row.savingsRate}%
