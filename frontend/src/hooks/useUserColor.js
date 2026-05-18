@@ -82,6 +82,13 @@ export function useUserColor() {
     const color800 = mixWithBlack(rgb, 0.35);
     const color900 = mixWithBlack(rgb, 0.5);
 
+    // ── Surface tints — derived from accent for cohesive light-mode palette ──
+    // Each is a progressively stronger mix so the hierarchy reads:
+    //   surface (lightest) < bg < sidebar (most tinted)
+    const colorSurface = mixWithWhite(rgb, 0.025); // ~2.5% color — card surface, near-white
+    const colorBg = mixWithWhite(rgb, 0.06); // ~6%   color — main page background
+    const colorSidebar = mixWithWhite(rgb, 0.14); // ~14%  color — sidebar, clear depth vs bg
+
     // Aplicar variables CSS
     root.style.setProperty('--user-color-50', rgbToHex(color50));
     root.style.setProperty('--user-color-100', rgbToHex(color100));
@@ -94,6 +101,11 @@ export function useUserColor() {
     root.style.setProperty('--user-color-800', rgbToHex(color800));
     root.style.setProperty('--user-color-900', rgbToHex(color900));
     root.style.setProperty('--user-color', userColor);
+
+    // Surface tints (light-mode backgrounds)
+    root.style.setProperty('--user-color-surface', rgbToHex(colorSurface));
+    root.style.setProperty('--user-color-bg', rgbToHex(colorBg));
+    root.style.setProperty('--user-color-sidebar', rgbToHex(colorSidebar));
 
     // También guardar RGB para uso en rgba()
     root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);
