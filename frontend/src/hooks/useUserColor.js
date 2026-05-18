@@ -47,6 +47,17 @@ function mixWithBlack(rgb, amount) {
   };
 }
 
+// Mezcla el acento con un gris neutro oscuro para textos secundarios.
+// Produce textos sutilmente tintados con el acento sin ser demasiado saturados.
+function mixWithNeutral(rgb, amount) {
+  const neutral = { r: 80, g: 80, b: 80 };
+  return {
+    r: Math.round(rgb.r * amount + neutral.r * (1 - amount)),
+    g: Math.round(rgb.g * amount + neutral.g * (1 - amount)),
+    b: Math.round(rgb.b * amount + neutral.b * (1 - amount)),
+  };
+}
+
 /**
  * Convierte RGB a hexadecimal
  */
@@ -82,6 +93,23 @@ export function useUserColor() {
     const color800 = mixWithBlack(rgb, 0.35);
     const color900 = mixWithBlack(rgb, 0.5);
 
+    // ── Tints de fondo: fracción de color pequeña + casi todo blanco ──
+    // En mixWithWhite, `amount` es la fracción de BLANCO:
+    //   0.975 → 2.5% color  (surface — cards, casi blanco)
+    //   0.94  → 6%   color  (bg — fondo de página, tinte muy sutil)
+    //   0.86  → 14%  color  (sidebar — más saturado para jerarquía)
+    const colorSurface = mixWithWhite(rgb, 0.975); // ~2.5% color — cards
+    const colorBg = mixWithWhite(rgb, 0.94); // ~6%   color — page bg
+    const colorSurface2 = mixWithWhite(rgb, 0.9); // ~10%  color — tc-surface-2
+    const colorSurface3 = mixWithWhite(rgb, 0.8); // ~20%  color — tc-surface-3
+    const colorSidebar = mixWithWhite(rgb, 0.86); // ~14%  color — sidebar
+
+    // ── Tints de texto: acento mezclado con gris neutro ──────────────
+    // 25% acento → texto secundario (labels, subtítulos)
+    // 15% acento → texto terciario (placeholders, captions)
+    const colorTextMuted = mixWithNeutral(rgb, 0.25);
+    const colorTextSubtle = mixWithNeutral(rgb, 0.15);
+
     // Aplicar variables CSS
     root.style.setProperty('--user-color-50', rgbToHex(color50));
     root.style.setProperty('--user-color-100', rgbToHex(color100));
@@ -94,6 +122,17 @@ export function useUserColor() {
     root.style.setProperty('--user-color-800', rgbToHex(color800));
     root.style.setProperty('--user-color-900', rgbToHex(color900));
     root.style.setProperty('--user-color', userColor);
+
+    // Tints de superficie (solo modo claro)
+    root.style.setProperty('--user-color-surface', rgbToHex(colorSurface));
+    root.style.setProperty('--user-color-bg', rgbToHex(colorBg));
+    root.style.setProperty('--user-color-surface-2', rgbToHex(colorSurface2));
+    root.style.setProperty('--user-color-surface-3', rgbToHex(colorSurface3));
+    root.style.setProperty('--user-color-sidebar', rgbToHex(colorSidebar));
+
+    // Tints de texto
+    root.style.setProperty('--user-color-text-muted', rgbToHex(colorTextMuted));
+    root.style.setProperty('--user-color-text-subtle', rgbToHex(colorTextSubtle));
 
     // También guardar RGB para uso en rgba()
     root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);

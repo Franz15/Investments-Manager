@@ -5,12 +5,51 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── bg-white bridge (only remaining override needed) ───────────── */
-/* The gray scale is now warm in tailwind.config.js — all bg-gray-*  */
-/* classes are warm automatically. Only bg-white needs a bridge       */
-/* since Tailwind's white is hardcoded to #FFFFFF.                    */
+/* ── Accent-tint bridges (light mode only) ───────────────────────── */
+/* Tailwind's gray scale compiles to static hex values at build time.  */
+/* These overrides remap the common surface classes to the dynamic      */
+/* user-color tints so the whole app follows the profile accent color. */
+/* Specificity (0,2,0) beats Tailwind's (0,1,0) — no !important needed */
+
+/* Backgrounds */
 :root:not(.dark) .bg-white {
-  background-color: #fff8f0; /* barely-warm white, matches gray-50 vicinity */
+  background-color: var(--user-color-surface, #fff8f0);
+}
+:root:not(.dark) .bg-gray-50 {
+  background-color: var(--user-color-bg, #fff1e5);
+}
+:root:not(.dark) .bg-gray-100 {
+  background-color: var(--user-color-sidebar, #f7edd8);
+}
+
+/* Hover states */
+:root:not(.dark) .hover\:bg-gray-50:hover {
+  background-color: var(--user-color-bg, #fff1e5);
+}
+:root:not(.dark) .hover\:bg-gray-100:hover {
+  background-color: var(--user-color-sidebar, #f7edd8);
+}
+:root:not(.dark) .hover\:bg-gray-200:hover {
+  background-color: var(--user-color-sidebar, #ede0c8);
+}
+
+/* Border dividers */
+:root:not(.dark) .border-gray-100 {
+  border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.08);
+}
+:root:not(.dark) .border-gray-200 {
+  border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.15);
+}
+
+/* Text colors — muted/secondary text follows accent tint */
+:root:not(.dark) .text-gray-400 {
+  color: var(--user-color-text-subtle, #a89080);
+}
+:root:not(.dark) .text-gray-500 {
+  color: var(--user-color-text-muted, #7a6a5a);
+}
+:root:not(.dark) .text-gray-600 {
+  color: var(--user-color-text-muted, #5a4a3a);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -29,29 +68,27 @@
     --tc-gold-dim: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.08);
     --tc-gold-rgb: var(--user-color-600-rgb, 201, 150, 26);
 
-    /* ── Light mode surfaces — FT editorial palette ───────────── */
-    /* Background: FT's exact warm salmon-cream (#FFF1E5)          */
-    --tc-bg: #fff1e5;
-    /* Surface: barely-warm white — cards don't float cold on bg   */
-    --tc-surface: #fffcf7;
-    --tc-surface-2: #f7edd8;
-    --tc-surface-3: #ede0c8;
-    --tc-border: rgba(60, 40, 10, 0.1);
-    --tc-border-strong: rgba(60, 40, 10, 0.18);
+    /* ── Light mode surfaces — tinte sincronizado con acento ───── */
+    --tc-bg: var(--user-color-bg, #fff1e5);
+    --tc-surface: var(--user-color-surface, #fffcf7);
+    --tc-surface-2: var(--user-color-surface-2, #f7edd8);
+    --tc-surface-3: var(--user-color-surface-3, #ede0c8);
+    --tc-border: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
+    --tc-border-strong: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.22);
 
-    /* ── Light mode text — FT ink tones ───────────────────────── */
-    --tc-text-1: #1a1208; /* warm near-black, FT ink */
-    --tc-text-2: #6b6050;
-    --tc-text-3: #a8998a;
+    /* ── Light mode text — tintados con acento del perfil ───────── */
+    --tc-text-1: #1a1208;
+    --tc-text-2: var(--user-color-text-muted, #6b6050);
+    --tc-text-3: var(--user-color-text-subtle, #a8998a);
 
-    /* ── Sidebar — light mode: aged paper, deeper than bg ─────── */
-    --sidebar-bg: #f5e9cc; /* logo sand at ~45% — clear depth vs bg */
-    --sidebar-border: rgba(60, 40, 10, 0.1);
-    --sidebar-inactive: #8c7e6c;
-    --sidebar-hover-bg: rgba(60, 40, 10, 0.06);
-    --sidebar-hover-text: #2e2416;
-    --sidebar-section-text: #bfb09c;
-    --sidebar-divider: rgba(60, 40, 10, 0.08);
+    /* ── Sidebar — light mode: sincronizado con acento ─────────── */
+    --sidebar-bg: var(--user-color-sidebar, #f5e9cc);
+    --sidebar-border: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
+    --sidebar-inactive: var(--user-color-text-muted, #8c7e6c);
+    --sidebar-hover-bg: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.06);
+    --sidebar-hover-text: var(--user-color-900, #2e2416);
+    --sidebar-section-text: var(--user-color-text-subtle, #bfb09c);
+    --sidebar-divider: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.08);
 
     /* ── Semantic ──────────────────────────────────────────────── */
     --tc-success: #10b981;
@@ -291,15 +328,15 @@
     box-shadow: none;
   }
 
-  /* Secondary: surface with border */
+  /* Secondary: outlined accent — borde y texto en color de acento */
   .btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: var(--tc-surface-2);
-    color: var(--tc-text-1);
-    border: 1px solid var(--tc-border);
+    background: transparent;
+    color: var(--tc-gold);
+    border: 1px solid rgba(var(--user-color-600-rgb, 201, 150, 26), 0.35);
     padding: 0.625rem 1.5rem;
     border-radius: 10px;
     font-weight: 500;
@@ -311,10 +348,10 @@
   }
 
   .btn-secondary:hover {
-    background: var(--tc-surface-3);
-    border-color: var(--tc-border-strong);
+    background: var(--tc-gold-dim);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.55);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
   }
 
   .btn-secondary:active {
@@ -322,7 +359,13 @@
     box-shadow: none;
   }
 
+  .dark .btn-secondary {
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.3);
+  }
+
   .dark .btn-secondary:hover {
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.1);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.5);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   }
 
