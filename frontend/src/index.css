@@ -21,10 +21,13 @@
 @layer base {
   :root {
     /* ── Brand ─────────────────────────────────────────────────── */
-    --tc-gold: #c9961a;
+    /* --tc-gold follows the user's profile accent color.          */
+    /* Falls back to TradeClimb gold (#c9961a) when no profile     */
+    /* color is set. useUserColor.js writes --user-color-* on :root */
+    --tc-gold: var(--user-color-600, #c9961a);
     --tc-gold-light: #f5d898; /* logo background sand */
-    --tc-gold-dim: rgba(201, 150, 26, 0.08);
-    --tc-gold-rgb: 201, 150, 26;
+    --tc-gold-dim: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.08);
+    --tc-gold-rgb: var(--user-color-600-rgb, 201, 150, 26);
 
     /* ── Light mode surfaces — FT editorial palette ───────────── */
     /* Background: FT's exact warm salmon-cream (#FFF1E5)          */
@@ -263,22 +266,22 @@
     cursor: pointer;
     transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow:
-      0 1px 3px rgba(201, 150, 26, 0.2),
-      0 2px 8px rgba(201, 150, 26, 0.1);
+      0 1px 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.2),
+      0 2px 8px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.1);
     white-space: nowrap;
   }
 
   .btn-primary:hover {
-    background: #b58717;
+    background: var(--user-color-700, #b58717);
     box-shadow:
-      0 4px 12px rgba(201, 150, 26, 0.35),
+      0 4px 12px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.35),
       0 1px 3px rgba(0, 0, 0, 0.1);
     transform: translateY(-1px);
   }
 
   .btn-primary:active {
     transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(201, 150, 26, 0.2);
+    box-shadow: 0 1px 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.2);
   }
 
   .btn-primary:disabled {
@@ -388,12 +391,12 @@
 
   .input-field:focus {
     border-color: var(--tc-gold);
-    box-shadow: 0 0 0 3px rgba(201, 150, 26, 0.12);
+    box-shadow: 0 0 0 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
     background: var(--tc-surface);
   }
 
   .dark .input-field:focus {
-    box-shadow: 0 0 0 3px rgba(201, 150, 26, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.15);
   }
 
   /* ─── Badges ─────────────────────────────────────────────────── */
@@ -436,15 +439,15 @@
 
   .badge-gold {
     @apply badge;
-    background: rgba(201, 150, 26, 0.1);
-    color: #a17815;
-    border: 1px solid rgba(201, 150, 26, 0.2);
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.1);
+    color: var(--user-color-700, #a17815);
+    border: 1px solid rgba(var(--user-color-600-rgb, 201, 150, 26), 0.2);
   }
 
   .dark .badge-gold {
-    background: rgba(201, 150, 26, 0.12);
-    color: #d4a420;
-    border-color: rgba(201, 150, 26, 0.25);
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
+    color: var(--user-color-400, #d4a420);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.25);
   }
 
   .badge-neutral {
@@ -643,7 +646,7 @@
 
 .react-datepicker__input-container input:focus {
   border-color: var(--tc-gold);
-  box-shadow: 0 0 0 3px rgba(201, 150, 26, 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
 }
 
 .react-datepicker {
