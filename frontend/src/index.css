@@ -10,7 +10,7 @@
 /* classes are warm automatically. Only bg-white needs a bridge       */
 /* since Tailwind's white is hardcoded to #FFFFFF.                    */
 :root:not(.dark) .bg-white {
-  background-color: var(--user-color-surface, #fff8f0);
+  background-color: #fff8f0; /* barely-warm white, matches gray-50 vicinity */
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -29,11 +29,11 @@
     --tc-gold-dim: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.08);
     --tc-gold-rgb: var(--user-color-600-rgb, 201, 150, 26);
 
-    /* ── Light mode surfaces — tinte sincronizado con acento ───── */
-    /* El fondo es casi blanco; solo el tinte sigue al perfil.     */
-    /* useUserColor.js escribe --user-color-bg/-surface/-sidebar.  */
-    --tc-bg: var(--user-color-bg, #fff1e5);
-    --tc-surface: var(--user-color-surface, #fffcf7);
+    /* ── Light mode surfaces — FT editorial palette ───────────── */
+    /* Background: FT's exact warm salmon-cream (#FFF1E5)          */
+    --tc-bg: #fff1e5;
+    /* Surface: barely-warm white — cards don't float cold on bg   */
+    --tc-surface: #fffcf7;
     --tc-surface-2: #f7edd8;
     --tc-surface-3: #ede0c8;
     --tc-border: rgba(60, 40, 10, 0.1);
@@ -44,8 +44,8 @@
     --tc-text-2: #6b6050;
     --tc-text-3: #a8998a;
 
-    /* ── Sidebar — light mode: más tinte que el bg para jerarquía */
-    --sidebar-bg: var(--user-color-sidebar, #f5e9cc);
+    /* ── Sidebar — light mode: aged paper, deeper than bg ─────── */
+    --sidebar-bg: #f5e9cc; /* logo sand at ~45% — clear depth vs bg */
     --sidebar-border: rgba(60, 40, 10, 0.1);
     --sidebar-inactive: #8c7e6c;
     --sidebar-hover-bg: rgba(60, 40, 10, 0.06);
