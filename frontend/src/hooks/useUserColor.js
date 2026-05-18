@@ -58,6 +58,17 @@ function mixWithNeutral(rgb, amount) {
   };
 }
 
+// Mezcla el acento con un near-black neutro para superficies de dark mode.
+// `amount` es la fracción de ACENTO — valores bajos (0.05-0.15) dan tintes muy sutiles.
+function mixWithDark(rgb, amount) {
+  const dark = { r: 10, g: 10, b: 12 };
+  return {
+    r: Math.round(rgb.r * amount + dark.r * (1 - amount)),
+    g: Math.round(rgb.g * amount + dark.g * (1 - amount)),
+    b: Math.round(rgb.b * amount + dark.b * (1 - amount)),
+  };
+}
+
 /**
  * Convierte RGB a hexadecimal
  */
@@ -110,6 +121,14 @@ export function useUserColor() {
     const colorTextMuted = mixWithNeutral(rgb, 0.25);
     const colorTextSubtle = mixWithNeutral(rgb, 0.15);
 
+    // ── Dark mode surfaces: near-black + fracción de acento ───────────
+    // amount = fracción de ACENTO (pequeña para mantener la oscuridad)
+    const darkBg = mixWithDark(rgb, 0.05); // ~5%  — fondo página dark
+    const darkSurface = mixWithDark(rgb, 0.08); // ~8%  — cards dark
+    const darkSurface2 = mixWithDark(rgb, 0.11); // ~11% — surface-2 dark
+    const darkSurface3 = mixWithDark(rgb, 0.15); // ~15% — surface-3 dark
+    const darkSidebar = mixWithDark(rgb, 0.06); // ~6%  — sidebar dark
+
     // Aplicar variables CSS
     root.style.setProperty('--user-color-50', rgbToHex(color50));
     root.style.setProperty('--user-color-100', rgbToHex(color100));
@@ -133,6 +152,13 @@ export function useUserColor() {
     // Tints de texto
     root.style.setProperty('--user-color-text-muted', rgbToHex(colorTextMuted));
     root.style.setProperty('--user-color-text-subtle', rgbToHex(colorTextSubtle));
+
+    // Dark mode surfaces
+    root.style.setProperty('--user-color-dark-bg', rgbToHex(darkBg));
+    root.style.setProperty('--user-color-dark-surface', rgbToHex(darkSurface));
+    root.style.setProperty('--user-color-dark-surface-2', rgbToHex(darkSurface2));
+    root.style.setProperty('--user-color-dark-surface-3', rgbToHex(darkSurface3));
+    root.style.setProperty('--user-color-dark-sidebar', rgbToHex(darkSidebar));
 
     // También guardar RGB para uso en rgba()
     root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);

@@ -52,6 +52,74 @@
   color: var(--user-color-text-muted, #5a4a3a);
 }
 
+/* ── Dark mode bridges — sync surfaces and borders with accent ───── */
+/* Pages use dark:bg-gray-* and hardcoded dark hex values.            */
+/* These override them to follow --user-color-dark-* vars.            */
+/* Tailwind gray 50–600 are warm editorial tones (light mode only).   */
+/* All dark:* classes using those values need neutral replacements.   */
+
+/* Backgrounds */
+.dark .bg-gray-600,
+.dark .dark\:bg-gray-600 {
+  background-color: var(--user-color-dark-surface-3, #252524);
+}
+.dark .bg-gray-700,
+.dark .dark\:bg-gray-700 {
+  background-color: var(--user-color-dark-surface-2, #3a3a3c);
+}
+.dark .bg-gray-800,
+.dark .dark\:bg-gray-800 {
+  background-color: var(--user-color-dark-surface, #2c2c2e);
+}
+.dark .bg-gray-900,
+.dark .dark\:bg-gray-900 {
+  background-color: var(--user-color-dark-bg, #1c1c1e);
+}
+/* Common hardcoded dark surfaces used in pages */
+.dark .bg-\[\#2c2c2e\],
+.dark .dark\:bg-\[\#2c2c2e\] {
+  background-color: var(--user-color-dark-surface, #2c2c2e);
+}
+.dark .bg-\[\#1a1a1e\],
+.dark .dark\:bg-\[\#1a1a1e\] {
+  background-color: var(--user-color-dark-surface-2, #1a1a1e);
+}
+
+/* Hover backgrounds — warm gray 600 is the critical one (#5A4A3A) */
+.dark .dark\:hover\:bg-gray-600:hover {
+  background-color: var(--user-color-dark-surface-2, #3a3a3c);
+}
+.dark .dark\:hover\:bg-gray-700:hover {
+  background-color: var(--user-color-dark-surface-2, #3a3a3c);
+}
+.dark .dark\:hover\:bg-gray-800:hover {
+  background-color: var(--user-color-dark-surface, #2c2c2e);
+}
+
+/* Dark mode borders */
+.dark .border-gray-700,
+.dark .dark\:border-gray-700 {
+  border-color: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.1);
+}
+.dark .border-gray-600,
+.dark .dark\:border-gray-600 {
+  border-color: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.12);
+}
+
+/* Dark mode text — gray 100–400 are warm in Tailwind config, needs neutral */
+.dark .dark\:text-gray-100 {
+  color: #f1f1f3;
+}
+.dark .dark\:text-gray-200 {
+  color: #d1d1d6;
+}
+.dark .dark\:text-gray-300 {
+  color: #a0a0ab;
+}
+.dark .dark\:text-gray-400 {
+  color: #7d7d87;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    TRADECLIMB DESIGN TOKENS
    Gold (#C9961A) from logo + warm charcoal dark surfaces
@@ -98,27 +166,27 @@
   }
 
   .dark {
-    /* ── Dark mode surfaces ────────────────────────────────────── */
-    --tc-bg: #09090b;
-    --tc-surface: #111113;
-    --tc-surface-2: #1a1a1e;
-    --tc-surface-3: #222228;
-    --tc-border: rgba(255, 255, 255, 0.06);
-    --tc-border-strong: rgba(255, 255, 255, 0.12);
+    /* ── Dark mode surfaces — near-black + tinte de acento ──────── */
+    --tc-bg: var(--user-color-dark-bg, #09090b);
+    --tc-surface: var(--user-color-dark-surface, #111113);
+    --tc-surface-2: var(--user-color-dark-surface-2, #1a1a1e);
+    --tc-surface-3: var(--user-color-dark-surface-3, #222228);
+    --tc-border: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.1);
+    --tc-border-strong: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.2);
 
-    /* ── Dark mode text ────────────────────────────────────────── */
+    /* ── Dark mode text — neutro, el acento aparece en bordes/hover */
     --tc-text-1: #f2f0eb;
     --tc-text-2: #8c8c88;
     --tc-text-3: #4a4a48;
 
-    /* ── Sidebar — dark mode ───────────────────────────────────── */
-    --sidebar-bg: #0d0d10;
-    --sidebar-border: rgba(255, 255, 255, 0.055);
+    /* ── Sidebar — dark mode sincronizado con acento ────────────── */
+    --sidebar-bg: var(--user-color-dark-sidebar, #0d0d10);
+    --sidebar-border: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.08);
     --sidebar-inactive: #6e6e6a;
-    --sidebar-hover-bg: rgba(255, 255, 255, 0.045);
+    --sidebar-hover-bg: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.08);
     --sidebar-hover-text: #d0d0cc;
     --sidebar-section-text: #333330;
-    --sidebar-divider: rgba(255, 255, 255, 0.05);
+    --sidebar-divider: rgba(var(--user-color-600-rgb, 255, 255, 255), 0.06);
   }
 
   /* ── Base resets ─────────────────────────────────────────────── */
