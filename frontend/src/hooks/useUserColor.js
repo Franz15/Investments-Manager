@@ -82,6 +82,13 @@ export function useUserColor() {
     const color800 = mixWithBlack(rgb, 0.35);
     const color900 = mixWithBlack(rgb, 0.5);
 
+    // ── Tints de fondo — blanco + una pequeña fracción del acento ──
+    // El fondo sigue siendo casi blanco; solo el tinte cambia con el acento.
+    // Jerarquía: surface (0.025) < bg (0.06) < sidebar (0.14)
+    const colorSurface = mixWithWhite(rgb, 0.025);
+    const colorBg = mixWithWhite(rgb, 0.06);
+    const colorSidebar = mixWithWhite(rgb, 0.14);
+
     // Aplicar variables CSS
     root.style.setProperty('--user-color-50', rgbToHex(color50));
     root.style.setProperty('--user-color-100', rgbToHex(color100));
@@ -94,6 +101,11 @@ export function useUserColor() {
     root.style.setProperty('--user-color-800', rgbToHex(color800));
     root.style.setProperty('--user-color-900', rgbToHex(color900));
     root.style.setProperty('--user-color', userColor);
+
+    // Tints de superficie (modo claro)
+    root.style.setProperty('--user-color-surface', rgbToHex(colorSurface));
+    root.style.setProperty('--user-color-bg', rgbToHex(colorBg));
+    root.style.setProperty('--user-color-sidebar', rgbToHex(colorSidebar));
 
     // También guardar RGB para uso en rgba()
     root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);
