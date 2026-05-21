@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const portfolioFundSchema = new mongoose.Schema(
   {
@@ -27,15 +27,15 @@ const portfolioFundSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
-        "Monetarios",
-        "RF corto plazo",
-        "RF medio plazo",
-        "Renta Variable",
-        "Renta Fija largo plazo",
-        "ETFs",
-        "Mixtos",
-        "Alternativos",
-        "Revisar",
+        'Monetarios',
+        'RF corto plazo',
+        'RF medio plazo',
+        'Renta Variable',
+        'Renta Fija largo plazo',
+        'ETFs',
+        'Mixtos',
+        'Alternativos',
+        'Revisar',
       ],
     },
     notes: {
@@ -50,13 +50,13 @@ const portfolioFundSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
-// Índice para búsquedas rápidas por categoría y usuario
 portfolioFundSchema.index({ user: 1, category: 1 });
-portfolioFundSchema.index({ user: 1, isin: 1 });
+// Unique per user+isin to prevent duplicate fund entries (sparse allows null isin)
+portfolioFundSchema.index({ user: 1, isin: 1 }, { unique: true, sparse: true });
 
-const PortfolioFund = mongoose.model("PortfolioFund", portfolioFundSchema);
+const PortfolioFund = mongoose.model('PortfolioFund', portfolioFundSchema);
 
 export default PortfolioFund;
