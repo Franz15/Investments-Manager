@@ -8,13 +8,9 @@ import {
   X,
   User,
   LogOut,
-  Building2,
-  ShieldCheck,
   Briefcase,
   PiggyBank,
-  BarChart3,
-  BookOpen,
-  Target,
+  ShieldCheck,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -84,8 +80,8 @@ const Layout = ({ children }) => {
   };
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'javier';
-  const hasPortfolioBuilderAccess =
-    isAdmin || (currentUser?.permissions?.portfolioBuilder && currentUser?.id !== 'test-dca');
+  const hasFinancesAccess = isAdmin || (currentUser?.permissions?.canAccessFinances ?? true);
+  const hasBusinessesAccess = isAdmin || (currentUser?.permissions?.canAccessBusinesses ?? true);
 
   /* ── Navigation groups — original structure ─────────────────── */
   const investmentsSection = [
@@ -95,30 +91,35 @@ const Layout = ({ children }) => {
     { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
   ];
 
-  const financesSection = [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }];
-
-  const extraSection = [
-    ...(hasPortfolioBuilderAccess
-      ? [{ name: t('sidebar.portfolioBuilder'), href: '/portfolio-builder', icon: Building2 }]
+  /* Flat list for current-page detection */
+  const allSectionItems = [
+    ...investmentsSection,
+    ...(hasFinancesAccess
+      ? [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }]
       : []),
-    { name: t('sidebar.budgets') || 'Presupuestos', href: '/budgets', icon: Target },
-    { name: t('sidebar.forecasts') || 'Previsiones', href: '/forecasts', icon: BarChart3 },
-    { name: t('sidebar.reports') || 'Informes', href: '/reports', icon: BookOpen },
+    ...(hasBusinessesAccess
+      ? [{ name: t('sidebar.businesses'), href: '/businesses', icon: Briefcase }]
+      : []),
     ...(isAdmin
-      ? [{ name: t('sidebar.adminAccess') || 'Accesos', href: '/admin/access', icon: ShieldCheck }]
+      ? [
+          {
+            name: t('sidebar.adminAccess') || 'Gestión de accesos',
+            href: '/admin/access',
+            icon: ShieldCheck,
+          },
+        ]
       : []),
     { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
   ];
-
-  /* Flat list for current-page detection */
-  const allSectionItems = [...investmentsSection, ...financesSection, ...extraSection];
 
   /* Bottom nav (mobile) — 5 primary routes */
   const bottomNavItems = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
     { name: t('sidebar.investments'), href: '/investments', icon: TrendingUp },
-    { name: t('sidebar.finances'), href: '/finances', icon: PiggyBank },
+    ...(hasFinancesAccess
+      ? [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }]
+      : []),
     { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
   ];
 
@@ -196,7 +197,7 @@ const Layout = ({ children }) => {
   const SidebarBody = ({ collapsed, onClose }) => (
     <>
       <nav className="flex-1 overflow-y-auto" style={{ padding: collapsed ? '12px 8px' : '12px' }}>
-        {/* Inversiones section */}
+        {/* ---- Inversiones ---- */}
         {!collapsed && (
           <p className="section-title px-2 mb-1.5">{t('sidebar.investmentsSection')}</p>
         )}
@@ -206,112 +207,148 @@ const Layout = ({ children }) => {
           ))}
         </div>
 
-        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
-
-        {/* Finanzas section */}
-        {!collapsed && <p className="section-title px-2 mb-1.5">{t('sidebar.financesSection')}</p>}
-        <div className="space-y-0.5">
-          {financesSection.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
-          ))}
-        </div>
-
-        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
-
-        {/* Businesses dropdown */}
-        {!collapsed ? (
+        {/* ---- Finanzas ---- (Finanzas + Negocios) */}
+        {(hasFinancesAccess || hasBusinessesAccess) && (
           <>
-            <button
-              onClick={() => {
-                setBusinessesExpanded((v) => !v);
-                if (!businessesExpanded) navigate('/businesses');
-              }}
-              className="sidebar-link w-full text-left"
-              style={{
-                color: isActive('/businesses') || selectedBusiness ? S.activeText : S.inactiveText,
-                background:
-                  isActive('/businesses') || selectedBusiness ? S.activeBg : 'transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive('/businesses') && !selectedBusiness) {
-                  e.currentTarget.style.background = S.hoverBg;
-                  e.currentTarget.style.color = S.hoverText;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive('/businesses') && !selectedBusiness) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = S.inactiveText;
-                }
-              }}
-            >
-              <Briefcase
-                className="mr-2.5 h-4 w-4 flex-shrink-0"
-                strokeWidth={1.75}
-                style={{ color: 'inherit' }}
-              />
-              <span className="flex-1 text-[0.8125rem]">{t('sidebar.businesses')}</span>
-              {businessesExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
-              )}
-            </button>
-
-            {businessesExpanded && (
-              <div
-                className="ml-3 mt-0.5 pl-3 space-y-0.5"
-                style={{ borderLeft: `1px solid ${S.divider}` }}
-              >
-                <BusinessBtn
-                  label={t('businesses.personal') || 'Personal'}
-                  icon={<User className="h-3 w-3 flex-shrink-0" />}
-                  active={selectedBusiness === 'personal' || !selectedBusiness}
-                  onClick={() => {
-                    selectBusiness('personal');
-                    navigate('/businesses');
-                    onClose?.();
-                  }}
-                />
-                {businesses
-                  .filter((b) => b.isActive)
-                  .map((b) => (
-                    <BusinessBtn
-                      key={b._id}
-                      label={b.name}
-                      icon={
-                        <span
-                          className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{ background: b.color }}
-                        />
-                      }
-                      active={selectedBusiness === b._id}
-                      color={b.color}
-                      onClick={() => {
-                        selectBusiness(b._id);
-                        navigate('/businesses');
-                        onClose?.();
-                      }}
-                    />
-                  ))}
-              </div>
+            <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+            {!collapsed && (
+              <p className="section-title px-2 mb-1.5">{t('sidebar.financesSection')}</p>
             )}
+            <div className="space-y-0.5">
+              {/* Finanzas link */}
+              {hasFinancesAccess && (
+                <NavLink
+                  item={{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }}
+                  collapsed={collapsed}
+                  onClick={onClose}
+                />
+              )}
+
+              {/* Negocios dropdown */}
+              {hasBusinessesAccess && (
+                <>
+                  {!collapsed ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setBusinessesExpanded((v) => !v);
+                          if (!businessesExpanded) navigate('/businesses');
+                        }}
+                        className="sidebar-link w-full text-left"
+                        style={{
+                          color:
+                            isActive('/businesses') || selectedBusiness
+                              ? S.activeText
+                              : S.inactiveText,
+                          background:
+                            isActive('/businesses') || selectedBusiness
+                              ? S.activeBg
+                              : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive('/businesses') && !selectedBusiness) {
+                            e.currentTarget.style.background = S.hoverBg;
+                            e.currentTarget.style.color = S.hoverText;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive('/businesses') && !selectedBusiness) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = S.inactiveText;
+                          }
+                        }}
+                      >
+                        <Briefcase
+                          className="mr-2.5 h-4 w-4 flex-shrink-0"
+                          strokeWidth={1.75}
+                          style={{ color: 'inherit' }}
+                        />
+                        <span className="flex-1 text-[0.8125rem]">{t('sidebar.businesses')}</span>
+                        {businessesExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+                        )}
+                      </button>
+
+                      {businessesExpanded && (
+                        <div
+                          className="ml-3 mt-0.5 pl-3 space-y-0.5"
+                          style={{ borderLeft: `1px solid ${S.divider}` }}
+                        >
+                          <BusinessBtn
+                            label={t('businesses.personal') || 'Personal'}
+                            icon={<User className="h-3 w-3 flex-shrink-0" />}
+                            active={selectedBusiness === 'personal' || !selectedBusiness}
+                            onClick={() => {
+                              selectBusiness('personal');
+                              navigate('/businesses');
+                              onClose?.();
+                            }}
+                          />
+                          {businesses
+                            .filter((b) => b.isActive)
+                            .map((b) => (
+                              <BusinessBtn
+                                key={b._id}
+                                label={b.name}
+                                icon={
+                                  <span
+                                    className="w-2 h-2 rounded-full flex-shrink-0"
+                                    style={{ background: b.color }}
+                                  />
+                                }
+                                active={selectedBusiness === b._id}
+                                color={b.color}
+                                onClick={() => {
+                                  selectBusiness(b._id);
+                                  navigate('/businesses');
+                                  onClose?.();
+                                }}
+                              />
+                            ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <NavLink
+                      item={{ name: t('sidebar.businesses'), href: '/businesses', icon: Briefcase }}
+                      collapsed
+                      onClick={onClose}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </>
-        ) : (
-          <NavLink
-            item={{ name: t('sidebar.businesses'), href: '/businesses', icon: Briefcase }}
-            collapsed
-            onClick={onClose}
-          />
         )}
 
-        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+        {/* Gestión de accesos — solo admin */}
+        {isAdmin && (
+          <>
+            <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
+            <div className="space-y-0.5">
+              <NavLink
+                item={{
+                  name: t('sidebar.adminAccess') || 'Gestión de accesos',
+                  href: '/admin/access',
+                  icon: ShieldCheck,
+                }}
+                collapsed={collapsed}
+                onClick={onClose}
+              />
+            </div>
+          </>
+        )}
 
-        {/* Extra items — no section header */}
+        {/* Usuario — siempre el último */}
+        <div className="my-3 mx-1" style={{ borderTop: `1px solid ${S.divider}` }} />
         <div className="space-y-0.5">
-          {extraSection.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={collapsed} onClick={onClose} />
-          ))}
+          <NavLink
+            item={{ name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User }}
+            collapsed={collapsed}
+            onClick={onClose}
+          />
         </div>
       </nav>
 

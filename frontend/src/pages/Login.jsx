@@ -151,7 +151,7 @@ const Login = () => {
 
         {/* Footer of left panel */}
         <p className="relative z-10 text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          © 2024 TradeClimb — Uso privado
+          2025 TradeClimb — versión en curso - preview
         </p>
       </div>
 

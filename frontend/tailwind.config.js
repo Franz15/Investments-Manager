@@ -5,14 +5,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Warm editorial gray scale ─────────────────────────────────
-        // Replaces Tailwind's cold blue-gray palette with a warm tone
-        // derived from the TRADECLIMB logo sand (#F5D898).
-        // Every bg-gray-*, text-gray-*, border-gray-* in all 14 pages
-        // automatically uses this scale — no page edits needed.
-        //
-        // Light end: FT editorial cream (#FFF1E5 at gray-50)
-        // Dark end:  warm ink (#1A1208 at gray-900)
+        // ── Gray scale — warm light end, neutral dark end ────────────
+        // 50–600: warm editorial tones (light mode surfaces & text).
+        //         Bridged dynamically via CSS vars in index.css.
+        // 700–950: neutral near-blacks used for dark mode surfaces
+        //          (dark:bg-gray-700, dark:bg-gray-800, etc.).
+        //          Neutral here prevents warm-brown bleed in dark mode.
         gray: {
           50: '#FFF1E5',
           100: '#F7EDD8',
@@ -21,10 +19,10 @@ export default {
           400: '#A89080',
           500: '#7A6A5A',
           600: '#5A4A3A',
-          700: '#3C2E20',
-          800: '#261D14',
-          900: '#1A1208',
-          950: '#0D0804',
+          700: '#3A3A3C',
+          800: '#2C2C2E',
+          900: '#1C1C1E',
+          950: '#0F0F0F',
         },
 
         // ── TRADECLIMB Brand Gold ─────────────────────────────────────
