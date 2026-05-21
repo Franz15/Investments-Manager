@@ -12,7 +12,13 @@ const ThemeToggle = () => {
     <button
       type="button"
       onClick={handleClick}
-      className="relative p-2 rounded hover:bg-gray-100 dark:hover:bg-[#404040] text-gray-600 dark:text-gray-400 transition-colors duration-200"
+      className="relative p-2 rounded dark:hover:bg-[#404040] text-gray-600 dark:text-gray-400 transition-colors duration-200"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--sidebar-hover-bg)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = '';
+      }}
       aria-label="Toggle theme"
     >
       <div className="relative">
