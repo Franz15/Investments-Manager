@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Loader2, Lock, Clock } from 'lucide-react';
+import { ShieldCheck, Loader2, Lock, Clock, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useUser } from '../contexts/UserContext';
@@ -41,6 +41,25 @@ function formatTimeAgo(dateStr, t) {
   return template.replace('{time}', time);
 }
 
+/** Toggle switch reutilizable para esta página */
+const Toggle = ({ on, disabled, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
+      on ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+    }`}
+    aria-pressed={on}
+  >
+    <span
+      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+        on ? 'translate-x-5' : 'translate-x-0'
+      }`}
+    />
+  </button>
+);
+
 const AdminAccess = () => {
   const { t } = useTranslation();
   const { currentUser } = useUser();
@@ -48,6 +67,8 @@ const AdminAccess = () => {
   const [loading, setLoading] = useState(true);
   const [savingUserId, setSavingUserId] = useState(null);
   const [resettingUserId, setResettingUserId] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [error, setError] = useState(null);
   const [resetInfo, setResetInfo] = useState(null);
 
@@ -74,6 +95,8 @@ const AdminAccess = () => {
       const res = await api.patch(`/users/${user.id}/permissions`, {
         permissions: {
           portfolioBuilder: newValue,
+          canAccessFinances: user.permissions?.canAccessFinances ?? true,
+          canAccessBusinesses: user.permissions?.canAccessBusinesses ?? true,
           canChangePassword: user.permissions?.canChangePassword ?? true,
         },
       });
@@ -81,6 +104,56 @@ const AdminAccess = () => {
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
     } catch (err) {
       console.error('Error al actualizar permisos de usuario:', err);
+      setError(
+        err.response?.data?.message || 'No se han podido actualizar los permisos del usuario.'
+      );
+    } finally {
+      setSavingUserId(null);
+    }
+  };
+
+  const handleToggleFinances = async (user) => {
+    const newValue = !(user.permissions?.canAccessFinances ?? true);
+    setSavingUserId(user.id);
+    setError(null);
+    try {
+      const res = await api.patch(`/users/${user.id}/permissions`, {
+        permissions: {
+          portfolioBuilder: user.permissions?.portfolioBuilder ?? false,
+          canAccessFinances: newValue,
+          canAccessBusinesses: user.permissions?.canAccessBusinesses ?? true,
+          canChangePassword: user.permissions?.canChangePassword ?? true,
+        },
+      });
+      const updated = res.data;
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+    } catch (err) {
+      console.error('Error al actualizar acceso a Finanzas:', err);
+      setError(
+        err.response?.data?.message || 'No se han podido actualizar los permisos del usuario.'
+      );
+    } finally {
+      setSavingUserId(null);
+    }
+  };
+
+  const handleToggleBusinesses = async (user) => {
+    const newValue = !(user.permissions?.canAccessBusinesses ?? true);
+    setSavingUserId(user.id);
+    setError(null);
+    try {
+      const res = await api.patch(`/users/${user.id}/permissions`, {
+        permissions: {
+          portfolioBuilder: user.permissions?.portfolioBuilder ?? false,
+          canAccessFinances: user.permissions?.canAccessFinances ?? true,
+          canAccessBusinesses: newValue,
+          canChangePassword: user.permissions?.canChangePassword ?? true,
+        },
+      });
+      const updated = res.data;
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+    } catch (err) {
+      console.error('Error al actualizar acceso a Negocios:', err);
       setError(
         err.response?.data?.message || 'No se han podido actualizar los permisos del usuario.'
       );
@@ -99,6 +172,8 @@ const AdminAccess = () => {
       const res = await api.patch(`/users/${user.id}/permissions`, {
         permissions: {
           portfolioBuilder: user.permissions?.portfolioBuilder ?? false,
+          canAccessFinances: user.permissions?.canAccessFinances ?? true,
+          canAccessBusinesses: user.permissions?.canAccessBusinesses ?? true,
           canChangePassword: newValue,
         },
       });
@@ -140,6 +215,31 @@ const AdminAccess = () => {
       );
     } finally {
       setResettingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (confirmDeleteId !== user.id) {
+      // Primer clic: pedir confirmación
+      setConfirmDeleteId(user.id);
+      return;
+    }
+    // Segundo clic: ejecutar
+    setConfirmDeleteId(null);
+    setDeletingUserId(user.id);
+    setError(null);
+    try {
+      await api.delete(`/users/${user.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } catch (err) {
+      console.error('Error al eliminar usuario:', err);
+      setError(
+        err.response?.data?.message ||
+          t('adminAccess.deleteError') ||
+          'No se ha podido eliminar el usuario.'
+      );
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -196,147 +296,266 @@ const AdminAccess = () => {
         )}
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#27272a] dark:bg-[#18181b] overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-[#27272a] flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              {t('adminAccess.usersHeader') || 'Usuarios'}
+          {/* Cabecera de columnas — visible en desktop */}
+          <div className="hidden md:grid grid-cols-[1fr_100px_80px_80px_110px_110px_70px] gap-x-2 px-5 py-2.5 border-b border-gray-100 dark:border-[#27272a] bg-gray-50 dark:bg-gray-900/40 items-center">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {t('adminAccess.usersHeader') || 'Usuario'}
             </span>
-            {loading && (
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>{t('adminAccess.loading') || 'Cargando usuarios...'}</span>
-              </div>
-            )}
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.portfolioBuilderLabel') || 'Portfolio'}
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.financesLabel') || 'Finanzas'}
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.businessesLabel') || 'Negocios'}
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.canChangePasswordLabel') || 'Cambio pwd'}
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.resetPasswordLabel') || 'Resetear'}
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center">
+              {t('adminAccess.deleteLabel') || 'Eliminar'}
+            </span>
           </div>
+
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{t('adminAccess.loading') || 'Cargando usuarios...'}</span>
+            </div>
+          )}
 
           <div className="divide-y divide-gray-100 dark:divide-[#27272a]">
             {users.map((user) => {
               const isSelf = user.id === currentUser?.id;
               return (
-                <div key={user.id} className="px-4 py-3 flex items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {user.name}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        @{user.id}
-                        {isSelf ? ' · tú' : ''}
-                      </span>
+                <div key={user.id}>
+                  {/* Desktop: grid alineado con cabecera */}
+                  <div className="hidden md:grid grid-cols-[1fr_100px_80px_80px_110px_110px_70px] gap-x-2 px-5 py-4 items-center">
+                    {/* Info usuario */}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {user.name}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          @{user.id}
+                          {isSelf ? ' · tú' : ''}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 dark:bg-[#27272a] dark:text-gray-300">
+                          {user.role === 'admin'
+                            ? t('adminAccess.roleAdmin') || 'admin'
+                            : t('adminAccess.roleUser') || 'usuario'}
+                        </span>
+                        {user.id === 'test-dca' && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                            {t('adminAccess.testAccount') || 'Test'}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                          <Clock className="w-3 h-3" />
+                          {user.lastLogin
+                            ? formatTimeAgo(user.lastLogin, t)
+                            : t('adminAccess.lastLoginNever') || 'Nunca'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-[#27272a] dark:text-gray-300">
-                        {t('adminAccess.roleLabel') || 'Rol'}:{' '}
+
+                    {isSelf ? (
+                      <div className="col-span-6 text-xs text-gray-400 dark:text-gray-500 text-center italic">
+                        {t('adminAccess.mainAdminLabel') ||
+                          'Administrador principal (permisos fijos)'}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Portfolio Builder */}
+                        <div className="flex justify-center">
+                          <Toggle
+                            on={user.permissions?.portfolioBuilder}
+                            disabled={savingUserId === user.id}
+                            onClick={() => handleTogglePortfolioBuilder(user)}
+                          />
+                        </div>
+                        {/* Finanzas */}
+                        <div className="flex justify-center">
+                          <Toggle
+                            on={user.permissions?.canAccessFinances ?? true}
+                            disabled={savingUserId === user.id}
+                            onClick={() => handleToggleFinances(user)}
+                          />
+                        </div>
+                        {/* Negocios */}
+                        <div className="flex justify-center">
+                          <Toggle
+                            on={user.permissions?.canAccessBusinesses ?? true}
+                            disabled={savingUserId === user.id}
+                            onClick={() => handleToggleBusinesses(user)}
+                          />
+                        </div>
+                        {/* Cambio contraseña */}
+                        <div className="flex justify-center">
+                          <Toggle
+                            on={user.permissions?.canChangePassword ?? true}
+                            disabled={savingUserId === user.id}
+                            onClick={() => handleToggleCanChangePassword(user)}
+                          />
+                        </div>
+                        {/* Resetear contraseña */}
+                        <div className="flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleResetPassword(user)}
+                            disabled={resettingUserId === user.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors bg-white dark:bg-[#18181b] border-gray-200 dark:border-[#27272a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#27272a] disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {resettingUserId === user.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Lock className="w-3 h-3" />
+                            )}
+                            {t('adminAccess.resetPasswordButton') || 'Resetear'}
+                          </button>
+                        </div>
+
+                        {/* Eliminar usuario */}
+                        <div className="flex justify-center">
+                          {confirmDeleteId === user.id ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(user)}
+                                disabled={deletingUserId === user.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 transition-colors"
+                              >
+                                {deletingUserId === user.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : null}
+                                {t('adminAccess.deleteConfirmButton') || '¿Eliminar?'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={deletingUserId === user.id}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40"
+                              title={t('adminAccess.deleteLabel') || 'Eliminar usuario'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Mobile: tarjeta compacta */}
+                  <div className="md:hidden px-4 py-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {user.name}
+                        </span>
+                        <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                          @{user.id}
+                          {isSelf ? ' · tú' : ''}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600 dark:bg-[#27272a] dark:text-gray-300">
                         {user.role === 'admin'
                           ? t('adminAccess.roleAdmin') || 'admin'
                           : t('adminAccess.roleUser') || 'usuario'}
                       </span>
-                      {user.id === 'test-dca' && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                          {t('adminAccess.testAccount') || 'Cuenta de test'}
-                        </span>
-                      )}
-                      {user.lastLogin && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                          <Clock className="w-3 h-3" />
-                          {t('adminAccess.lastLogin') || 'Última conexión'}:{' '}
-                          {formatTimeAgo(user.lastLogin, t)}
-                        </span>
-                      )}
-                      {!user.lastLogin && user.id !== currentUser?.id && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
-                          <Clock className="w-3 h-3" />
-                          {t('adminAccess.lastLogin') || 'Última conexión'}:{' '}
-                          {t('adminAccess.lastLoginNever') || 'Nunca'}
-                        </span>
-                      )}
                     </div>
+                    {!isSelf && (
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                        {[
+                          {
+                            label: t('adminAccess.portfolioBuilderLabel') || 'Portfolio Builder',
+                            on: user.permissions?.portfolioBuilder,
+                            handler: () => handleTogglePortfolioBuilder(user),
+                          },
+                          {
+                            label: t('adminAccess.financesLabel') || 'Finanzas',
+                            on: user.permissions?.canAccessFinances ?? true,
+                            handler: () => handleToggleFinances(user),
+                          },
+                          {
+                            label: t('adminAccess.businessesLabel') || 'Negocios',
+                            on: user.permissions?.canAccessBusinesses ?? true,
+                            handler: () => handleToggleBusinesses(user),
+                          },
+                          {
+                            label: t('adminAccess.canChangePasswordLabel') || 'Cambio contraseña',
+                            on: user.permissions?.canChangePassword ?? true,
+                            handler: () => handleToggleCanChangePassword(user),
+                          },
+                        ].map(({ label, on, handler }) => (
+                          <div key={label} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {label}
+                            </span>
+                            <Toggle on={on} disabled={savingUserId === user.id} onClick={handler} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!isSelf && (
+                      <div className="flex justify-end pt-1">
+                        {confirmDeleteId === user.id ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(user)}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors"
+                            >
+                              {t('adminAccess.deleteConfirmButton') || '¿Eliminar?'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user)}
+                            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            {t('adminAccess.deleteLabel') || 'Eliminar'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {isSelf && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                        {t('adminAccess.mainAdminLabel') ||
+                          'Administrador principal (permisos fijos)'}
+                      </p>
+                    )}
                   </div>
-                  {isSelf ? (
-                    // Javier: sin switches ni reset sobre sí mismo
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('adminAccess.mainAdminLabel') ||
-                        'Administrador principal (permisos fijos)'}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-6">
-                      {/* Columna: Portfolio Builder */}
-                      <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('adminAccess.portfolioBuilderLabel') || 'Portfolio Builder'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePortfolioBuilder(user)}
-                          disabled={savingUserId === user.id}
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            user.permissions?.portfolioBuilder
-                              ? 'bg-emerald-500'
-                              : 'bg-gray-300 dark:bg-gray-600'
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
-                          aria-pressed={user.permissions?.portfolioBuilder}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              user.permissions?.portfolioBuilder ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Columna: Permitir cambio de contraseña */}
-                      <div className="flex flex-col items-end gap-1 min-w-[140px]">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('adminAccess.canChangePasswordLabel') ||
-                            'Permitir cambio de contraseña'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCanChangePassword(user)}
-                          disabled={savingUserId === user.id}
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            (user.permissions?.canChangePassword ?? true)
-                              ? 'bg-emerald-500'
-                              : 'bg-gray-300 dark:bg-gray-600'
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
-                          aria-pressed={user.permissions?.canChangePassword ?? true}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              (user.permissions?.canChangePassword ?? true)
-                                ? 'translate-x-5'
-                                : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Columna: Resetear contraseña */}
-                      <div className="flex flex-col items-end gap-1 min-w-[140px]">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('adminAccess.resetPasswordLabel') || 'Resetear contraseña'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleResetPassword(user)}
-                          disabled={resettingUserId === user.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors bg-white dark:bg-[#18181b] border-gray-200 dark:border-[#27272a] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#27272a] disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {resettingUserId === user.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Lock className="w-3 h-3" />
-                          )}
-                          <span>{t('adminAccess.resetPasswordButton') || 'Resetear'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
 
             {!loading && users.length === 0 && (
-              <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 {t('adminAccess.empty') || 'No se han encontrado usuarios.'}
               </div>
             )}

@@ -47,6 +47,28 @@ function mixWithBlack(rgb, amount) {
   };
 }
 
+// Mezcla el acento con un gris neutro oscuro para textos secundarios.
+// Produce textos sutilmente tintados con el acento sin ser demasiado saturados.
+function mixWithNeutral(rgb, amount) {
+  const neutral = { r: 80, g: 80, b: 80 };
+  return {
+    r: Math.round(rgb.r * amount + neutral.r * (1 - amount)),
+    g: Math.round(rgb.g * amount + neutral.g * (1 - amount)),
+    b: Math.round(rgb.b * amount + neutral.b * (1 - amount)),
+  };
+}
+
+// Mezcla el acento con un near-black neutro para superficies de dark mode.
+// `amount` es la fracción de ACENTO — valores bajos (0.05-0.15) dan tintes muy sutiles.
+function mixWithDark(rgb, amount) {
+  const dark = { r: 10, g: 10, b: 12 };
+  return {
+    r: Math.round(rgb.r * amount + dark.r * (1 - amount)),
+    g: Math.round(rgb.g * amount + dark.g * (1 - amount)),
+    b: Math.round(rgb.b * amount + dark.b * (1 - amount)),
+  };
+}
+
 /**
  * Convierte RGB a hexadecimal
  */
@@ -82,6 +104,31 @@ export function useUserColor() {
     const color800 = mixWithBlack(rgb, 0.35);
     const color900 = mixWithBlack(rgb, 0.5);
 
+    // ── Tints de fondo: fracción de color pequeña + casi todo blanco ──
+    // En mixWithWhite, `amount` es la fracción de BLANCO:
+    //   0.975 → 2.5% color  (surface — cards, casi blanco)
+    //   0.94  → 6%   color  (bg — fondo de página, tinte muy sutil)
+    //   0.86  → 14%  color  (sidebar — más saturado para jerarquía)
+    const colorSurface = mixWithWhite(rgb, 0.975); // ~2.5% color — cards
+    const colorBg = mixWithWhite(rgb, 0.94); // ~6%   color — page bg
+    const colorSurface2 = mixWithWhite(rgb, 0.9); // ~10%  color — tc-surface-2
+    const colorSurface3 = mixWithWhite(rgb, 0.8); // ~20%  color — tc-surface-3
+    const colorSidebar = mixWithWhite(rgb, 0.86); // ~14%  color — sidebar
+
+    // ── Tints de texto: acento mezclado con gris neutro ──────────────
+    // 25% acento → texto secundario (labels, subtítulos)
+    // 15% acento → texto terciario (placeholders, captions)
+    const colorTextMuted = mixWithNeutral(rgb, 0.25);
+    const colorTextSubtle = mixWithNeutral(rgb, 0.15);
+
+    // ── Dark mode surfaces: near-black + fracción de acento ───────────
+    // amount = fracción de ACENTO (pequeña para mantener la oscuridad)
+    const darkBg = mixWithDark(rgb, 0.05); // ~5%  — fondo página dark
+    const darkSurface = mixWithDark(rgb, 0.08); // ~8%  — cards dark
+    const darkSurface2 = mixWithDark(rgb, 0.11); // ~11% — surface-2 dark
+    const darkSurface3 = mixWithDark(rgb, 0.15); // ~15% — surface-3 dark
+    const darkSidebar = mixWithDark(rgb, 0.06); // ~6%  — sidebar dark
+
     // Aplicar variables CSS
     root.style.setProperty('--user-color-50', rgbToHex(color50));
     root.style.setProperty('--user-color-100', rgbToHex(color100));
@@ -94,6 +141,24 @@ export function useUserColor() {
     root.style.setProperty('--user-color-800', rgbToHex(color800));
     root.style.setProperty('--user-color-900', rgbToHex(color900));
     root.style.setProperty('--user-color', userColor);
+
+    // Tints de superficie (solo modo claro)
+    root.style.setProperty('--user-color-surface', rgbToHex(colorSurface));
+    root.style.setProperty('--user-color-bg', rgbToHex(colorBg));
+    root.style.setProperty('--user-color-surface-2', rgbToHex(colorSurface2));
+    root.style.setProperty('--user-color-surface-3', rgbToHex(colorSurface3));
+    root.style.setProperty('--user-color-sidebar', rgbToHex(colorSidebar));
+
+    // Tints de texto
+    root.style.setProperty('--user-color-text-muted', rgbToHex(colorTextMuted));
+    root.style.setProperty('--user-color-text-subtle', rgbToHex(colorTextSubtle));
+
+    // Dark mode surfaces
+    root.style.setProperty('--user-color-dark-bg', rgbToHex(darkBg));
+    root.style.setProperty('--user-color-dark-surface', rgbToHex(darkSurface));
+    root.style.setProperty('--user-color-dark-surface-2', rgbToHex(darkSurface2));
+    root.style.setProperty('--user-color-dark-surface-3', rgbToHex(darkSurface3));
+    root.style.setProperty('--user-color-dark-sidebar', rgbToHex(darkSidebar));
 
     // También guardar RGB para uso en rgba()
     root.style.setProperty('--user-color-600-rgb', `${color600.r}, ${color600.g}, ${color600.b}`);

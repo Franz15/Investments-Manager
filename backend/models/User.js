@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,17 +15,17 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: "👤",
+      default: '👤',
     },
     color: {
       type: String,
-      default: "#3b82f6",
+      default: '#3b82f6',
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },
     language: {
       type: String,
-      default: "es",
-      enum: ["es", "cat"],
+      default: 'es',
+      enum: ['es', 'cat'],
     },
     password: {
       type: String,
@@ -35,8 +35,8 @@ const userSchema = new mongoose.Schema(
     // Rol básico para control de acceso
     role: {
       type: String,
-      enum: ["admin", "user"],
-      default: "user",
+      enum: ['admin', 'user'],
+      default: 'user',
     },
     // Última fecha de inicio de sesión
     lastLogin: {
@@ -49,6 +49,14 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      canAccessFinances: {
+        type: Boolean,
+        default: true,
+      },
+      canAccessBusinesses: {
+        type: Boolean,
+        default: true,
+      },
       canChangePassword: {
         type: Boolean,
         default: true,
@@ -57,7 +65,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model('User', userSchema);

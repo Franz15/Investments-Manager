@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const UserContext = createContext();
 
@@ -14,12 +15,26 @@ export const UserProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    // Cargar usuario y token desde localStorage
+    // 1. Carga inmediata desde localStorage para no mostrar pantalla en blanco
     const savedUser = localStorage.getItem('currentUser');
     const savedToken = localStorage.getItem('authToken');
-    if (savedUser && savedToken) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
+    if (!savedUser || !savedToken) return;
+
+    setCurrentUser(JSON.parse(savedUser));
+
+    // 2. Refresca desde el servidor para obtener permisos actualizados
+    //    (el admin puede haber cambiado permisos mientras la sesión estaba activa)
+    api
+      .get('/users/me')
+      .then((res) => {
+        const fresh = res.data;
+        setCurrentUser(fresh);
+        localStorage.setItem('currentUser', JSON.stringify(fresh));
+      })
+      .catch(() => {
+        // Si falla (token expirado, red, etc.) dejamos los datos de localStorage
+        // El interceptor de api.js ya redirige al login si el token es inválido
+      });
   }, []);
 
   const login = (user, token) => {
