@@ -76,6 +76,8 @@ const PortfolioBuilder = () => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
   const [addingExtra, setAddingExtra] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Mapear un fondo de la API al formato que usa la UI
   const mapFundToSection = (f) => ({
@@ -85,6 +87,8 @@ const PortfolioBuilder = () => {
     volatility12M: f.volatility12M ?? null,
     return12M: f.return12M ?? null,
     notes: f.notes ?? null,
+    isMain: f.isMain ?? false,
+    _seq: f._seq ?? null,
   });
 
   // Construir datos del portfolio desde config (API: allocation, rvDistribution, funds con showInSection)
@@ -92,14 +96,36 @@ const PortfolioBuilder = () => {
   const buildPortfolioDataFromConfig = (config, tFn) => {
     const allocation = config?.allocation || DEFAULT_PORTFOLIO_ALLOCATION;
     const rvDist = config?.rvDistribution || DEFAULT_RV_DISTRIBUTION;
-    const fundsList = config?.funds || [];
+    // Deduplicate by isin+category (or name+category when no isin) to guard against DB duplicates
+    const seen = new Set();
+    const fundsList = (config?.funds || []).filter((f) => {
+      const key = f.isin
+        ? `${(f.isin || '').trim()}|${f.category}`
+        : `${(f.name || '').trim()}|${f.category}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const rvDistributionIsins = new Set(
       (rvDist || []).map((d) => (d.isin || '').trim()).filter(Boolean)
     );
-    const byCategory = (cat, onlyShowInSection = true) =>
-      fundsList
+    const byCategory = (cat, onlyShowInSection = true) => {
+      const extraOrder = (config?.extraFundIsinsByCategory?.[cat] || []).map((s) =>
+        (s || '').trim()
+      );
+      return fundsList
         .filter((f) => f.category === cat && (!onlyShowInSection || f.showInSection === true))
+        .sort((a, b) => {
+          const aMain = a.isMain ?? false;
+          const bMain = b.isMain ?? false;
+          if (aMain !== bMain) return bMain ? 1 : -1; // mains first
+          // both extras: preserve insertion order from extraFundIsinsByCategory
+          const aIdx = extraOrder.indexOf((a.isin || '').trim());
+          const bIdx = extraOrder.indexOf((b.isin || '').trim());
+          return (aIdx === -1 ? Infinity : aIdx) - (bIdx === -1 ? Infinity : bIdx);
+        })
         .map(mapFundToSection);
+    };
     const rvFundsOnlyExtras = () =>
       fundsList
         .filter(
@@ -109,6 +135,20 @@ const PortfolioBuilder = () => {
             !rvDistributionIsins.has((f.isin || '').trim())
         )
         .map(mapFundToSection);
+
+    const manualByCat = config?.manualFundsByCategory || {};
+    const mapManualFund = (f) => ({
+      name: f.name || '',
+      isin: f.isin ?? null,
+      link: f.link ?? null,
+      volatility12M: f.volatility12M ?? null,
+      return12M: f.return12M ?? null,
+      notes: null,
+      isMain: false,
+      _seq: null,
+      _manual: true,
+      _id: f._id,
+    });
 
     // Fallback para fondos conocidos que pueden no estar en fundsList (p. ej. Heptagon en configs antiguas)
     const KNOWN_RV_FUND_FALLBACKS = {
@@ -147,6 +187,8 @@ const PortfolioBuilder = () => {
           volatility12M: d.volatility12M ?? fund.volatility12M ?? null,
           return12M: d.return12M ?? fund.return12M ?? null,
           calculatedAmount: d.calculatedAmount ?? null,
+          isMain: fund.isMain ?? false,
+          _seq: d._seq ?? null,
         };
       }
       return {
@@ -158,6 +200,8 @@ const PortfolioBuilder = () => {
         volatility12M: d.volatility12M ?? null,
         return12M: d.return12M ?? null,
         calculatedAmount: d.calculatedAmount ?? null,
+        isMain: false,
+        _seq: d._seq ?? null,
       };
     };
 
@@ -168,7 +212,10 @@ const PortfolioBuilder = () => {
           title: tFn('portfolioBuilder.sections.monetarios.title'),
           icon: PiggyBank,
           description: DEFAULT_SECTION_DESCRIPTIONS[2] || '',
-          funds: byCategory('Monetarios'),
+          funds: [
+            ...byCategory('Monetarios'),
+            ...(manualByCat['Monetarios'] || []).map(mapManualFund),
+          ],
           categoryKey: 'Monetarios',
           tips: DEFAULT_SECTION_TIPS[2] || [],
           videos: DEFAULT_SECTION_VIDEOS[2] || [],
@@ -195,13 +242,19 @@ const PortfolioBuilder = () => {
             {
               name: tFn('portfolioBuilder.sections.subsections.rfCortoPlazo.name'),
               description: tFn('portfolioBuilder.sections.subsections.rfCortoPlazo.description'),
-              funds: byCategory('RF corto plazo'),
+              funds: [
+                ...byCategory('RF corto plazo'),
+                ...(manualByCat['RF corto plazo'] || []).map(mapManualFund),
+              ],
               categoryKey: 'RF corto plazo',
             },
             {
               name: tFn('portfolioBuilder.sections.subsections.rfMedioPlazo.name'),
               description: tFn('portfolioBuilder.sections.subsections.rfMedioPlazo.description'),
-              funds: byCategory('RF medio plazo'),
+              funds: [
+                ...byCategory('RF medio plazo'),
+                ...(manualByCat['RF medio plazo'] || []).map(mapManualFund),
+              ],
               categoryKey: 'RF medio plazo',
             },
           ],
@@ -212,7 +265,10 @@ const PortfolioBuilder = () => {
           title: tFn('portfolioBuilder.sections.alternativos.title'),
           icon: Layers,
           description: tFn('portfolioBuilder.sections.alternativos.description'),
-          funds: byCategory('Alternativos'),
+          funds: [
+            ...byCategory('Alternativos'),
+            ...(manualByCat['Alternativos'] || []).map(mapManualFund),
+          ],
           categoryKey: 'Alternativos',
           videos: DEFAULT_SECTION_VIDEOS[5] || [],
         },
@@ -222,6 +278,7 @@ const PortfolioBuilder = () => {
       fundsList: fundsList,
       extraFundIsinsByCategory: config?.extraFundIsinsByCategory || {},
       excludedFundIsinsByCategory: config?.excludedFundIsinsByCategory || {},
+      manualFundsByCategory: manualByCat,
     };
   };
 
@@ -294,6 +351,7 @@ const PortfolioBuilder = () => {
   const addExtraFund = async (category, isin = null) => {
     if (!category) return;
     setAddingExtra(category);
+    const newSeq = Date.now();
     try {
       const res = await api.post('/portfolio-builder/config/extra-fund', {
         category,
@@ -313,6 +371,29 @@ const PortfolioBuilder = () => {
             ? { ...f, showInSection: true }
             : f
         );
+        // For RV extras, update section.funds directly to preserve _seq on existing items
+        if (catKey === 'Renta Variable') {
+          const foundFund = prev.fundsList.find(
+            (f) => (f.isin || '').trim() === isinNorm && f.category === catKey
+          );
+          if (foundFund) {
+            const newFundEntry = { ...mapFundToSection({ ...foundFund, _seq: newSeq }) };
+            return {
+              ...prev,
+              fundsList: updatedFundsList,
+              extraFundIsinsByCategory:
+                extraFundIsinsByCategory || prev.extraFundIsinsByCategory || {},
+              excludedFundIsinsByCategory:
+                excludedFundIsinsByCategory ?? prev.excludedFundIsinsByCategory ?? {},
+              sections: prev.sections.map((s) => {
+                if (s.number !== 3) return s;
+                const alreadyIn = (s.funds || []).some((f) => (f.isin || '').trim() === isinNorm);
+                if (alreadyIn) return s;
+                return { ...s, funds: [...(s.funds || []), newFundEntry] };
+              }),
+            };
+          }
+        }
         const rvSection = prev.sections?.find((s) => s.number === 3);
         const syntheticConfig = {
           allocation: prev.portfolioAllocation,
@@ -347,6 +428,24 @@ const PortfolioBuilder = () => {
             ? { ...f, showInSection: false }
             : f
         );
+        // For RV extras, remove directly from section.funds to preserve _seq on remaining items
+        if (catKey === 'Renta Variable') {
+          return {
+            ...prev,
+            fundsList: updatedFundsList,
+            extraFundIsinsByCategory:
+              extraFundIsinsByCategory ?? prev.extraFundIsinsByCategory ?? {},
+            excludedFundIsinsByCategory:
+              excludedFundIsinsByCategory ?? prev.excludedFundIsinsByCategory ?? {},
+            sections: prev.sections.map((s) => {
+              if (s.number !== 3) return s;
+              return {
+                ...s,
+                funds: (s.funds || []).filter((f) => (f.isin || '').trim() !== isinNorm),
+              };
+            }),
+          };
+        }
         const syntheticConfig = {
           allocation: prev.portfolioAllocation,
           rvDistribution: prev.sections?.find((s) => s.number === 3)?.distribution ?? [],
@@ -359,6 +458,96 @@ const PortfolioBuilder = () => {
       });
     } catch (err) {
       console.error('Error al eliminar fondo extra:', err);
+    }
+  };
+
+  // Añadir un slot manual vacío a cualquier sección no-RV (persiste en BBDD)
+  const addManualFundToSection = async (categoryKey) => {
+    if (!categoryKey) return;
+    try {
+      const res = await api.post('/portfolio-builder/config/manual-fund', {
+        category: categoryKey,
+      });
+      const { manualFundsByCategory, addedId } = res.data || {};
+      if (!addedId) return;
+      const newSeq = Date.now();
+      const newFund = {
+        name: '',
+        isin: null,
+        link: null,
+        volatility12M: null,
+        return12M: null,
+        notes: null,
+        isMain: false,
+        _seq: newSeq,
+        _manual: true,
+        _id: addedId,
+      };
+      setPortfolioData((prev) => {
+        if (!prev?.sections) return prev;
+        return {
+          ...prev,
+          manualFundsByCategory: manualFundsByCategory || prev.manualFundsByCategory || {},
+          sections: prev.sections.map((s) => {
+            if (s.number !== 3 && s.categoryKey === categoryKey) {
+              return { ...s, funds: [...(s.funds || []), newFund] };
+            }
+            if (s.number === 4 && s.subsections) {
+              const hasMatch = s.subsections.some((sub) => sub.categoryKey === categoryKey);
+              if (!hasMatch) return s;
+              return {
+                ...s,
+                subsections: s.subsections.map((sub) =>
+                  sub.categoryKey === categoryKey
+                    ? { ...sub, funds: [...(sub.funds || []), newFund] }
+                    : sub
+                ),
+              };
+            }
+            return s;
+          }),
+        };
+      });
+    } catch (err) {
+      console.error('Error al añadir fondo manual:', err);
+    }
+  };
+
+  // Eliminar un slot manual de cualquier sección no-RV (por _id, persiste en BBDD)
+  const removeManualFundFromSection = async (categoryKey, id) => {
+    if (!categoryKey || !id) return;
+    try {
+      const res = await api.delete('/portfolio-builder/config/manual-fund', {
+        params: { category: categoryKey, id },
+      });
+      const { manualFundsByCategory } = res.data || {};
+      setPortfolioData((prev) => {
+        if (!prev?.sections) return prev;
+        return {
+          ...prev,
+          manualFundsByCategory: manualFundsByCategory || prev.manualFundsByCategory || {},
+          sections: prev.sections.map((s) => {
+            if (s.number !== 3 && s.categoryKey === categoryKey) {
+              return { ...s, funds: (s.funds || []).filter((f) => f._id !== id) };
+            }
+            if (s.number === 4 && s.subsections) {
+              const hasMatch = s.subsections.some((sub) => sub.categoryKey === categoryKey);
+              if (!hasMatch) return s;
+              return {
+                ...s,
+                subsections: s.subsections.map((sub) =>
+                  sub.categoryKey === categoryKey
+                    ? { ...sub, funds: (sub.funds || []).filter((f) => f._id !== id) }
+                    : sub
+                ),
+              };
+            }
+            return s;
+          }),
+        };
+      });
+    } catch (err) {
+      console.error('Error al eliminar fondo manual:', err);
     }
   };
 
@@ -408,6 +597,20 @@ const PortfolioBuilder = () => {
     }
   };
 
+  // Resetear configuración a los valores por defecto
+  const resetPortfolioConfig = async () => {
+    setResetting(true);
+    try {
+      await api.post('/portfolio-builder/config/reset');
+      setShowResetConfirm(false);
+      await loadConfig();
+    } catch (err) {
+      console.error('Error al resetear configuración:', err);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   // Parsear porcentaje "20%" o "20" -> número
   const parsePct = (p) => {
     if (p == null) return 0;
@@ -436,6 +639,7 @@ const PortfolioBuilder = () => {
 
   // Añadir un fondo a la distribución RV; se ajustan % manteniendo proporción (nuevo recibe parte, el resto se escala)
   const addRvFundToDistribution = () => {
+    const newSeq = Date.now();
     setPortfolioData((prev) => {
       if (!prev?.sections) return prev;
       return {
@@ -462,6 +666,7 @@ const PortfolioBuilder = () => {
                   volatility12M: null,
                   return12M: null,
                   calculatedAmount: null,
+                  _seq: newSeq,
                 }
           );
           return { ...s, distribution: newDist };
@@ -540,12 +745,138 @@ const PortfolioBuilder = () => {
 
     return {
       categories,
-      totalReturn: (totalReturn * 100).toFixed(2) + '%',
+      totalReturn: (totalReturn * 100).toFixed(1) + '%',
       totalAmountCalculated,
     };
   };
 
   const allocationValues = calculateAllocationValues();
+
+  // Rentabilidades mínima/máxima posibles según las categorías actuales
+  const minExpectedReturn = Math.min(...calculatorData.categories.map((c) => c.expectedReturn));
+  const maxExpectedReturn = Math.max(...calculatorData.categories.map((c) => c.expectedReturn));
+  // Retorno actual de la cartera como número (para el slider)
+  const currentTotalReturnNum = parseFloat(allocationValues.totalReturn) || 0;
+  // Retorno del portfolio equilibrado de referencia (Cartera1 — ancla D)
+  const CARTERA1_W = { Monetarios: 0, 'RF Corto': 40, 'RF Medio': 25, RV: 25, Alternativos: 10 };
+  const cartera1Return =
+    Math.round(
+      calculatorData.categories.reduce(
+        (sum, cat) => sum + ((CARTERA1_W[cat.name] || 0) / 100) * cat.expectedReturn,
+        0
+      ) * 10
+    ) / 10;
+
+  /**
+   * Redistribuye los pesos para alcanzar el retorno objetivo (targetPct en %).
+   *
+   * Usa anclas de asignación estratégica: portfolios bien diversificados
+   * validados contra el Excel Cartera1 y la teoría moderna de carteras (Markowitz).
+   * Interpola linealmente entre las dos anclas que encuadran el objetivo.
+   *
+   * Anclas (los retornos se calculan dinámicamente con los expectedReturn actuales):
+   *   A  ~2.00% : 100% Monetarios                              — liquidez pura
+   *   B  ~3.35% :  40 Mon · 50 RFC · 10 RFM                   — muy conservador
+   *   C  ~4.63% :   5 Mon · 55 RFC · 25 RFM ·  5 RV · 10 Alt — conservador
+   *   D  ~5.73% :   0 Mon · 40 RFC · 25 RFM · 25 RV · 10 Alt — equilibrado (Cartera1)
+   *   E  ~6.95% :   0 Mon · 15 RFC · 20 RFM · 50 RV · 15 Alt — crecimiento
+   *   F  ~8.05% :   0 Mon ·  0 RFC · 10 RFM · 75 RV · 15 Alt — agresivo
+   *   G  ~8.63% :   0 Mon ·  0 RFC ·  5 RFM · 90 RV ·  5 Alt — muy agresivo
+   *   H  ~9.00% :   0 Mon ·  0 RFC ·  0 RFM · 100 RV ·  0 Alt — ultra agresivo (máx. RV)
+   */
+  const applyTargetReturn = (targetPct) => {
+    const cats = calculatorData.categories;
+
+    // Definición de anclas estratégicas (pesos en %, suman 100)
+    const ANCHORS = [
+      { Monetarios: 100, 'RF Corto': 0, 'RF Medio': 0, RV: 0, Alternativos: 0 }, // A ~2.00%
+      { Monetarios: 40, 'RF Corto': 50, 'RF Medio': 10, RV: 0, Alternativos: 0 }, // B ~3.35%
+      { Monetarios: 5, 'RF Corto': 55, 'RF Medio': 25, RV: 5, Alternativos: 10 }, // C ~4.63%
+      { Monetarios: 0, 'RF Corto': 40, 'RF Medio': 25, RV: 25, Alternativos: 10 }, // D ~5.73% (Cartera1)
+      { Monetarios: 0, 'RF Corto': 15, 'RF Medio': 20, RV: 50, Alternativos: 15 }, // E ~6.95%
+      { Monetarios: 0, 'RF Corto': 0, 'RF Medio': 10, RV: 75, Alternativos: 15 }, // F ~8.05%
+      { Monetarios: 0, 'RF Corto': 0, 'RF Medio': 5, RV: 90, Alternativos: 5 }, // G ~8.63% (muy agresivo)
+      { Monetarios: 0, 'RF Corto': 0, 'RF Medio': 0, RV: 100, Alternativos: 0 }, // H ~9.00% (ultra agresivo)
+    ];
+
+    // Calcular el retorno esperado de cada ancla con las rentabilidades actuales del calculador
+    const anchorReturns = ANCHORS.map((w) =>
+      cats.reduce((sum, cat) => sum + ((w[cat.name] || 0) / 100) * cat.expectedReturn, 0)
+    );
+
+    const minR = anchorReturns[0];
+    const maxR = anchorReturns[anchorReturns.length - 1];
+    const T = Math.max(minR, Math.min(maxR, targetPct));
+
+    // Encontrar las dos anclas que encuadran T
+    let loIdx = 0;
+    for (let i = 0; i < anchorReturns.length - 1; i++) {
+      if (anchorReturns[i] <= T && anchorReturns[i + 1] >= T) {
+        loIdx = i;
+        break;
+      }
+    }
+    const hiIdx = loIdx + 1;
+    const loR = anchorReturns[loIdx];
+    const hiR = anchorReturns[hiIdx];
+    const alpha = hiR === loR ? 0 : (T - loR) / (hiR - loR);
+
+    // Interpolar pesos entre las dos anclas
+    const blended = {};
+    Object.keys(ANCHORS[loIdx]).forEach((name) => {
+      blended[name] = ANCHORS[loIdx][name] * (1 - alpha) + ANCHORS[hiIdx][name] * alpha;
+    });
+
+    // ── Normalización a exactamente 100% en pasos de 0.5% ───────────────────────────
+    // Trabajamos en "medios" (×2): 200 medios = 100%, paso mínimo = 0.5%.
+    // Método del mayor resto: garantiza suma exacta sin errores de punto flotante.
+    const names = Object.keys(blended);
+    const UNITS = 200; // 100% ÷ 0.5% = 200 unidades
+    const items = names.map((name) => {
+      const v = Math.max(0, blended[name]);
+      const f = Math.floor(v * 2); // entero en medios (0.5% = 1 unidad)
+      return { name, floor: f, frac: v * 2 - f };
+    });
+
+    const floorSum = items.reduce((s, c) => s + c.floor, 0);
+    const toAdd = UNITS - floorSum; // normalmente 0–5; puede ser negativo por FP
+
+    if (toAdd > 0) {
+      // Dar +0.5% a los items con mayor parte fraccional (más "merecedores")
+      [...items]
+        .sort((a, b) => b.frac - a.frac)
+        .slice(0, toAdd)
+        .forEach((item) => {
+          item.floor += 1;
+        });
+    } else if (toAdd < 0) {
+      // Quitar 0.5% a los items con menor parte fraccional
+      [...items]
+        .sort((a, b) => a.frac - b.frac)
+        .slice(0, -toAdd)
+        .forEach((item) => {
+          item.floor -= 1;
+        });
+    }
+
+    // Guardia final: forzar suma exacta en el mayor si aún hay desvío
+    const finalSum = items.reduce((s, c) => s + c.floor, 0);
+    if (finalSum !== UNITS) {
+      const biggest = items.reduce((m, c) => (c.floor > m.floor ? c : m), items[0]);
+      biggest.floor += UNITS - finalSum;
+    }
+
+    // Convertir de vuelta a porcentaje (÷2): resultados siempre enteros o .5
+    const rounded = items.map((c) => ({ name: c.name, weight: c.floor / 2 }));
+
+    setCalculatorData((prev) => ({
+      ...prev,
+      categories: prev.categories.map((c) => {
+        const found = rounded.find((r) => r.name === c.name);
+        return { ...c, weight: found ? found.weight : 0 };
+      }),
+    }));
+  };
 
   // Calcular la suma total de pesos
   const totalWeightSum = allocationValues.categories.reduce(
@@ -553,17 +884,9 @@ const PortfolioBuilder = () => {
     0
   );
 
-  // Calcular perfil de riesgo de la cartera
+  // Calcular perfil de riesgo de la cartera basándose en la rentabilidad esperada
+  // (monotónico: a mayor rentabilidad objetivo, mayor riesgo implícito)
   const calculateRiskProfile = () => {
-    // Asignar valores de riesgo a cada categoría (1 = muy bajo, 5 = muy alto)
-    const riskValues = {
-      Monetarios: 1,
-      'RF Corto': 2,
-      'RF Medio': 3,
-      RV: 5,
-      Alternativos: 4,
-    };
-
     const totalWeight = allocationValues.categories.reduce(
       (sum, cat) => sum + (parseFloat(cat.weight) || 0),
       0
@@ -576,25 +899,19 @@ const PortfolioBuilder = () => {
       };
     }
 
-    // Calcular riesgo promedio ponderado
-    const weightedRisk = allocationValues.categories.reduce((sum, cat) => {
-      const weight = parseFloat(cat.weight) || 0;
-      const riskValue = riskValues[cat.name] || 3;
-      return sum + riskValue * (weight / 100);
-    }, 0);
+    const ret = currentTotalReturnNum; // rentabilidad actual de la cartera en %
 
-    // Clasificar el perfil de riesgo
     let profile, color;
-    if (weightedRisk <= 1.5) {
+    if (ret <= 3.0) {
       profile = t('portfolioBuilder.calculator.riskProfiles.conservative');
       color = 'green';
-    } else if (weightedRisk <= 2.5) {
+    } else if (ret <= 4.5) {
       profile = t('portfolioBuilder.calculator.riskProfiles.moderate');
       color = 'blue';
-    } else if (weightedRisk <= 3.5) {
+    } else if (ret <= 6.0) {
       profile = t('portfolioBuilder.calculator.riskProfiles.balanced');
       color = 'yellow';
-    } else if (weightedRisk <= 4.5) {
+    } else if (ret <= 7.5) {
       profile = t('portfolioBuilder.calculator.riskProfiles.aggressive');
       color = 'orange';
     } else {
@@ -602,7 +919,7 @@ const PortfolioBuilder = () => {
       color = 'red';
     }
 
-    return { profile, color, weightedRisk };
+    return { profile, color };
   };
 
   const riskProfile = calculateRiskProfile();
@@ -908,6 +1225,145 @@ const PortfolioBuilder = () => {
               />
             </div>
 
+            {/* Slider de rentabilidad objetivo */}
+            <div
+              className="mb-6 p-4 rounded-lg border"
+              style={
+                isDark
+                  ? {
+                      backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.08)`,
+                      borderColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.25)`,
+                    }
+                  : {
+                      backgroundColor: 'var(--user-color-50)',
+                      borderColor: 'var(--user-color-200)',
+                    }
+              }
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Rentabilidad objetivo
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Mueve el slider para ajustar los pesos automáticamente
+                  </p>
+                </div>
+                <span
+                  className="text-2xl font-bold tabular-nums"
+                  style={
+                    isDark ? { color: 'var(--user-color-400)' } : { color: 'var(--user-color-700)' }
+                  }
+                >
+                  {allocationValues.totalReturn}
+                </span>
+              </div>
+
+              {/* Track con gradiente de color y slider */}
+              <div className="relative">
+                {/* Gradiente de fondo del track */}
+                <div
+                  className="absolute top-1/2 left-0 right-0 h-2 rounded-full pointer-events-none"
+                  style={{
+                    transform: 'translateY(-50%)',
+                    background: 'linear-gradient(to right, #10b981 0%, #f59e0b 50%, #ef4444 100%)',
+                    opacity: 0.35,
+                  }}
+                />
+                {/* Relleno activo hasta la posición actual */}
+                <div
+                  className="absolute top-1/2 left-0 h-2 rounded-full pointer-events-none"
+                  style={{
+                    transform: 'translateY(-50%)',
+                    width: `${Math.max(0, Math.min(100, ((currentTotalReturnNum - minExpectedReturn) / (maxExpectedReturn - minExpectedReturn)) * 100))}%`,
+                    background: 'linear-gradient(to right, #10b981 0%, #f59e0b 50%, #ef4444 100%)',
+                    opacity: 0.8,
+                  }}
+                />
+                <input
+                  type="range"
+                  min={minExpectedReturn}
+                  max={maxExpectedReturn}
+                  step={0.1}
+                  value={currentTotalReturnNum}
+                  onChange={(e) => applyTargetReturn(parseFloat(e.target.value))}
+                  className="relative w-full h-2 appearance-none bg-transparent cursor-pointer"
+                  style={{ zIndex: 1 }}
+                />
+              </div>
+
+              {/* Etiquetas de escala — posicionadas absolutamente para alinearse con el track */}
+              <div className="relative h-8 mt-1 text-xs text-gray-500 dark:text-gray-400 select-none">
+                {[
+                  ...calculatorData.categories.map((cat) => ({
+                    value: cat.expectedReturn,
+                    label: `${cat.expectedReturn.toFixed(1)}%`,
+                    title: `${getCategoryDisplayName(cat.name)}: ${cat.expectedReturn}%`,
+                  })),
+                  // Marca Cartera1 (equilibrado de referencia)
+                  {
+                    value: cartera1Return,
+                    label: `${cartera1Return.toFixed(1)}%`,
+                    title: 'Cartera1 — equilibrado',
+                    isCartera1: true,
+                  },
+                  // Marca extra de referencia
+                  { value: 7, label: '7.0%', title: 'Referencia: 7%' },
+                ]
+                  .sort((a, b) => a.value - b.value)
+                  .map((mark) => {
+                    const pct =
+                      ((mark.value - minExpectedReturn) / (maxExpectedReturn - minExpectedReturn)) *
+                      100;
+                    const isActive = Math.abs(currentTotalReturnNum - mark.value) < 0.3;
+                    const isC1 = mark.isCartera1;
+                    return (
+                      <button
+                        key={mark.value}
+                        type="button"
+                        onClick={() => applyTargetReturn(mark.value)}
+                        className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5 hover:opacity-90 transition-opacity"
+                        style={{ left: `${pct}%` }}
+                        title={mark.title}
+                      >
+                        {/* Línea indicadora — más larga y coloreada para Cartera1 */}
+                        <span
+                          className={`rounded-full ${isC1 ? 'w-0.5 h-3' : 'w-px h-2'}`}
+                          style={{
+                            backgroundColor:
+                              isC1 && !isActive
+                                ? isDark
+                                  ? 'var(--user-color-500)'
+                                  : 'var(--user-color-500)'
+                                : isActive
+                                  ? isDark
+                                    ? 'var(--user-color-400)'
+                                    : 'var(--user-color-600)'
+                                  : 'currentColor',
+                          }}
+                        />
+                        {/* Valor */}
+                        <span
+                          style={
+                            isActive
+                              ? isDark
+                                ? { color: 'var(--user-color-300)', fontWeight: 700 }
+                                : { color: 'var(--user-color-700)', fontWeight: 700 }
+                              : isC1
+                                ? isDark
+                                  ? { color: 'var(--user-color-400)', fontWeight: 600 }
+                                  : { color: 'var(--user-color-600)', fontWeight: 600 }
+                                : {}
+                          }
+                        >
+                          {mark.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+
             {/* Tabla de asignación */}
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse">
@@ -1084,11 +1540,7 @@ const PortfolioBuilder = () => {
                 onClick={savePortfolioConfig}
                 disabled={saving || !portfolioData}
                 className="px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50"
-                style={
-                  isDark
-                    ? { backgroundColor: 'var(--user-color-600)' }
-                    : { backgroundColor: 'var(--user-color-600)' }
-                }
+                style={{ backgroundColor: 'var(--user-color-600)' }}
               >
                 {saving ? 'Guardando…' : 'Guardar cambios'}
               </button>
@@ -1103,6 +1555,38 @@ const PortfolioBuilder = () => {
                   {saveMessage.text}
                 </span>
               )}
+              <div className="ml-auto flex items-center gap-2">
+                {showResetConfirm ? (
+                  <>
+                    <span className="text-sm text-red-600 dark:text-red-400">
+                      ¿Seguro? Se borrará toda la configuración personalizada.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={resetPortfolioConfig}
+                      disabled={resetting}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50"
+                    >
+                      {resetting ? 'Reseteando…' : 'Sí, resetear'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowResetConfirm(false)}
+                      className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Resetear configuración
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1397,14 +1881,38 @@ const PortfolioBuilder = () => {
 
                   {/* Distribución de Capital para RV */}
                   {(() => {
-                    // Para RV, priorizar distribution si existe, sino usar funds
-                    const hasDistribution = section.distribution && section.distribution.length > 0;
-                    const hasFunds = section.funds && section.funds.length > 0;
-
-                    if (!hasDistribution && !hasFunds) return null;
+                    const hasItems =
+                      (section.distribution && section.distribution.length > 0) ||
+                      (section.funds && section.funds.length > 0);
+                    if (!hasItems) return null;
 
                     const categoryName = getCategoryName(section);
                     const dynamicTotal = calculateCategoryTotal(categoryName);
+
+                    // Merge distribution slots and extra funds into a single list.
+                    // Items with _seq (added this session) sort chronologically;
+                    // items without _seq (loaded from DB) keep their natural load order and come first.
+                    const mergedItems = [
+                      ...(section.distribution || []).map((item, realIdx) => ({
+                        ...item,
+                        _type: 'dist',
+                        _realIdx: realIdx,
+                        _loadOrder: realIdx,
+                      })),
+                      ...(section.funds || []).map((fund, idx) => ({
+                        ...fund,
+                        _type: 'extra',
+                        _realIdx: idx,
+                        _loadOrder: (section.distribution || []).length + idx,
+                      })),
+                    ].sort((a, b) => {
+                      const aSeq = a._seq ?? null;
+                      const bSeq = b._seq ?? null;
+                      if (aSeq === null && bSeq === null) return a._loadOrder - b._loadOrder;
+                      if (aSeq === null) return -1;
+                      if (bSeq === null) return 1;
+                      return aSeq - bSeq;
+                    });
 
                     return (
                       <div className="mb-6">
@@ -1419,58 +1927,201 @@ const PortfolioBuilder = () => {
                           )}
                         </h3>
 
-                        {/* Si hay distribución con porcentajes específicos, mostrar esa */}
-                        {hasDistribution && (
-                          <div className="space-y-3 mb-6">
-                            {section.distribution.map((item, idx) => {
-                              // Calcular la cantidad dinámicamente basada en el porcentaje
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                          {mergedItems.map((mergedItem) => {
+                            if (mergedItem._type === 'dist') {
+                              const item = mergedItem;
+                              const idx = item._realIdx;
                               const percentage = parseFloat(item.percentage?.replace('%', '') || 0);
                               const dynamicAmount = dynamicTotal * (percentage / 100);
 
-                              return (
-                                <div
-                                  key={idx}
-                                  className="p-4 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700"
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {item.name || '(Sin nombre)'}
-                                      </h4>
-                                      {item.isin && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          {t('portfolioBuilder.sections.capitalDistribution.isin')}{' '}
-                                          {item.isin}
+                              if (item.name) {
+                                return (
+                                  <div
+                                    key={`dist-named-${idx}`}
+                                    style={{
+                                      background: 'var(--tc-surface)',
+                                      border: '1px solid var(--tc-border)',
+                                      borderRadius: '8px',
+                                      padding: '1rem',
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                                            {item.name}
+                                          </h4>
+                                          {item.isMain && (
+                                            <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                              Recomendado
+                                            </span>
+                                          )}
+                                        </div>
+                                        {item.isin && (
+                                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            {t(
+                                              'portfolioBuilder.sections.capitalDistribution.isin'
+                                            )}{' '}
+                                            {item.isin}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                          {item.percentage}
                                         </p>
+                                        {dynamicAmount > 0 && (
+                                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            {formatCurrency(dynamicAmount)}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                      {item.link && (
+                                        <a
+                                          href={item.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-sm hover:underline"
+                                          style={
+                                            isDark
+                                              ? { color: 'var(--user-color-400)' }
+                                              : { color: 'var(--user-color-600)' }
+                                          }
+                                        >
+                                          {t(
+                                            'portfolioBuilder.sections.capitalDistribution.viewFinect'
+                                          )}
+                                          <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                      {section.number === 3 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => removeRvFundFromDistribution(idx)}
+                                          className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                        >
+                                          Eliminar
+                                        </button>
                                       )}
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                        {item.percentage}
-                                      </p>
-                                      {dynamicAmount > 0 && (
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                          {formatCurrency(dynamicAmount)}
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div
+                                    key={`dist-empty-${idx}`}
+                                    style={{
+                                      background: 'var(--tc-surface)',
+                                      border: '1px solid var(--tc-border)',
+                                      borderRadius: '8px',
+                                      padding: '1rem',
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                          (Sin nombre)
+                                        </h4>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="font-bold text-gray-900 dark:text-gray-100">
+                                          {item.percentage}
+                                        </p>
+                                        {dynamicAmount > 0 && (
+                                          <p
+                                            className="text-xs"
+                                            style={{ color: 'var(--tc-text-3)' }}
+                                          >
+                                            {formatCurrency(dynamicAmount)}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => removeRvFundFromDistribution(idx)}
+                                        className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            } else {
+                              const fund = mergedItem;
+                              const idx = fund._realIdx;
+                              return (
+                                <div
+                                  key={`extra-${idx}`}
+                                  style={{
+                                    background: 'var(--tc-surface)',
+                                    border: '1px solid var(--tc-border)',
+                                    borderRadius: '8px',
+                                    padding: '1rem',
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                          {fund.name}
+                                        </h4>
+                                        {fund.isMain && (
+                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                            Recomendado
+                                          </span>
+                                        )}
+                                      </div>
+                                      {fund.isin && (
+                                        <p
+                                          className="text-xs mt-0.5"
+                                          style={{ color: 'var(--tc-text-3)' }}
+                                        >
+                                          ISIN: {fund.isin}
                                         </p>
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    {item.link && (
+                                  {(fund.volatility12M || fund.return12M) && (
+                                    <div
+                                      className="flex items-center gap-4 text-xs mb-2"
+                                      style={{ color: 'var(--tc-text-2)' }}
+                                    >
+                                      {fund.volatility12M && (
+                                        <span>
+                                          {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
+                                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {fund.volatility12M}
+                                          </span>
+                                        </span>
+                                      )}
+                                      {fund.return12M && (
+                                        <span>
+                                          R 12M{' '}
+                                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {fund.return12M}
+                                          </span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    {fund.link && (
                                       <a
-                                        href={item.link}
+                                        href={fund.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-sm hover:underline"
-                                        style={
-                                          isDark
-                                            ? {
-                                                color: 'var(--user-color-400)',
-                                              }
-                                            : {
-                                                color: 'var(--user-color-600)',
-                                              }
-                                        }
+                                        className="inline-flex items-center gap-1 text-xs hover:underline"
+                                        style={{
+                                          color: isDark
+                                            ? 'var(--user-color-400)'
+                                            : 'var(--user-color-600)',
+                                        }}
                                       >
                                         {t(
                                           'portfolioBuilder.sections.capitalDistribution.viewFinect'
@@ -1478,11 +2129,13 @@ const PortfolioBuilder = () => {
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
-                                    {section.number === 3 && (
+                                    {currentCategoryKey && fund.isin && (
                                       <button
                                         type="button"
-                                        onClick={() => removeRvFundFromDistribution(idx)}
-                                        className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                        onClick={() =>
+                                          removeExtraFund(currentCategoryKey, fund.isin)
+                                        }
+                                        className="text-xs text-red-600 dark:text-red-400 hover:underline"
                                       >
                                         Eliminar
                                       </button>
@@ -1490,156 +2143,9 @@ const PortfolioBuilder = () => {
                                   </div>
                                 </div>
                               );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Añadir fondo a la distribución RV (solo sección 3) */}
-                        {section.number === 3 && (
-                          <div className="mt-3">
-                            <button
-                              type="button"
-                              onClick={addRvFundToDistribution}
-                              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                            >
-                              + Añadir fondo
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Si hay fondos adicionales que no están en distribution, mostrarlos también */}
-                        {hasFunds &&
-                          (() => {
-                            // Filtrar fondos que no están en distribution
-                            const additionalFunds = section.funds.filter((fund) => {
-                              if (hasDistribution) {
-                                return !section.distribution.some(
-                                  (dist) => dist.name === fund.name
-                                );
-                              }
-                              return true;
-                            });
-
-                            // Calcular el porcentaje total ya asignado en distribution
-                            const assignedPercentage = hasDistribution
-                              ? section.distribution.reduce((sum, dist) => {
-                                  const pct = parseFloat(dist.percentage?.replace('%', '') || 0);
-                                  return sum + pct;
-                                }, 0)
-                              : 0;
-
-                            // El porcentaje restante se distribuye entre los fondos adicionales
-                            const remainingPercentage = 100 - assignedPercentage;
-                            const percentagePerFund =
-                              additionalFunds.length > 0
-                                ? remainingPercentage / additionalFunds.length
-                                : 0;
-
-                            return (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {additionalFunds.map((fund, idx) => {
-                                  // Calcular el monto basado en el porcentaje restante
-                                  const fundAmount =
-                                    percentagePerFund > 0
-                                      ? dynamicTotal * (percentagePerFund / 100)
-                                      : 0;
-
-                                  return (
-                                    <div
-                                      key={idx}
-                                      className="p-4 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700"
-                                    >
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex-1">
-                                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                            {fund.name}
-                                          </h4>
-                                          {fund.isin && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                              ISIN: {fund.isin}
-                                            </p>
-                                          )}
-                                        </div>
-                                        <div className="text-right">
-                                          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                            {percentagePerFund > 0
-                                              ? `${percentagePerFund.toFixed(1)}%`
-                                              : ''}
-                                          </p>
-                                          {fundAmount && fundAmount > 0 && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                              {formatCurrency(fundAmount)}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-4 text-sm mb-2">
-                                        {fund.volatility12M && (
-                                          <div>
-                                            <span className="text-gray-600 dark:text-gray-400">
-                                              {t(
-                                                'portfolioBuilder.sections.capitalDistribution.vol12M'
-                                              )}{' '}
-                                            </span>
-                                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                                              {fund.volatility12M}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {fund.return12M && (
-                                          <div>
-                                            <span className="text-gray-600 dark:text-gray-400">
-                                              {t(
-                                                'portfolioBuilder.sections.capitalDistribution.r12M'
-                                              )}{' '}
-                                            </span>
-                                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                                              {fund.return12M}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        {fund.link && (
-                                          <a
-                                            href={fund.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-sm hover:underline"
-                                            style={
-                                              isDark
-                                                ? {
-                                                    color: 'var(--user-color-400)',
-                                                  }
-                                                : {
-                                                    color: 'var(--user-color-600)',
-                                                  }
-                                            }
-                                          >
-                                            {t(
-                                              'portfolioBuilder.sections.capitalDistribution.viewDetails'
-                                            )}
-                                            <ExternalLink className="h-3 w-3" />
-                                          </a>
-                                        )}
-                                        {currentCategoryKey && fund.isin && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              removeExtraFund(currentCategoryKey, fund.isin)
-                                            }
-                                            className="text-sm text-red-600 dark:text-red-400 hover:underline"
-                                          >
-                                            Eliminar
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
+                            }
+                          })}
+                        </div>
                       </div>
                     );
                   })()}
@@ -1652,6 +2158,18 @@ const PortfolioBuilder = () => {
                     (() => {
                       const categoryName = getCategoryName(section, subsection);
                       const dynamicTotal = calculateCategoryTotal(categoryName);
+                      const namedSubFunds = subsection.funds.filter((f) => f.name);
+                      const percentagePerFund =
+                        namedSubFunds.length > 0 ? (100 / namedSubFunds.length).toFixed(1) : '0';
+                      const fundAmount = calculateFundAmount(section, subsection);
+                      const sortedSubFunds = [...subsection.funds].sort((a, b) => {
+                        const aSeq = a._seq ?? null;
+                        const bSeq = b._seq ?? null;
+                        if (aSeq === null && bSeq === null) return 0;
+                        if (aSeq === null) return -1;
+                        if (bSeq === null) return 1;
+                        return aSeq - bSeq;
+                      });
 
                       return (
                         <div className="mb-6">
@@ -1666,31 +2184,41 @@ const PortfolioBuilder = () => {
                             )}
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {subsection.funds.map((fund, idx) => {
-                              const fundAmount = calculateFundAmount(section, subsection);
-                              // Calcular el porcentaje equitativo para cada fondo
-                              const percentagePerFund =
-                                subsection.funds.length > 0
-                                  ? (100 / subsection.funds.length).toFixed(1)
-                                  : '0';
-
+                            {sortedSubFunds.map((fund, idx) => {
+                              const isManual = fund._manual || !fund.name;
                               return (
                                 <div
-                                  key={idx}
-                                  className="p-4 bg-gray-50 dark:bg-[#1d1d1f] rounded-lg border border-gray-200 dark:border-gray-700"
+                                  key={fund._seq ?? idx}
+                                  style={{
+                                    background: 'var(--tc-surface)',
+                                    border: '1px solid var(--tc-border)',
+                                    borderRadius: '8px',
+                                    padding: '1rem',
+                                  }}
                                 >
                                   <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1">
-                                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                                        {fund.name}
-                                      </h4>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                          {fund.name || '(Sin nombre)'}
+                                        </h4>
+                                        {fund.isMain && (
+                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                            Recomendado
+                                          </span>
+                                        )}
+                                      </div>
                                       {fund.isin && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        <p
+                                          className="text-xs mt-0.5"
+                                          style={{ color: 'var(--tc-text-3)' }}
+                                        >
                                           {t('portfolioBuilder.sections.capitalDistribution.isin')}{' '}
                                           {fund.isin}
                                         </p>
                                       )}
-                                      {fund.risk &&
+                                      {!isManual &&
+                                        fund.risk &&
                                         subsection.name !== 'Renta Fija Corto Plazo' && (
                                           <span
                                             className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${
@@ -1717,57 +2245,57 @@ const PortfolioBuilder = () => {
                                           </span>
                                         )}
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                        {percentagePerFund}%
-                                      </p>
-                                      {fundAmount && fundAmount > 0 && (
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                          {formatCurrency(fundAmount)}
+                                    {!isManual && (
+                                      <div className="text-right ml-3 flex-shrink-0">
+                                        <p className="font-bold text-gray-900 dark:text-gray-100">
+                                          {percentagePerFund}%
                                         </p>
+                                        {fundAmount && fundAmount > 0 && (
+                                          <p
+                                            className="text-xs"
+                                            style={{ color: 'var(--tc-text-3)' }}
+                                          >
+                                            {formatCurrency(fundAmount)}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {!isManual && (fund.volatility12M || fund.return12M) && (
+                                    <div
+                                      className="flex items-center gap-4 text-xs mb-2"
+                                      style={{ color: 'var(--tc-text-2)' }}
+                                    >
+                                      {fund.volatility12M && (
+                                        <span>
+                                          {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
+                                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {fund.volatility12M}
+                                          </span>
+                                        </span>
+                                      )}
+                                      {fund.return12M && (
+                                        <span>
+                                          R 12M{' '}
+                                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {fund.return12M}
+                                          </span>
+                                        </span>
                                       )}
                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-4 text-sm mb-2">
-                                    {fund.volatility12M && (
-                                      <div>
-                                        <span className="text-gray-600 dark:text-gray-400">
-                                          {t(
-                                            'portfolioBuilder.sections.capitalDistribution.vol'
-                                          )}{' '}
-                                        </span>
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                                          {fund.volatility12M}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {fund.return12M && (
-                                      <div>
-                                        <span className="text-gray-600 dark:text-gray-400">
-                                          R 12M:{' '}
-                                        </span>
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                                          {fund.return12M}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
+                                  )}
+                                  <div className="flex items-center gap-3 flex-wrap">
                                     {fund.link && (
                                       <a
                                         href={fund.link}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-sm hover:underline"
-                                        style={
-                                          isDark
-                                            ? {
-                                                color: 'var(--user-color-400)',
-                                              }
-                                            : {
-                                                color: 'var(--user-color-600)',
-                                              }
-                                        }
+                                        className="inline-flex items-center gap-1 text-xs hover:underline"
+                                        style={{
+                                          color: isDark
+                                            ? 'var(--user-color-400)'
+                                            : 'var(--user-color-600)',
+                                        }}
                                       >
                                         {t(
                                           'portfolioBuilder.sections.capitalDistribution.viewFinect'
@@ -1775,17 +2303,27 @@ const PortfolioBuilder = () => {
                                         <ExternalLink className="h-3 w-3" />
                                       </a>
                                     )}
-                                    {currentCategoryKey && fund.isin && (
+                                    {isManual ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeManualFundFromSection(currentCategoryKey, fund._id)
+                                        }
+                                        className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    ) : currentCategoryKey && fund.isin ? (
                                       <button
                                         type="button"
                                         onClick={() =>
                                           removeExtraFund(currentCategoryKey, fund.isin)
                                         }
-                                        className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                                        className="text-xs text-red-600 dark:text-red-400 hover:underline"
                                       >
                                         Eliminar
                                       </button>
-                                    )}
+                                    ) : null}
                                   </div>
                                 </div>
                               );
@@ -1795,17 +2333,174 @@ const PortfolioBuilder = () => {
                       );
                     })()}
 
-                  {/* Añadir más: añade el siguiente fondo de la lista (mejor R12M) */}
-                  {portfolioData?.fundsList &&
-                    currentCategoryKey &&
+                  {/* Fondos de la sección (Monetarios, Alternativos — no RV, ya están en el grid de distribución) */}
+                  {!isSubsection &&
+                    !section.distribution?.length &&
+                    section.funds &&
+                    section.funds.length > 0 &&
                     (() => {
-                      const availableToAdd = portfolioData.fundsList.filter(
-                        (f) => f.category === currentCategoryKey && f.showInSection !== true
-                      );
-                      if (availableToAdd.length === 0) return null;
-                      const isAdding = addingExtra === currentCategoryKey;
+                      const categoryName = getCategoryName(section);
+                      const dynamicTotal = calculateCategoryTotal(categoryName);
+                      const namedFunds = section.funds.filter((f) => f.name);
+                      const pctPerFund = namedFunds.length > 0 ? 100 / namedFunds.length : 0;
+                      const sortedFunds = [...section.funds].sort((a, b) => {
+                        const aSeq = a._seq ?? null;
+                        const bSeq = b._seq ?? null;
+                        if (aSeq === null && bSeq === null) return 0;
+                        if (aSeq === null) return -1;
+                        if (bSeq === null) return 1;
+                        return aSeq - bSeq;
+                      });
                       return (
-                        <div className="mt-3 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                          {sortedFunds.map((fund, idx) => {
+                            const isManual = fund._manual || !fund.name;
+                            const fundAmount =
+                              pctPerFund > 0 && !isManual ? dynamicTotal * (pctPerFund / 100) : 0;
+                            return (
+                              <div
+                                key={fund._seq ?? idx}
+                                style={{
+                                  background: 'var(--tc-surface)',
+                                  border: '1px solid var(--tc-border)',
+                                  borderRadius: '8px',
+                                  padding: '1rem',
+                                }}
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                        {fund.name || '(Sin nombre)'}
+                                      </h4>
+                                      {fund.isMain && (
+                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                          Recomendado
+                                        </span>
+                                      )}
+                                    </div>
+                                    {fund.isin && (
+                                      <p
+                                        className="text-xs mt-0.5"
+                                        style={{ color: 'var(--tc-text-3)' }}
+                                      >
+                                        ISIN: {fund.isin}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {!isManual && pctPerFund > 0 && (
+                                    <div className="text-right ml-3 flex-shrink-0">
+                                      <p className="font-bold text-gray-900 dark:text-gray-100">
+                                        {pctPerFund.toFixed(1)}%
+                                      </p>
+                                      {fundAmount > 0 && (
+                                        <p
+                                          className="text-xs"
+                                          style={{ color: 'var(--tc-text-3)' }}
+                                        >
+                                          {formatCurrency(fundAmount)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {!isManual && (fund.volatility12M || fund.return12M) && (
+                                  <div
+                                    className="flex items-center gap-4 text-xs mb-2"
+                                    style={{ color: 'var(--tc-text-2)' }}
+                                  >
+                                    {fund.volatility12M && (
+                                      <span>
+                                        {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                                          {fund.volatility12M}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {fund.return12M && (
+                                      <span>
+                                        R 12M{' '}
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                                          {fund.return12M}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  {fund.link && (
+                                    <a
+                                      href={fund.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs hover:underline"
+                                      style={{
+                                        color: isDark
+                                          ? 'var(--user-color-400)'
+                                          : 'var(--user-color-600)',
+                                      }}
+                                    >
+                                      {t(
+                                        'portfolioBuilder.sections.capitalDistribution.viewFinect'
+                                      )}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  )}
+                                  {isManual ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removeManualFundFromSection(currentCategoryKey, fund._id)
+                                      }
+                                      className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  ) : currentCategoryKey && fund.isin ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => removeExtraFund(currentCategoryKey, fund.isin)}
+                                      className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                  {/* Botones de acción — siempre al final */}
+                  <div className="flex flex-wrap gap-2 mt-3 mb-4">
+                    {section.number === 3 ? (
+                      <button
+                        type="button"
+                        onClick={addRvFundToDistribution}
+                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                      >
+                        + Añadir fondo
+                      </button>
+                    ) : currentCategoryKey ? (
+                      <button
+                        type="button"
+                        onClick={() => addManualFundToSection(currentCategoryKey)}
+                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                      >
+                        + Añadir fondo
+                      </button>
+                    ) : null}
+                    {portfolioData?.fundsList &&
+                      currentCategoryKey &&
+                      (() => {
+                        const availableToAdd = portfolioData.fundsList.filter(
+                          (f) => f.category === currentCategoryKey && f.showInSection !== true
+                        );
+                        if (availableToAdd.length === 0) return null;
+                        const isAdding = addingExtra === currentCategoryKey;
+                        return (
                           <button
                             type="button"
                             onClick={() => addExtraFund(currentCategoryKey)}
@@ -1814,9 +2509,9 @@ const PortfolioBuilder = () => {
                           >
                             {isAdding ? 'Añadiendo…' : '+ Añadir más (siguiente de la lista)'}
                           </button>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
+                  </div>
 
                   {(isSubsection ? subsection?.videos : section.videos) &&
                     (isSubsection ? subsection.videos.length > 0 : section.videos.length > 0) && (

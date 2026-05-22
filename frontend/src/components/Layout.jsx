@@ -10,6 +10,7 @@ import {
   LogOut,
   Briefcase,
   PiggyBank,
+  Building2,
   ShieldCheck,
   ChevronDown,
   ChevronRight,
@@ -80,15 +81,20 @@ const Layout = ({ children }) => {
   };
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'javier';
+  const hasPortfolioBuilderAccess =
+    isAdmin || (currentUser?.permissions?.portfolioBuilder && currentUser?.id !== 'test-dca');
   const hasFinancesAccess = isAdmin || (currentUser?.permissions?.canAccessFinances ?? true);
   const hasBusinessesAccess = isAdmin || (currentUser?.permissions?.canAccessBusinesses ?? true);
 
-  /* ── Navigation groups — original structure ─────────────────── */
+  /* ── Navigation groups ──────────────────────────────────────── */
   const investmentsSection = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('sidebar.accounts'), href: '/accounts', icon: Wallet },
     { name: t('sidebar.investments'), href: '/investments', icon: TrendingUp },
     { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
+    ...(hasPortfolioBuilderAccess
+      ? [{ name: t('sidebar.portfolioBuilder'), href: '/portfolio-builder', icon: Building2 }]
+      : []),
   ];
 
   /* Flat list for current-page detection */
