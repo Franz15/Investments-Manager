@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 import {
   DEFAULT_PORTFOLIO_ALLOCATION,
@@ -78,6 +79,8 @@ const PortfolioBuilder = () => {
   const [addingExtra, setAddingExtra] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [refreshingMetrics, setRefreshingMetrics] = useState(false);
+  const [refreshResult, setRefreshResult] = useState(null);
 
   // Mapear un fondo de la API al formato que usa la UI
   const mapFundToSection = (f) => ({
@@ -594,6 +597,25 @@ const PortfolioBuilder = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Actualizar rentabilidad y volatilidad 12M de todos los fondos desde Morningstar
+  const refreshFundMetrics = async () => {
+    setRefreshingMetrics(true);
+    setRefreshResult(null);
+    try {
+      const res = await api.post('/portfolio-funds/refresh-metrics');
+      const { updated, failed } = res.data;
+      setRefreshResult({ updated, failed });
+      // Recargar la config para mostrar los nuevos valores
+      await loadConfig();
+      setTimeout(() => setRefreshResult(null), 5000);
+    } catch (err) {
+      setRefreshResult({ error: err.response?.data?.message || err.message });
+      setTimeout(() => setRefreshResult(null), 5000);
+    } finally {
+      setRefreshingMetrics(false);
     }
   };
 
@@ -1556,6 +1578,25 @@ const PortfolioBuilder = () => {
                 </span>
               )}
               <div className="ml-auto flex items-center gap-2">
+                {refreshResult && (
+                  <span
+                    className={`text-sm ${refreshResult.error ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}
+                  >
+                    {refreshResult.error
+                      ? `Error: ${refreshResult.error}`
+                      : `✓ ${refreshResult.updated} fondos actualizados${refreshResult.failed ? `, ${refreshResult.failed} sin datos` : ''}`}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={refreshFundMetrics}
+                  disabled={refreshingMetrics}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Actualizar rentabilidad y volatilidad 12M desde Morningstar"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${refreshingMetrics ? 'animate-spin' : ''}`} />
+                  {refreshingMetrics ? 'Actualizando…' : 'Actualizar métricas'}
+                </button>
                 {showResetConfirm ? (
                   <>
                     <span className="text-sm text-red-600 dark:text-red-400">
@@ -1879,11 +1920,9 @@ const PortfolioBuilder = () => {
                     </div>
                   )}
 
-                  {/* Distribución de Capital para RV */}
+                  {/* Distribución de Capital para RV (solo secciones con distribution, no Monetarios/Alternativos) */}
                   {(() => {
-                    const hasItems =
-                      (section.distribution && section.distribution.length > 0) ||
-                      (section.funds && section.funds.length > 0);
+                    const hasItems = section.distribution && section.distribution.length > 0;
                     if (!hasItems) return null;
 
                     const categoryName = getCategoryName(section);

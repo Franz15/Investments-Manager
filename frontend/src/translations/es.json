@@ -1040,12 +1040,12 @@
     "tips": {
       "enCasoDeCaidas": "En caso de caidas fuertes en la RV, utilizar parte del dinero de monetarios para compras adicionales",
       "siempreYCuando": "Siempre y cuando tengas un fondo de emergencia suficiente",
-      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo",
+      "maximaRentabilidad": "Máxima rentabilidad que puedes obtener del activo libre de riesgo. No es una promoción (puedes estar el tiempo que quieras). Difieres impuestos (no pagas hasta que vendes). Liquidez diaria.",
       "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar"
     },
     "descriptions": {
-      "maximaRentabilidad": "Máxima rentabilidad y riesgo, ideal para largo plazo. Recomprar si cae.",
-      "inversionEnEmpresas": "Inversión en empresas de todo el mundo para diversificar el riesgo"
+      "maximaRentabilidad": "Máxima rentabilidad que puedes obtener del activo libre de riesgo. No es una promoción (puedes estar el tiempo que quieras). Difieres impuestos (no pagas hasta que vendes). Liquidez diaria.",
+      "inversionEnEmpresas": "Inversión en empresas de primer nivel a largo plazo (con riesgo) para hacer la bola de nieve del interés compuesto."
     }
   },
   "adminAccess": {
