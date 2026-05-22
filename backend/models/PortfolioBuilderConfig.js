@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const categoryAllocationSchema = new mongoose.Schema(
   {
@@ -9,7 +9,7 @@ const categoryAllocationSchema = new mongoose.Schema(
     amount: { type: Number, default: null },
     description: { type: String, default: null },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const rvFundDistributionSchema = new mongoose.Schema(
@@ -22,7 +22,7 @@ const rvFundDistributionSchema = new mongoose.Schema(
     return12M: { type: String, default: null },
     calculatedAmount: { type: Number, default: null },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const portfolioBuilderConfigSchema = new mongoose.Schema(
@@ -35,7 +35,7 @@ const portfolioBuilderConfigSchema = new mongoose.Schema(
     },
     allocation: {
       totalAmountCalculated: { type: Number, default: 120000 },
-      totalReturn: { type: String, default: "5.73%" },
+      totalReturn: { type: String, default: '5.73%' },
       categories: [categoryAllocationSchema],
     },
     rvDistribution: [rvFundDistributionSchema],
@@ -49,13 +49,18 @@ const portfolioBuilderConfigSchema = new mongoose.Schema(
       type: Object,
       default: () => ({}),
     },
+    /** Fondos añadidos manualmente (sin ISIN predefinido) por categoría, para secciones no-RV */
+    manualFundsByCategory: {
+      type: Object,
+      default: () => ({}),
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 const PortfolioBuilderConfig = mongoose.model(
-  "PortfolioBuilderConfig",
-  portfolioBuilderConfigSchema,
+  'PortfolioBuilderConfig',
+  portfolioBuilderConfigSchema
 );
 
 export default PortfolioBuilderConfig;
