@@ -24,8 +24,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes'));
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Solo se permiten imágenes o PDFs'));
   },
 });
 
@@ -408,6 +408,48 @@ router.get('/statistics/by-category', async (req, res) => {
         return totalB - totalA;
       })
     );
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET estadísticas por tag
+router.get('/statistics/by-tag', async (req, res) => {
+  try {
+    const { startDate, endDate, type, business } = req.query;
+    const query = { user: req.userId };
+
+    if (type) query.type = type;
+
+    if (business !== undefined) {
+      query.business = business === 'null' || business === '' ? null : business;
+    }
+
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    // Only load transactions that have at least one tag
+    const transactions = await Transaction.find({ ...query, 'tags.0': { $exists: true } });
+
+    const tagStats = {};
+    transactions.forEach((t) => {
+      (t.tags || []).forEach((tag) => {
+        if (!tagStats[tag]) tagStats[tag] = { tag, income: 0, expenses: 0, count: 0 };
+        if (t.type === 'income') tagStats[tag].income += t.amount;
+        else if (t.type === 'expense') tagStats[tag].expenses += t.amount;
+        tagStats[tag].count += 1;
+      });
+    });
+
+    const result = Object.values(tagStats).map((s) => ({
+      ...s,
+      balance: s.income - s.expenses,
+    }));
+
+    res.json(result.sort((a, b) => b.income + b.expenses - (a.income + a.expenses)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

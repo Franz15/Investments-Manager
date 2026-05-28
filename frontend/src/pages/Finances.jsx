@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, memo, useMemo, createContext, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import {
   format,
   startOfMonth,
@@ -13,6 +14,7 @@ import { es } from 'date-fns/locale';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Edit,
   Trash2,
@@ -138,7 +140,22 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
 
   const cats = categories.filter((c) => c.type === form.type || !c.type);
 
-  return (
+  const selectedCat = cats.find((c) => c._id === form.category);
+  const catDisplayNode = selectedCat ? (
+    selectedCat.parentCategory?.name ? (
+      <>
+        <span className="font-semibold">{selectedCat.parentCategory.name}</span>
+        {' – '}
+        {selectedCat.name}
+      </>
+    ) : (
+      selectedCat.name
+    )
+  ) : (
+    t('forecasts.selectCategory')
+  );
+
+  return createPortal(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
@@ -192,6 +209,7 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
                 <option value="weekly">{t('forecasts.frequencies.weekly')}</option>
                 <option value="biweekly">{t('forecasts.frequencies.biweekly')}</option>
                 <option value="monthly">{t('forecasts.frequencies.monthly')}</option>
+                <option value="bimonthly">{t('forecasts.frequencies.bimonthly')}</option>
                 <option value="quarterly">{t('forecasts.frequencies.quarterly')}</option>
                 <option value="yearly">{t('forecasts.frequencies.yearly')}</option>
               </select>
@@ -216,18 +234,73 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                 {t('forecasts.category')} {t('common.optional')}
               </label>
-              <select
-                className="input-field"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              >
-                <option value="">{t('forecasts.selectCategory')}</option>
-                {cats.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <div className="input-field flex items-center justify-between pointer-events-none">
+                  <span
+                    className={
+                      selectedCat
+                        ? 'text-gray-900 dark:text-gray-100'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }
+                  >
+                    {catDisplayNode}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                </div>
+                <select
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
+                  <option value="">{t('forecasts.selectCategory')}</option>
+                  {(() => {
+                    const childrenOf = {};
+                    cats.forEach((c) => {
+                      const pid = c.parentCategory?._id || c.parentCategory || null;
+                      if (pid) {
+                        if (!childrenOf[pid]) childrenOf[pid] = [];
+                        childrenOf[pid].push(c);
+                      }
+                    });
+                    const roots = cats
+                      .filter((c) => !c.parentCategory)
+                      .sort((a, b) => a.name.localeCompare(b.name));
+
+                    return roots.flatMap((root) => {
+                      const children = (childrenOf[root._id] || []).sort((a, b) =>
+                        a.name.localeCompare(b.name)
+                      );
+                      if (children.length === 0) {
+                        return [
+                          <option key={root._id} value={root._id}>
+                            {root.name}
+                          </option>,
+                        ];
+                      }
+                      return [
+                        <optgroup key={root._id} label={root.name}>
+                          {children.flatMap((child) => {
+                            const grandchildren = (childrenOf[child._id] || []).sort((a, b) =>
+                              a.name.localeCompare(b.name)
+                            );
+                            return [
+                              <option key={child._id} value={child._id}>
+                                {child.name}
+                              </option>,
+                              ...grandchildren.map((gc) => (
+                                <option key={gc._id} value={gc._id}>
+                                  {'    '}
+                                  {gc.name}
+                                </option>
+                              )),
+                            ];
+                          })}
+                        </optgroup>,
+                      ];
+                    });
+                  })()}
+                </select>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -276,7 +349,8 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -440,7 +514,7 @@ const TransactionsTab = memo(({ month }) => {
                       )}
                     </div>
                     <p
-                      className={`text-sm font-semibold tabular-nums flex-shrink-0 ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : tx.type === 'expense' ? 'text-gray-800 dark:text-gray-200' : 'text-blue-600 dark:text-blue-400'}`}
+                      className={`text-sm font-semibold tabular-nums flex-shrink-0 ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : tx.type === 'expense' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}
                     >
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
                       {fmt(tx.amount)}
@@ -484,7 +558,6 @@ const REPORT_PERIODS = [
   { key: '3m', label: '3M', months: 3 },
   { key: '6m', label: '6M', months: 6 },
   { key: '1y', label: '1A', months: 12 },
-  { key: 'custom', label: '···', months: 0 },
 ];
 
 const BarTip = ({ active, payload, label }) => {
@@ -524,18 +597,15 @@ const ReportsTab = memo(() => {
   const [customTo, setCustomTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [periodData, setPeriodData] = useState([]);
   const [catData, setCatData] = useState([]);
+  const [tagData, setTagData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const p = REPORT_PERIODS.find((x) => x.key === period);
-    const end = period === 'custom' ? new Date(customTo) : endOfMonth(new Date());
-    const start =
-      period === 'custom'
-        ? new Date(customFrom)
-        : startOfMonth(subMonths(new Date(), p.months - 1));
+    const start = new Date(customFrom);
+    const end = new Date(customTo);
     try {
-      const [periodRes, catRes] = await Promise.all([
+      const [periodRes, catRes, tagRes] = await Promise.all([
         api.get('/transactions/statistics/by-period', {
           params: {
             period: 'monthly',
@@ -549,6 +619,13 @@ const ReportsTab = memo(() => {
             startDate: format(start, 'yyyy-MM-dd'),
             endDate: format(end, 'yyyy-MM-dd'),
             type: 'expense',
+            business: biz || 'null',
+          },
+        }),
+        api.get('/transactions/statistics/by-tag', {
+          params: {
+            startDate: format(start, 'yyyy-MM-dd'),
+            endDate: format(end, 'yyyy-MM-dd'),
             business: biz || 'null',
           },
         }),
@@ -576,12 +653,28 @@ const ReportsTab = memo(() => {
           }))
           .map((c, i) => ({ ...c, fill: CAT_COLORS[i % CAT_COLORS.length] }))
       );
+
+      const tagRows = (tagRes.data || []).filter((r) => r.expenses > 0 || r.income > 0);
+      const tagTotal = tagRows.reduce((s, r) => s + r.expenses + r.income, 0);
+      setTagData(
+        tagRows
+          .slice(0, 10)
+          .map((r) => ({
+            name: r.tag,
+            value: Math.round((r.expenses + r.income) * 100) / 100,
+            expenses: Math.round(r.expenses * 100) / 100,
+            income: Math.round(r.income * 100) / 100,
+            pct: tagTotal > 0 ? Math.round(((r.expenses + r.income) / tagTotal) * 100) : 0,
+            fill: '',
+          }))
+          .map((r, i) => ({ ...r, fill: CAT_COLORS[i % CAT_COLORS.length] }))
+      );
     } catch {
       /* silent */
     } finally {
       setLoading(false);
     }
-  }, [period, customFrom, customTo, t]);
+  }, [customFrom, customTo, t]);
 
   useEffect(() => {
     fetchData();
@@ -627,33 +720,42 @@ const ReportsTab = memo(() => {
             {REPORT_PERIODS.map((p) => (
               <button
                 key={p.key}
-                onClick={() => setPeriod(p.key)}
+                onClick={() => {
+                  setPeriod(p.key);
+                  const now = new Date();
+                  setCustomFrom(format(startOfMonth(subMonths(now, p.months - 1)), 'yyyy-MM-dd'));
+                  setCustomTo(format(now, 'yyyy-MM-dd'));
+                }}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${period === p.key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
               >
                 {p.label}
               </button>
             ))}
           </div>
-          {period === 'custom' && (
-            <div className="flex items-center gap-2 text-sm">
-              <input
-                type="date"
-                className="input-field py-1.5 text-sm"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                max={customTo}
-              />
-              <span className="text-gray-400">→</span>
-              <input
-                type="date"
-                className="input-field py-1.5 text-sm"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                min={customFrom}
-                max={format(new Date(), 'yyyy-MM-dd')}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm">
+            <input
+              type="date"
+              className="input-field py-1.5 text-sm"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPeriod('custom');
+              }}
+              max={customTo}
+            />
+            <span className="text-gray-400">→</span>
+            <input
+              type="date"
+              className="input-field py-1.5 text-sm"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPeriod('custom');
+              }}
+              min={customFrom}
+              max={format(new Date(), 'yyyy-MM-dd')}
+            />
+          </div>
         </div>
       </div>
 
@@ -817,6 +919,54 @@ const ReportsTab = memo(() => {
           </div>
         </div>
       </div>
+
+      {/* Tag pie chart — only shown if there is tagged data */}
+      {tagData.length > 0 && (
+        <div className="card">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            Gasto total por tag
+          </h3>
+          <div className="flex gap-6 items-center">
+            <div style={{ width: 140, height: 140, flexShrink: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={tagData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={65}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {tagData.map((d, i) => (
+                      <Cell key={i} fill={d.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 space-y-1.5 min-w-0">
+              {tagData.map((d) => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: d.fill }}
+                  />
+                  <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">
+                    {d.name}
+                  </span>
+                  <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{d.pct}%</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 tabular-nums flex-shrink-0 w-20 text-right">
+                    {fmt(d.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -1356,30 +1506,72 @@ const OverviewTab = memo(() => {
    TAB CATEGORÍAS
 ═══════════════════════════════════════════════════ */
 const DEFAULT_CATEGORIES = [
-  // Gastos
+  // ── Gastos ──────────────────────────────────────────────────
   { name: 'Alimentación', type: 'expense', color: '#16a34a' },
   { name: 'Supermercado', type: 'expense', color: '#22c55e', parentName: 'Alimentación' },
   { name: 'Restaurantes', type: 'expense', color: '#4ade80', parentName: 'Alimentación' },
+  { name: 'Delivery', type: 'expense', color: '#86efac', parentName: 'Alimentación' },
+  { name: 'Bar y cafetería', type: 'expense', color: '#bbf7d0', parentName: 'Alimentación' },
+
   { name: 'Transporte', type: 'expense', color: '#0284c7' },
-  { name: 'Gasolina', type: 'expense', color: '#38bdf8', parentName: 'Transporte' },
+  { name: 'Gasolina / Combustible', type: 'expense', color: '#38bdf8', parentName: 'Transporte' },
   { name: 'Transporte público', type: 'expense', color: '#0891b2', parentName: 'Transporte' },
+  { name: 'Taxi / Cabify / Uber', type: 'expense', color: '#0369a1', parentName: 'Transporte' },
+  { name: 'Parking', type: 'expense', color: '#075985', parentName: 'Transporte' },
+  { name: 'Mantenimiento vehículo', type: 'expense', color: '#082f49', parentName: 'Transporte' },
+
   { name: 'Hogar', type: 'expense', color: '#d97706' },
-  { name: 'Alquiler/Hipoteca', type: 'expense', color: '#f59e0b', parentName: 'Hogar' },
+  { name: 'Alquiler / Hipoteca', type: 'expense', color: '#f59e0b', parentName: 'Hogar' },
   { name: 'Suministros', type: 'expense', color: '#b45309', parentName: 'Hogar' },
+  { name: 'Internet y teléfono', type: 'expense', color: '#92400e', parentName: 'Hogar' },
+  { name: 'Mantenimiento y reformas', type: 'expense', color: '#78350f', parentName: 'Hogar' },
+
   { name: 'Salud', type: 'expense', color: '#be185d' },
+  { name: 'Farmacia', type: 'expense', color: '#ec4899', parentName: 'Salud' },
+  { name: 'Médico / Consultas', type: 'expense', color: '#db2777', parentName: 'Salud' },
+  { name: 'Seguro médico', type: 'expense', color: '#9d174d', parentName: 'Salud' },
+
   { name: 'Ocio', type: 'expense', color: '#7c3aed' },
-  { name: 'Viajes', type: 'expense', color: '#6d28d9', parentName: 'Ocio' },
-  { name: 'Ropa', type: 'expense', color: '#059669' },
+  { name: 'Viajes y vacaciones', type: 'expense', color: '#6d28d9', parentName: 'Ocio' },
+  { name: 'Cine / Teatro / Conciertos', type: 'expense', color: '#8b5cf6', parentName: 'Ocio' },
+  { name: 'Deporte y gimnasio', type: 'expense', color: '#a78bfa', parentName: 'Ocio' },
+  { name: 'Streaming y suscripciones', type: 'expense', color: '#c4b5fd', parentName: 'Ocio' },
+
+  { name: 'Ropa y calzado', type: 'expense', color: '#059669' },
+  { name: 'Cuidado personal', type: 'expense', color: '#0d9488' },
+  {
+    name: 'Peluquería / Barbería',
+    type: 'expense',
+    color: '#14b8a6',
+    parentName: 'Cuidado personal',
+  },
+  {
+    name: 'Cosmética e higiene',
+    type: 'expense',
+    color: '#2dd4bf',
+    parentName: 'Cuidado personal',
+  },
+
   { name: 'Educación', type: 'expense', color: '#0e7490' },
-  { name: 'Suscripciones', type: 'expense', color: '#dc2626' },
+  { name: 'Cursos y formación', type: 'expense', color: '#06b6d4', parentName: 'Educación' },
+  { name: 'Libros', type: 'expense', color: '#22d3ee', parentName: 'Educación' },
+
+  { name: 'Mascotas', type: 'expense', color: '#ea580c' },
+  { name: 'Regalos y solidaridad', type: 'expense', color: '#f97316' },
   { name: 'Seguros', type: 'expense', color: '#b45309' },
+  { name: 'Ahorro / Transferencias', type: 'expense', color: '#4f46e5' },
   { name: 'Otros gastos', type: 'expense', color: '#6B7280' },
-  // Ingresos
-  { name: 'Nómina', type: 'income', color: '#16a34a' },
-  { name: 'Freelance', type: 'income', color: '#0284c7' },
+
+  // ── Ingresos ─────────────────────────────────────────────────
+  { name: 'Salario / Nómina', type: 'income', color: '#16a34a' },
+  { name: 'Trabajo autónomo / Freelance', type: 'income', color: '#0284c7' },
   { name: 'Inversiones', type: 'income', color: '#7c3aed' },
+  { name: 'Dividendos', type: 'income', color: '#8b5cf6', parentName: 'Inversiones' },
+  { name: 'Intereses', type: 'income', color: '#a78bfa', parentName: 'Inversiones' },
+  { name: 'Venta de activos', type: 'income', color: '#c4b5fd', parentName: 'Inversiones' },
   { name: 'Alquiler cobrado', type: 'income', color: '#d97706' },
-  { name: 'Devoluciones', type: 'income', color: '#0891b2' },
+  { name: 'Prestaciones', type: 'income', color: '#0891b2' },
+  { name: 'Devoluciones y reembolsos', type: 'income', color: '#0e7490' },
   { name: 'Otros ingresos', type: 'income', color: '#6B7280' },
 ];
 
@@ -1397,14 +1589,14 @@ const CategoriesTab = memo(() => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await api.get('/categories');
+      const res = await api.get('/categories', { params: { business: biz || 'null' } });
       setCategories(res.data);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [biz]);
 
   useEffect(() => {
     fetchCategories();
@@ -1419,6 +1611,7 @@ const CategoriesTab = memo(() => {
         type: form.type,
         color: form.color,
         parentCategory: form.parentCategory || null,
+        business: biz || null,
       };
       if (form._id) {
         await api.put(`/categories/${form._id}`, payload);
@@ -1483,7 +1676,9 @@ const CategoriesTab = memo(() => {
           parentCategory: null,
         }));
 
-      await Promise.all(toCreate.map((cat) => api.post('/categories', cat)));
+      await Promise.all(
+        toCreate.map((cat) => api.post('/categories', { ...cat, business: biz || null }))
+      );
       await fetchCategories();
     } catch (e) {
       console.error(e);
@@ -1513,6 +1708,7 @@ const CategoriesTab = memo(() => {
             type: cat.type,
             color: cat.color,
             parentCategory: null,
+            business: biz || null,
           });
           nameToId[cat.name] = res.data._id;
           existingNames.add(cat.name.toLowerCase());
@@ -1528,6 +1724,7 @@ const CategoriesTab = memo(() => {
             type: cat.type,
             color: cat.color,
             parentCategory: parentId,
+            business: biz || null,
           });
           existingNames.add(cat.name.toLowerCase());
         }
@@ -1541,7 +1738,7 @@ const CategoriesTab = memo(() => {
     }
   };
 
-  // Build tree: top-level + their children, grouped by type
+  // Build tree: top-level + children map (supports 3 levels)
   const byType = { expense: [], income: [] };
   const topLevel = categories.filter((c) => !c.parentCategory);
   const childrenOf = {};
@@ -1557,48 +1754,203 @@ const CategoriesTab = memo(() => {
     byType[t].push(c);
   });
 
-  const parentOptions = categories.filter((c) => !c.parentCategory);
+  // Compute depth for every category (0=root, 1=sub, 2=sub-sub)
+  const depthOf = {};
+  const computeDepth = (cat) => {
+    if (depthOf[cat._id] !== undefined) return depthOf[cat._id];
+    if (!cat.parentCategory) {
+      depthOf[cat._id] = 0;
+      return 0;
+    }
+    const pid = cat.parentCategory._id || cat.parentCategory;
+    const parent = categories.find((c) => c._id === pid);
+    depthOf[cat._id] = parent ? 1 + computeDepth(parent) : 0;
+    return depthOf[cat._id];
+  };
+  categories.forEach(computeDepth);
 
   if (loading) return <LoadingSpinner />;
 
-  const renderRow = (cat, indent = false) => (
-    <div key={cat._id}>
+  const depthLabel = ['', 'subcategoría', 'sub-subcategoría'];
+
+  const renderForm = (depth = 0) => {
+    // Build ordered parent options: roots first, then their subs (depth ≤ 1 can be parents)
+    const orderedParentOptions = topLevel
+      .filter((c) => c.type === form.type && c._id !== form._id)
+      .flatMap((c) => [
+        { cat: c, prefix: '' },
+        ...(childrenOf[c._id] || [])
+          .filter((child) => child._id !== form._id)
+          .map((child) => ({ cat: child, prefix: '— ' })),
+      ]);
+
+    return (
       <div
-        className={`flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 group ${indent ? 'ml-6 border-l-2 border-gray-200 dark:border-gray-700 pl-4' : ''}`}
+        className="card border-2 border-blue-200 dark:border-blue-800"
+        style={{ marginLeft: depth * 24 + 'px' }}
       >
-        <div
-          className="w-3 h-3 rounded-full flex-shrink-0"
-          style={{ backgroundColor: cat.color }}
-        />
-        <span className="flex-1 text-sm text-gray-800 dark:text-gray-200 font-medium">
-          {cat.name}
-        </span>
-        {indent && (
-          <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">subcategoría</span>
-        )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          {form._id ? 'Editar categoría' : 'Nueva categoría'}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Nombre
+            </label>
+            <input
+              type="text"
+              className="input-field"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Ej: Alimentación"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Tipo
+            </label>
+            <select
+              className="input-field"
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+            >
+              <option value="expense">Gasto</option>
+              <option value="income">Ingreso</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Color
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                className="w-10 h-9 rounded cursor-pointer border border-gray-300 dark:border-gray-600 p-0.5"
+                value={form.color}
+                onChange={(e) => setForm({ ...form, color: e.target.value })}
+              />
+              <span className="text-xs text-gray-500 font-mono">{form.color}</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Categoría padre <span className="text-gray-400">(opcional)</span>
+            </label>
+            <select
+              className="input-field"
+              value={form.parentCategory || ''}
+              onChange={(e) => setForm({ ...form, parentCategory: e.target.value || '' })}
+            >
+              <option value="">— ninguna (nivel raíz)</option>
+              {orderedParentOptions.map(({ cat, prefix }) => (
+                <option key={cat._id} value={cat._id}>
+                  {prefix}
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
           <button
-            onClick={() =>
-              setForm({
-                ...cat,
-                parentCategory: cat.parentCategory?._id || cat.parentCategory || '',
-              })
-            }
-            className="p-1 text-gray-400 hover:text-blue-500 rounded"
-            title="Editar"
+            onClick={handleSave}
+            disabled={saving || !form.name.trim()}
+            className="btn-primary text-sm"
           >
-            <Edit className="h-3.5 w-3.5" />
+            {saving ? 'Guardando...' : 'Guardar'}
           </button>
-          <button
-            onClick={() => setDeleteId(cat._id)}
-            className="p-1 text-gray-400 hover:text-red-500 rounded"
-            title="Eliminar"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
+          <button onClick={() => setForm(null)} className="btn-secondary text-sm">
+            Cancelar
           </button>
         </div>
       </div>
-      {(childrenOf[cat._id] || []).map((child) => renderRow(child, true))}
+    );
+  };
+
+  const renderRow = (cat, depth = 0) => (
+    <div key={cat._id}>
+      {form?._id === cat._id ? (
+        renderForm(depth)
+      ) : deleteId === cat._id ? (
+        <div
+          className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800"
+          style={{ marginLeft: depth * 24 + 'px' }}
+        >
+          <div
+            className="w-3 h-3 rounded-full flex-shrink-0"
+            style={{ backgroundColor: cat.color }}
+          />
+          <span className="flex-1 text-sm text-red-700 dark:text-red-400">
+            ¿Eliminar <strong>{cat.name}</strong>?
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleDelete(cat._id)}
+              className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Eliminar
+            </button>
+            <button
+              onClick={() => setDeleteId(null)}
+              className="text-xs px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 group${depth > 0 ? ' border-l-2 border-gray-200 dark:border-gray-700 pl-4' : ''}`}
+          style={{ marginLeft: depth * 24 + 'px' }}
+        >
+          <div
+            className="w-3 h-3 rounded-full flex-shrink-0"
+            style={{ backgroundColor: cat.color }}
+          />
+          <span className="flex-1 text-sm text-gray-800 dark:text-gray-200 font-medium">
+            {cat.name}
+          </span>
+          {depth > 0 && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">
+              {depthLabel[depth]}
+            </span>
+          )}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() =>
+                setForm({
+                  ...cat,
+                  parentCategory: cat.parentCategory?._id || cat.parentCategory || '',
+                })
+              }
+              className="p-1 text-gray-400 hover:text-blue-500 rounded"
+              title="Editar"
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </button>
+            {depth < 2 && (
+              <button
+                onClick={() =>
+                  setForm({ ...EMPTY_CAT_FORM, type: cat.type, parentCategory: cat._id })
+                }
+                className="p-1 text-gray-400 hover:text-green-500 rounded"
+                title={`Añadir ${depthLabel[depth + 1]}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => setDeleteId(cat._id)}
+              className="p-1 text-gray-400 hover:text-red-500 rounded"
+              title="Eliminar"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+      {(childrenOf[cat._id] || []).map((child) => renderRow(child, depth + 1))}
     </div>
   );
 
@@ -1657,108 +2009,8 @@ const CategoriesTab = memo(() => {
         <p className="text-xs text-gray-400">{categories.length} categorías en total</p>
       </div>
 
-      {/* Inline form */}
-      {form && (
-        <div className="card border-2 border-blue-200 dark:border-blue-800">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            {form._id ? 'Editar categoría' : 'Nueva categoría'}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Nombre
-              </label>
-              <input
-                type="text"
-                className="input-field"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ej: Alimentación"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Tipo
-              </label>
-              <select
-                className="input-field"
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-              >
-                <option value="expense">Gasto</option>
-                <option value="income">Ingreso</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Color
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  className="w-10 h-9 rounded cursor-pointer border border-gray-300 dark:border-gray-600 p-0.5"
-                  value={form.color}
-                  onChange={(e) => setForm({ ...form, color: e.target.value })}
-                />
-                <span className="text-xs text-gray-500 font-mono">{form.color}</span>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Categoría padre <span className="text-gray-400">(opcional)</span>
-              </label>
-              <select
-                className="input-field"
-                value={form.parentCategory || ''}
-                onChange={(e) => setForm({ ...form, parentCategory: e.target.value || '' })}
-              >
-                <option value="">— ninguna (nivel raíz)</option>
-                {parentOptions
-                  .filter((c) => c._id !== form._id && c.type === form.type)
-                  .map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={handleSave}
-              disabled={saving || !form.name.trim()}
-              className="btn-primary text-sm"
-            >
-              {saving ? 'Guardando...' : 'Guardar'}
-            </button>
-            <button onClick={() => setForm(null)} className="btn-secondary text-sm">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm delete */}
-      {deleteId && (
-        <div className="card border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
-          <p className="text-sm text-red-700 dark:text-red-400 mb-3">
-            ¿Eliminar esta categoría? Las transacciones que la usen mantendrán el nombre, pero la
-            categoría ya no estará en la lista.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleDelete(deleteId)}
-              className="btn-primary bg-red-600 hover:bg-red-700 text-sm"
-            >
-              Eliminar
-            </button>
-            <button onClick={() => setDeleteId(null)} className="btn-secondary text-sm">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Inline form — nueva categoría (las ediciones aparecen inline en la fila) */}
+      {form && !form._id && renderForm()}
 
       {/* Category lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -2088,7 +2340,7 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
                       )}
                     </div>
                     <p
-                      className={`text-sm font-semibold tabular-nums flex-shrink-0 ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : tx.type === 'transfer' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200'}`}
+                      className={`text-sm font-semibold tabular-nums flex-shrink-0 ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : tx.type === 'transfer' ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}
                     >
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
                       {fmt(tx.amount)}
