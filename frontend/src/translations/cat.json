@@ -165,7 +165,8 @@
     },
     "byInvestment": "Distribució per Inversió Individual",
     "totalNetWorthEvolution": "Evolució del Patrimoni Total",
-    "totalNetWorth": "Patrimoni Total"
+    "totalNetWorth": "Patrimoni Total",
+    "includeBusinessAccounts": "Incloure comptes de negocis"
   },
   "investments": {
     "title": "Inversions",
@@ -1042,12 +1043,12 @@
     "tips": {
       "enCasoDeCaidas": "En cas de caigudes fortes en la RV, utilitzar part dels diners de monetaris per compres addicionals",
       "siempreYCuando": "Sempre que tinguis un fons d'emergència suficient",
-      "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini",
+      "maximaRentabilidad": "Màxima rendibilitat que pots obtenir de l'actiu lliure de risc. No és una promoció (pots estar el temps que vulguis). Diferixes impostos (no pagues fins que vens). Liquiditat diària.",
       "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar"
     },
     "descriptions": {
-      "maximaRentabilidad": "Màxima rendibilitat i risc, ideal per llarg termini. Recomprar si cau.",
-      "inversionEnEmpresas": "Inversió en empreses de tot el món per diversificar el risc"
+      "maximaRentabilidad": "Màxima rendibilitat que pots obtenir de l'actiu lliure de risc. No és una promoció (pots estar el temps que vulguis). Diferixes impostos (no pagues fins que vens). Liquiditat diària.",
+      "inversionEnEmpresas": "Inversió en empreses de primer nivell a llarg termini (amb risc) per fer la bola de neu de l'interès compost."
     }
   },
   "adminAccess": {
