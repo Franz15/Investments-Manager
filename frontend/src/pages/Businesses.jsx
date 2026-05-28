@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Briefcase, User } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Plus, Edit, Trash2, Briefcase, ArrowLeft } from 'lucide-react';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useBusiness } from '../contexts/BusinessContext';
-import FinancesDashboard from '../components/FinancesDashboard';
+import { FinancesTabsView } from './Finances';
 
 const Businesses = () => {
   const { t } = useTranslation();
@@ -77,48 +78,30 @@ const Businesses = () => {
     return <LoadingSpinner />;
   }
 
-  // Si está seleccionado "Personal", mostrar dashboard
-  if (selectedBusiness === 'personal') {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              {t('businesses.personal')}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {t('businesses.personalDashboard')}
-            </p>
-          </div>
-          <button onClick={() => selectBusiness(null)} className="btn-secondary">
-            {t('businesses.backToBusinesses')}
-          </button>
-        </div>
-        <FinancesDashboard businessId={null} />
-      </div>
-    );
-  }
-
-  // Si hay un negocio seleccionado, mostrar su dashboard
+  // Si hay un negocio seleccionado, mostrar su vista de finanzas
   if (selectedBusiness && selectedBusiness !== 'personal') {
     const selectedBusinessData = businesses.find((b) => b._id === selectedBusiness);
     if (selectedBusinessData) {
       return (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {selectedBusinessData.name}
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {selectedBusinessData.description || t('businesses.businessDashboard')}
-              </p>
-            </div>
-            <button onClick={() => selectBusiness(null)} className="btn-secondary">
-              {t('businesses.backToBusinesses')}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => selectBusiness(null)}
+              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
             </button>
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${selectedBusinessData.color}20` }}
+            >
+              <Briefcase className="h-4 w-4" style={{ color: selectedBusinessData.color }} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {selectedBusinessData.name}
+            </h1>
           </div>
-          <FinancesDashboard businessId={selectedBusiness} />
+          <FinancesTabsView businessId={selectedBusiness} />
         </div>
       );
     }
@@ -148,21 +131,6 @@ const Businesses = () => {
 
       <div className="card">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Personal (siempre presente) */}
-          <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
-            onClick={() => selectBusiness('personal')}
-          >
-            <User className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              {t('businesses.personal')}
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {t('businesses.personalDescription')}
-            </p>
-          </div>
-
-          {/* Lista de negocios */}
           {businesses.map((business) => (
             <div
               key={business._id}
@@ -190,7 +158,10 @@ const Businesses = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleEdit(business)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(business);
+                    }}
                     className="p-1 text-gray-600 dark:text-gray-400 transition-colors"
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--user-color-600)')}
                     onMouseLeave={(e) => (e.currentTarget.style.color = '')}
@@ -198,7 +169,10 @@ const Businesses = () => {
                     <Edit className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(business._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(business._id);
+                    }}
                     className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -226,89 +200,91 @@ const Businesses = () => {
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="modal-content max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingBusiness ? t('businesses.editBusiness') : t('businesses.newBusiness')}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('businesses.name')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('businesses.description')} {t('common.optional')}
-                </label>
-                <textarea
-                  className="input-field"
-                  rows="3"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('businesses.color')}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    className="h-10 w-20 rounded cursor-pointer"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  />
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="modal-content max-w-md w-full">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                {editingBusiness ? t('businesses.editBusiness') : t('businesses.newBusiness')}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('businesses.name')}
+                  </label>
                   <input
                     type="text"
-                    className="input-field flex-1"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="input-field"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
                   />
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded"
-                />
-                <label
-                  htmlFor="isActive"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {t('businesses.isActive')}
-                </label>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingBusiness ? t('common.save') : t('businesses.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('businesses.description')} {t('common.optional')}
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('businesses.color')}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      className="h-10 w-20 rounded cursor-pointer"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      className="input-field flex-1"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="rounded"
+                  />
+                  <label
+                    htmlFor="isActive"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t('businesses.isActive')}
+                  </label>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingBusiness ? t('common.save') : t('businesses.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

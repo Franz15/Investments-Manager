@@ -105,7 +105,8 @@
     "volatility12M": "1.83%",
     "return12M": "6.42%",
     "notes": null,
-    "category": "RF corto plazo"
+    "category": "RF corto plazo",
+    "tags": ["esg-superficial"]
   },
   {
     "name": "Renta 4 Renta Fija R FI",
@@ -114,7 +115,8 @@
     "volatility12M": "0.84%",
     "return12M": "5.63%",
     "notes": null,
-    "category": "RF corto plazo"
+    "category": "RF corto plazo",
+    "tags": ["esg-moderado"]
   },
   {
     "name": "BlackRock Global Funds - Euro Short Duration Bond Fund I2 EUR",
@@ -666,15 +668,6 @@
     "category": "ETFs"
   },
   {
-    "name": "Multi Units Luxembourg - Amundi Smart Overnight Return UCITS ETF Acc",
-    "isin": "LU1190417599",
-    "link": "https://www.finect.com/etfs/LU1190417599-Lyxor_smart_overnight_return_etf_c_eur",
-    "volatility12M": "0.11%",
-    "return12M": "3.86%",
-    "notes": null,
-    "category": "ETFs"
-  },
-  {
     "name": "Xtrackers II Eurozone Government Bond 25+ UCITS ETF 1C",
     "isin": "LU0290357846",
     "link": "https://www.finect.com/etfs/LU0290357846-Xtrackers_ii_euroz_govt_bd_25_etf_1c",
@@ -864,219 +857,153 @@
     "category": "Alternativos"
   },
   {
-    "name": "AMRC SMALLER COMPANIES IE EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Santander Sostenible RF Ahorro A FI",
+    "isin": "ES0138986031",
+    "link": "https://www.finect.com/fondos-inversion/ES0138986031-Santander_sostenible_rf_ahorro_a_fi",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF corto plazo",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "ELEVA EUROPEAN SELECTION I EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Carmignac Portfolio Sécurité AW EUR Acc",
+    "isin": "LU1299306321",
+    "link": "https://www.finect.com/fondos-inversion/LU1299306321-Carmignac_pf_securite_aw_eur_acc",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF corto plazo",
+    "tags": ["esg-superficial"]
   },
   {
-    "name": "GQG EM MARKET EQUITY R EUR ACC (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Xtrackers II EUR Corp Bond SRI PAB ETF",
+    "isin": "LU0484968812",
+    "link": "https://www.finect.com/etfs/LU0484968812-Xtrackers_ii_eur_corp_bond_sri_pab_etf",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF medio plazo",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "INDEX MSCI EUROPE IE ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Amundi Global Aggregate Green Bond ETF",
+    "isin": "LU1563454310",
+    "link": "https://www.finect.com/etfs/LU1563454310-Amundi_global_aggregate_green_bond_etf",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF medio plazo",
+    "tags": ["esg-alto"]
   },
   {
-    "name": "INDEX S&P 500 IE ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Amundi Corporate Green Bond ETF",
+    "isin": "LU2370241684",
+    "link": "https://www.finect.com/etfs/LU2370241684-Amundi_corporate_green_bond_etf",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF medio plazo",
+    "tags": ["esg-alto"]
   },
   {
-    "name": "ISHARES WORLD EQ IDX D2 AC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "BNP Paribas Easy JPM ESG Green Social Bond ETF",
+    "isin": "LU2365458814",
+    "link": "https://www.finect.com/etfs/LU2365458814-Bnp_paribas_easy_jpm_esg_green_social_bond_etf",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "RF medio plazo",
+    "tags": ["esg-alto"]
   },
   {
-    "name": "PICTET EMERG MKTS INDEX I EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Fidelity Funds – Europe Equity ESG A-ACC-EUR",
+    "isin": "LU0251128657",
+    "link": "https://www.finect.com/fondos-inversion/LU0251128657-Fidelity_funds_europe_equity_esg_a_acc_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "POLAR GLBL TECHNOLOGY I ACC EU (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Pictet – Global Environmental Opportunities P EUR",
+    "isin": "LU0503631714",
+    "link": "https://www.finect.com/fondos-inversion/LU0503631714-Pictet_global_environmental_opps_p_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-alto"]
   },
   {
-    "name": "SISF JAPANESE OPPOR C ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Mirova Global Sustainable Equity R/A EUR",
+    "isin": "LU0914729966",
+    "link": "https://www.finect.com/fondos-inversion/LU0914729966-Mirova_global_sustainable_equity_r_a_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-alto"]
   },
   {
-    "name": "US PREMIUM EQUITIES IH ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Robeco Sustainable Global Stars Equities D EUR",
+    "isin": "LU0387754996",
+    "link": "https://www.finect.com/fondos-inversion/LU0387754996-Robeco_sustainable_global_stars_eq_d_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "US STRUCTUR RESEARCH EQ IN EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Nordea 1 – Global Sustainable Stars Equity BP EUR",
+    "isin": "LU0985320059",
+    "link": "https://www.finect.com/fondos-inversion/LU0985320059-Nordea_1_global_sustainable_stars_eq_bp_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "MARCH NEXT GENERATION FI B ACC (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Nordea 1 – Global Climate Transition Engagement BP EUR",
+    "isin": "LU2463525779",
+    "link": "https://www.finect.com/fondos-inversion/LU2463525779-Nordea_1_global_climate_transition_bp_eur",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "EURIZON BD USD LTE Z ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "BBVA Futuro Sostenible ISR A FI",
+    "isin": "ES0114279039",
+    "link": "https://www.finect.com/fondos-inversion/ES0114279039-Bbva_futuro_sostenible_isr_a_fi",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-superficial"]
   },
   {
-    "name": "GIS EURO BOND BX EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "Santander Sostenible Acciones A FI",
+    "isin": "ES0113607008",
+    "link": "https://www.finect.com/fondos-inversion/ES0113607008-Santander_sostenible_acciones_a_fi",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
+    "category": "Renta Variable",
+    "tags": ["esg-moderado"]
   },
   {
-    "name": "GLB SHRT DRTN INVST H ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
+    "name": "BNP Paribas Easy ECPI Global ESG Infrastructure ETF",
+    "isin": "IE0006O3TTP9",
+    "link": "https://www.finect.com/etfs/IE0006O3TTP9-Bnp_paribas_easy_ecpi_global_esg_infrastructure_etf",
     "volatility12M": null,
     "return12M": null,
     "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "JPM ESG EMU GO IG 3-5Y ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "JUPITER DYN BOND I ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "MARCH GREEN TRANSITION BD C AC (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "SISF EURO CORP BND IZ ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "MARCH RENTA FIJA CP C EUR ACC (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "INVEST ALPHA BONDS N ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "OYSTER BM ALTERNATIVOS R AC EU (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "GROUPAMA ENTREPRISE RC ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
-  },
-  {
-    "name": "GLB SHRT DRTN INVST H ACC EUR (EUR)",
-    "isin": null,
-    "link": null,
-    "volatility12M": null,
-    "return12M": null,
-    "notes": null,
-    "category": "Revisar"
+    "category": "Alternativos",
+    "tags": ["esg-moderado"]
   }
 ]

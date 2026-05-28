@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import accountRoutes from './routes/accountRoutes.js';
 import subAccountRoutes from './routes/subAccountRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
@@ -61,6 +65,9 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir imágenes subidas como archivos estáticos
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);

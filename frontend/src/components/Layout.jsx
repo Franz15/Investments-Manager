@@ -282,16 +282,6 @@ const Layout = ({ children }) => {
                           className="ml-3 mt-0.5 pl-3 space-y-0.5"
                           style={{ borderLeft: `1px solid ${S.divider}` }}
                         >
-                          <BusinessBtn
-                            label={t('businesses.personal') || 'Personal'}
-                            icon={<User className="h-3 w-3 flex-shrink-0" />}
-                            active={selectedBusiness === 'personal' || !selectedBusiness}
-                            onClick={() => {
-                              selectBusiness('personal');
-                              navigate('/businesses');
-                              onClose?.();
-                            }}
-                          />
                           {businesses
                             .filter((b) => b.isActive)
                             .map((b) => (
@@ -400,7 +390,9 @@ const Layout = ({ children }) => {
       style={{
         color: active ? color || S.activeText : S.inactiveText,
         background: active
-          ? `${color || 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)'}`
+          ? color
+            ? `${color}20`
+            : 'rgba(var(--user-color-600-rgb, 201,150,26), 0.09)'
           : 'transparent',
         fontWeight: active ? 500 : 400,
       }}
