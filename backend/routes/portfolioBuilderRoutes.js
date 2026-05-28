@@ -68,8 +68,14 @@ function getDefaultFunds() {
 async function seedFundsForUserIfEmpty(userId) {
   const count = await PortfolioFund.countDocuments({ user: userId });
   if (count > 0) return;
+  await forceSeedFunds(userId);
+}
+
+/** Borra todos los fondos del usuario y los reinserta desde el JSON por defecto. */
+async function forceSeedFunds(userId) {
   const defaultFunds = getDefaultFunds();
   if (defaultFunds.length === 0) return;
+  await PortfolioFund.deleteMany({ user: userId });
   const toInsert = defaultFunds.map((f) => ({
     name: f.name,
     isin: f.isin || null,
@@ -80,7 +86,10 @@ async function seedFundsForUserIfEmpty(userId) {
     category: f.category,
     user: userId,
   }));
-  await PortfolioFund.insertMany(toInsert);
+  // ordered: false → continúa aunque falle algún ISIN duplicado dentro del JSON
+  await PortfolioFund.insertMany(toInsert, { ordered: false }).catch((err) => {
+    if (err.code !== 11000) throw err; // ignorar solo errores de duplicado
+  });
 }
 
 /** Valores por defecto (equivalente al Excel Cartera1) */
@@ -216,9 +225,19 @@ router.get('/config', requirePortfolioBuilderAccess, async (req, res) => {
         rvDistribution: DEFAULT_RV_DISTRIBUTION,
       });
     }
-    const funds = await PortfolioFund.find({ user: req.userId }).sort({
+    const rawFunds = await PortfolioFund.find({ user: req.userId }).sort({
       category: 1,
       name: 1,
+    });
+    // Dedup by isin+category — protects against pre-index duplicates in the DB
+    const seenFundKeys = new Set();
+    const funds = rawFunds.filter((f) => {
+      const key = (f.isin || '').trim()
+        ? `${(f.isin || '').trim()}|${f.category}`
+        : f._id.toString();
+      if (seenFundKeys.has(key)) return false;
+      seenFundKeys.add(key);
+      return true;
     });
     const extraByCat =
       config.extraFundIsinsByCategory && typeof config.extraFundIsinsByCategory === 'object'
@@ -463,6 +482,7 @@ router.delete('/config/extra-fund', requirePortfolioBuilderAccess, async (req, r
 });
 
 // POST resetear config: vuelve a los valores por defecto (allocation, rvDistribution, extra/excluded/manual vacíos)
+// También re-siembra los fondos desde el JSON por defecto para eliminar duplicados o datos corruptos.
 router.post('/config/reset', requirePortfolioBuilderAccess, async (req, res) => {
   try {
     let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
@@ -475,6 +495,10 @@ router.post('/config/reset', requirePortfolioBuilderAccess, async (req, res) => 
     config.excludedFundIsinsByCategory = {};
     config.manualFundsByCategory = {};
     await config.save();
+
+    // Re-sembrar fondos desde el JSON por defecto (elimina duplicados y datos corruptos)
+    await forceSeedFunds(req.userId);
+
     res.json({
       allocation: config.allocation,
       rvDistribution: config.rvDistribution,

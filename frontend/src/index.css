@@ -354,14 +354,14 @@
 
   /* ─── Buttons ────────────────────────────────────────────────── */
 
-  /* Primary: gold background, dark text (high contrast) */
+  /* Primary: user-color background, white text (high contrast on any hue) */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: var(--tc-gold);
-    color: #0f0f0d;
+    background: var(--user-color-600, var(--tc-gold));
+    color: #ffffff;
     padding: 0.625rem 1.5rem;
     border-radius: 10px;
     font-weight: 600;
