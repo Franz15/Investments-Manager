@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Edit, Trash2, Link } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Edit, Trash2, Link, Camera, Trash, ZoomIn } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from '../contexts/TranslationContext';
 
@@ -10,6 +10,10 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
   const [categories, setCategories] = useState([]);
   const [activeDebts, setActiveDebts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     subAccount: '',
     type: 'expense',
@@ -36,7 +40,9 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
         business: transaction.business?._id || transaction.business || null,
         debt: transaction.debt?._id || transaction.debt || null,
       });
+      setImageUrl(transaction.imageUrl || null);
       setIsEditing(false);
+      setLightboxOpen(false);
     }
   }, [isOpen, transaction]);
 
@@ -57,6 +63,40 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
       if (!businessId && results[2]) setActiveDebts(results[2].data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await api.post(`/transactions/${transaction._id}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImageUrl(res.data.imageUrl);
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    } finally {
+      setImageLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageDelete = async () => {
+    if (!window.confirm('¿Eliminar la imagen adjunta?')) return;
+    setImageLoading(true);
+    try {
+      await api.delete(`/transactions/${transaction._id}/image`);
+      setImageUrl(null);
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    } finally {
+      setImageLoading(false);
     }
   };
 
@@ -95,6 +135,29 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
   };
 
   if (!isOpen || !transaction) return null;
+
+  // Lightbox para ver la imagen a pantalla completa
+  if (lightboxOpen && imageUrl) {
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+        onClick={() => setLightboxOpen(false)}
+      >
+        <button
+          className="absolute top-4 right-4 text-white hover:text-gray-300"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <X className="h-8 w-8" />
+        </button>
+        <img
+          src={imageUrl}
+          alt="Recibo"
+          className="max-w-full max-h-full object-contain rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    );
+  }
 
   const availableCategories = categories.filter((cat) => cat.type === formData.type);
 
@@ -409,6 +472,61 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                 </span>
               </div>
             )}
+
+            {/* Imagen adjunta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Imagen adjunta
+              </label>
+              {imageUrl ? (
+                <div className="relative inline-block group">
+                  <img
+                    src={imageUrl}
+                    alt="Recibo"
+                    className="h-40 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 cursor-zoom-in"
+                    onClick={() => setLightboxOpen(true)}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                    <button
+                      onClick={() => setLightboxOpen(true)}
+                      className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600"
+                      title="Ver imagen"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={handleImageDelete}
+                      disabled={imageLoading}
+                      className="p-1.5 bg-white rounded-full text-gray-700 hover:text-red-600"
+                      title="Eliminar imagen"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {imageLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 dark:bg-gray-800 dark:bg-opacity-60 rounded-lg">
+                      <span className="text-sm text-gray-500">...</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={imageLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors text-sm"
+                >
+                  <Camera className="h-4 w-4" />
+                  {imageLoading ? 'Subiendo...' : 'Adjuntar imagen / recibo'}
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
 
             <div className="flex gap-3 pt-4">
               <button onClick={() => setIsEditing(true)} className="flex-1 btn-primary">

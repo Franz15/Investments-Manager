@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo, useMemo } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo, createContext, useContext } from 'react';
 import {
   format,
   startOfMonth,
@@ -25,15 +25,11 @@ import {
   Search,
   X,
   BarChart2,
-  Wallet,
   Calendar,
   ArrowLeftRight,
   Download,
-  ArrowUpDown,
-  Eye,
-  EyeOff,
   LayoutDashboard,
-  Clock,
+  Tag,
 } from 'lucide-react';
 import {
   BarChart,
@@ -55,6 +51,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import QuickTransactionForm from '../components/QuickTransactionForm';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import { useTranslation } from '../contexts/TranslationContext';
+
+/* ─── business context (shared by all tabs) ──────── */
+const FinancesCtx = createContext(null); // null = personal
+const useFinancesBiz = () => useContext(FinancesCtx);
 
 /* ─── helpers ─────────────────────────────────────── */
 const fmt = (n) =>
@@ -92,176 +92,6 @@ const ProgressBar = ({ pct }) => {
   );
 };
 
-/* ─── Budget Modal ────────────────────────────────── */
-const EMPTY_BUDGET = {
-  name: '',
-  category: '',
-  amount: '',
-  currency: 'EUR',
-  period: 'monthly',
-  startDate: new Date().toISOString().split('T')[0],
-  endDate: '',
-  isActive: true,
-  business: null, // always null for personal Finances
-  notifications: { enabled: true, threshold: 80 },
-};
-
-const BudgetModal = ({ open, budget, categories, prefillCategory = '', onSave, onClose }) => {
-  const { t } = useTranslation();
-  const [form, setForm] = useState(EMPTY_BUDGET);
-
-  useEffect(() => {
-    if (budget) {
-      setForm({
-        name: budget.name,
-        category: budget.category?._id || budget.category || '',
-        amount: budget.amount,
-        currency: budget.currency,
-        period: budget.period,
-        startDate: new Date(budget.startDate).toISOString().split('T')[0],
-        endDate: budget.endDate ? new Date(budget.endDate).toISOString().split('T')[0] : '',
-        isActive: budget.isActive,
-        business: null,
-        notifications: budget.notifications || { enabled: true, threshold: 80 },
-      });
-    } else {
-      setForm({ ...EMPTY_BUDGET, category: prefillCategory });
-    }
-  }, [budget, open, prefillCategory]);
-
-  if (!open) return null;
-
-  const submit = (e) => {
-    e.preventDefault();
-    onSave({ ...form, amount: parseFloat(form.amount) || 0 });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="modal-content max-w-md w-full">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {budget ? t('budgets.editBudget') : t('budgets.newBudget')}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-              {t('budgets.name')}
-            </label>
-            <input
-              type="text"
-              className="input-field"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-              {t('budgets.category')}
-            </label>
-            <select
-              className="input-field"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              required
-            >
-              <option value="">{t('budgets.selectCategory')}</option>
-              {categories.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                {t('budgets.amount')}
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="input-field"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                {t('budgets.period')}
-              </label>
-              <select
-                className="input-field"
-                value={form.period}
-                onChange={(e) => setForm({ ...form, period: e.target.value })}
-              >
-                <option value="weekly">{t('budgets.periods.weekly')}</option>
-                <option value="monthly">{t('budgets.periods.monthly')}</option>
-                <option value="quarterly">{t('budgets.periods.quarterly')}</option>
-                <option value="yearly">{t('budgets.periods.yearly')}</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                {t('budgets.startDate')}
-              </label>
-              <input
-                type="date"
-                className="input-field"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                {t('budgets.endDate')} {t('common.optional')}
-              </label>
-              <input
-                type="date"
-                className="input-field"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-              />
-            </div>
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-              className="rounded"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              {t('budgets.isActive')}
-            </span>
-          </label>
-          <div className="flex gap-3 pt-2">
-            <button type="submit" className="flex-1 btn-primary">
-              {t('common.save')}
-            </button>
-            <button type="button" onClick={onClose} className="flex-1 btn-secondary">
-              {t('common.cancel')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 /* ─── Forecast Modal ──────────────────────────────── */
 const EMPTY_FORECAST = {
   name: '',
@@ -274,7 +104,6 @@ const EMPTY_FORECAST = {
   endDate: '',
   description: '',
   isActive: true,
-  business: null, // always null for personal Finances
 };
 
 const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
@@ -294,7 +123,6 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
         endDate: forecast.endDate ? new Date(forecast.endDate).toISOString().split('T')[0] : '',
         description: forecast.description || '',
         isActive: forecast.isActive,
-        business: null, // Finances is strictly personal
       });
     } else {
       setForm(EMPTY_FORECAST);
@@ -453,300 +281,11 @@ const ForecastModal = ({ open, forecast, categories, onSave, onClose }) => {
 };
 
 /* ═══════════════════════════════════════════════════
-   TAB 1 — PRESUPUESTO (envelope view)
-═══════════════════════════════════════════════════ */
-const BudgetTab = memo(({ month }) => {
-  const { t } = useTranslation();
-  const [budgets, setBudgets] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [spending, setSpending] = useState({});
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, budget: null });
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const start = format(startOfMonth(month), 'yyyy-MM-dd');
-    const end = format(endOfMonth(month), 'yyyy-MM-dd');
-    try {
-      const [budgetsRes, catsRes, spendRes, sumRes] = await Promise.all([
-        api.get('/budgets', { params: { business: 'null' } }),
-        api.get('/categories?type=expense'),
-        api.get('/transactions/statistics/by-category', {
-          params: { startDate: start, endDate: end, business: 'null' },
-        }),
-        api.get('/transactions/statistics/summary', {
-          params: { startDate: start, endDate: end, business: 'null' },
-        }),
-      ]);
-      setBudgets(budgetsRes.data);
-      setCategories(catsRes.data);
-      const map = {};
-      (spendRes.data || []).forEach((c) => {
-        map[c.category] = c.expenses || 0;
-      });
-      setSpending(map);
-      setSummary(sumRes.data);
-    } catch {
-      /* silent */
-    } finally {
-      setLoading(false);
-    }
-  }, [month]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSave = async (data) => {
-    try {
-      if (modal.budget) await api.put(`/budgets/${modal.budget._id}`, data);
-      else await api.post('/budgets', data);
-      setModal({ open: false, budget: null });
-      fetchData();
-    } catch {
-      /* silent */
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('budgets.deleteConfirm'))) return;
-    try {
-      await api.delete(`/budgets/${id}`);
-      fetchData();
-    } catch {
-      /* silent */
-    }
-  };
-
-  if (loading) return <LoadingSpinner />;
-
-  const activeBudgets = budgets.filter((b) => b.isActive);
-  const budgetedCats = new Set(activeBudgets.map((b) => b.category?.name).filter(Boolean));
-
-  const rows = activeBudgets.map((b) => {
-    const catName = b.category?.name || '';
-    const spent = spending[catName] || 0;
-    const remaining = b.amount - spent;
-    const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
-    return { b, catName, spent, remaining, pct };
-  });
-
-  const unbudgeted = Object.entries(spending)
-    .filter(([cat, amt]) => amt > 0 && !budgetedCats.has(cat))
-    .sort(([, a], [, b]) => b - a);
-
-  const totalBudgeted = rows.reduce((s, r) => s + r.b.amount, 0);
-  const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
-  const totalRemaining = totalBudgeted - totalSpent;
-  const monthIncome = summary?.totalIncome ?? 0;
-  const toAssign = monthIncome - totalBudgeted;
-
-  return (
-    <div className="space-y-4">
-      {/* Summary banner */}
-      <div className="card">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('financesDashboard.totalIncome')}
-            </p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">
-              {fmt(monthIncome)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('budgets.totalBudgeted')}
-            </p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-              {fmt(totalBudgeted)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('financesDashboard.totalExpenses')}
-            </p>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">
-              {fmt(totalSpent)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('budgets.totalRemaining')}
-            </p>
-            <p
-              className={`text-lg font-bold tabular-nums ${totalRemaining >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-            >
-              {fmt(totalRemaining)}
-            </p>
-          </div>
-        </div>
-        {monthIncome > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
-            <span className="text-xs text-gray-500">{t('finances.toAssign')}:</span>
-            <span
-              className={`text-sm font-semibold tabular-nums ${toAssign >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}
-            >
-              {fmt(toAssign)}
-            </span>
-            {toAssign < 0 && (
-              <span className="text-xs text-red-500 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {t('finances.overBudget')}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Envelope table */}
-      {rows.length === 0 && unbudgeted.length === 0 ? (
-        <div className="card text-center py-12 space-y-3">
-          <p className="text-gray-400">{t('budgets.noBudgets')}</p>
-          <button
-            onClick={() => setModal({ open: true, budget: null })}
-            className="btn-primary mx-auto"
-          >
-            {t('budgets.newBudget')}
-          </button>
-        </div>
-      ) : (
-        <div className="card overflow-hidden p-0">
-          {/* Header row */}
-          <div className="hidden sm:grid sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
-            {[
-              t('budgets.category'),
-              t('budgets.budgeted'),
-              t('budgets.spent'),
-              t('budgets.remaining'),
-              t('budgets.usage'),
-              '',
-            ].map((h, i) => (
-              <span
-                key={i}
-                className={`text-xs font-semibold text-gray-400 uppercase tracking-wide ${i > 0 ? 'text-right' : ''}`}
-              >
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {rows.map(({ b, catName, spent, remaining, pct }) => (
-            <div
-              key={b._id}
-              className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3.5 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group items-center"
-            >
-              {/* Category */}
-              <div className="flex items-center gap-2.5 min-w-0">
-                {b.category?.color && (
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: b.category.color }}
-                  />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                    {b.name}
-                  </p>
-                  {catName && <p className="text-xs text-gray-400 truncate">{catName}</p>}
-                </div>
-              </div>
-              {/* Budgeted */}
-              <p className="hidden sm:block text-sm text-gray-600 dark:text-gray-400 text-right tabular-nums">
-                {fmt(b.amount)}
-              </p>
-              {/* Spent */}
-              <p className="hidden sm:block text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums">
-                {fmt(spent)}
-              </p>
-              {/* Remaining */}
-              <div className="hidden sm:flex items-center justify-end gap-1">
-                {pct >= 100 && <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
-                <p
-                  className={`text-sm font-semibold text-right tabular-nums ${remaining >= 0 ? (pct >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400') : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {fmt(remaining)}
-                </p>
-              </div>
-              {/* Progress */}
-              <div className="hidden sm:block">
-                <ProgressBar pct={pct} />
-                <p className="text-xs text-gray-400 text-center mt-0.5">{Math.round(pct)}%</p>
-              </div>
-              {/* Mobile amount */}
-              <div className="sm:hidden text-right">
-                <p
-                  className={`text-sm font-semibold tabular-nums ${remaining >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {fmt(remaining)}
-                </p>
-                <p className="text-xs text-gray-400">{Math.round(pct)}%</p>
-              </div>
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => setModal({ open: true, budget: b })}
-                  className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(b._id)}
-                  className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {/* Unbudgeted */}
-          {unbudgeted.length > 0 && (
-            <>
-              <div className="px-5 py-2 bg-gray-50 dark:bg-gray-900/30 border-t border-b border-gray-100 dark:border-gray-800">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  {t('budgets.unbudgeted')}
-                </span>
-              </div>
-              {unbudgeted.map(([cat, amt]) => (
-                <div
-                  key={cat}
-                  className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3 border-b border-gray-50 dark:border-gray-800/40 last:border-0 items-center"
-                >
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {cat || t('finances.uncategorized')}
-                  </p>
-                  <p className="hidden sm:block text-sm text-gray-400 text-right">—</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums sm:col-start-3">
-                    {fmt(amt)}
-                  </p>
-                  <p className="hidden sm:block text-sm text-gray-400 text-right">—</p>
-                  <div className="hidden sm:block" />
-                  <div className="hidden sm:block" />
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      <BudgetModal
-        open={modal.open}
-        budget={modal.budget}
-        categories={categories}
-        onSave={handleSave}
-        onClose={() => setModal({ open: false, budget: null })}
-      />
-    </div>
-  );
-});
-
-/* ═══════════════════════════════════════════════════
    TAB 2 — TRANSACCIONES
 ═══════════════════════════════════════════════════ */
 const TransactionsTab = memo(({ month }) => {
   const { t } = useTranslation();
+  const biz = useFinancesBiz();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -760,7 +299,7 @@ const TransactionsTab = memo(({ month }) => {
     const end = format(endOfMonth(month), 'yyyy-MM-dd');
     try {
       const res = await api.get('/transactions', {
-        params: { startDate: start, endDate: end, business: 'null' },
+        params: { startDate: start, endDate: end, business: biz || 'null' },
       });
       setTransactions(Array.isArray(res.data) ? res.data : []);
     } catch {
@@ -917,7 +456,7 @@ const TransactionsTab = memo(({ month }) => {
       <QuickTransactionForm
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
-        businessId={null}
+        businessId={biz}
         onSuccess={fetchData}
       />
 
@@ -979,12 +518,12 @@ const PieTip = ({ active, payload }) => {
 
 const ReportsTab = memo(() => {
   const { t } = useTranslation();
+  const biz = useFinancesBiz();
   const [period, setPeriod] = useState('6m');
   const [customFrom, setCustomFrom] = useState(format(subMonths(new Date(), 5), 'yyyy-MM-01'));
   const [customTo, setCustomTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [periodData, setPeriodData] = useState([]);
   const [catData, setCatData] = useState([]);
-  const [budgetVsActual, setBudgetVsActual] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -996,15 +535,13 @@ const ReportsTab = memo(() => {
         ? new Date(customFrom)
         : startOfMonth(subMonths(new Date(), p.months - 1));
     try {
-      const nowStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-      const nowEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
-      const [periodRes, catRes, budgetsRes, spendRes] = await Promise.all([
+      const [periodRes, catRes] = await Promise.all([
         api.get('/transactions/statistics/by-period', {
           params: {
             period: 'monthly',
             startDate: format(start, 'yyyy-MM-dd'),
             endDate: format(end, 'yyyy-MM-dd'),
-            business: 'null',
+            business: biz || 'null',
           },
         }),
         api.get('/transactions/statistics/by-category', {
@@ -1012,12 +549,8 @@ const ReportsTab = memo(() => {
             startDate: format(start, 'yyyy-MM-dd'),
             endDate: format(end, 'yyyy-MM-dd'),
             type: 'expense',
-            business: 'null',
+            business: biz || 'null',
           },
-        }),
-        api.get('/budgets', { params: { business: 'null' } }),
-        api.get('/transactions/statistics/by-category', {
-          params: { startDate: nowStart, endDate: nowEnd, business: 'null' },
         }),
       ]);
       const raw = periodRes.data?.basePeriod?.data ?? [];
@@ -1043,20 +576,6 @@ const ReportsTab = memo(() => {
           }))
           .map((c, i) => ({ ...c, fill: CAT_COLORS[i % CAT_COLORS.length] }))
       );
-      // Budget vs actual for current month
-      const spendMap = {};
-      (spendRes.data || []).forEach((c) => {
-        spendMap[c.category] = c.expenses || 0;
-      });
-      const bvaData = (budgetsRes.data || [])
-        .filter((b) => b.isActive)
-        .map((b) => ({
-          name: b.category?.name || b.name,
-          [t('reports.budget')]: b.amount,
-          [t('reports.actual')]: spendMap[b.category?.name] || 0,
-        }))
-        .filter((x) => x[t('reports.budget')] > 0 || x[t('reports.actual')] > 0);
-      setBudgetVsActual(bvaData);
     } catch {
       /* silent */
     } finally {
@@ -1298,259 +817,6 @@ const ReportsTab = memo(() => {
           </div>
         </div>
       </div>
-
-      {/* Budget vs Actual chart */}
-      {budgetVsActual.length > 0 && (
-        <div className="card">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            {t('reports.budgetVsActual')}
-          </h3>
-          <div style={{ height: 200 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={budgetVsActual} barCategoryGap="30%" barGap={2} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={fmtCompact}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={90}
-                />
-                <Tooltip content={<BarTip />} />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                <Bar
-                  dataKey={t('reports.budget')}
-                  fill="#94a3b8"
-                  opacity={0.7}
-                  radius={[0, 3, 3, 0]}
-                />
-                <Bar
-                  dataKey={t('reports.actual')}
-                  fill="#dc2626"
-                  opacity={0.85}
-                  radius={[0, 3, 3, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
-
-/* ═══════════════════════════════════════════════════
-   TAB 4 — PREVISIONES
-═══════════════════════════════════════════════════ */
-const ForecastsTab = memo(() => {
-  const { t } = useTranslation();
-  const [forecasts, setForecasts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, forecast: null });
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fRes, cRes] = await Promise.all([
-        api.get('/forecasts', { params: { business: 'null' } }),
-        api.get('/categories'),
-      ]);
-      setForecasts(fRes.data);
-      setCategories(cRes.data);
-    } catch {
-      /* silent */
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSave = async (data) => {
-    try {
-      if (modal.forecast) await api.put(`/forecasts/${modal.forecast._id}`, data);
-      else await api.post('/forecasts', data);
-      setModal({ open: false, forecast: null });
-      fetchData();
-    } catch {
-      /* silent */
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('forecasts.deleteConfirm'))) return;
-    try {
-      await api.delete(`/forecasts/${id}`);
-      fetchData();
-    } catch {
-      /* silent */
-    }
-  };
-
-  if (loading) return <LoadingSpinner />;
-
-  const income = forecasts.filter((f) => f.isActive && f.type === 'income');
-  const expenses = forecasts.filter((f) => f.isActive && f.type === 'expense');
-  const totalMonthlyIncome = income.reduce(
-    (s, f) =>
-      s +
-      (f.frequency === 'monthly'
-        ? f.amount
-        : f.frequency === 'yearly'
-          ? f.amount / 12
-          : f.frequency === 'weekly'
-            ? f.amount * 4.33
-            : f.amount),
-    0
-  );
-  const totalMonthlyExpense = expenses.reduce(
-    (s, f) =>
-      s +
-      (f.frequency === 'monthly'
-        ? f.amount
-        : f.frequency === 'yearly'
-          ? f.amount / 12
-          : f.frequency === 'weekly'
-            ? f.amount * 4.33
-            : f.amount),
-    0
-  );
-
-  const ForecastRow = ({ f }) => (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group px-4">
-      <div
-        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{f.name}</p>
-        <p className="text-xs text-gray-400">
-          {t(`forecasts.frequencies.${f.frequency}`)}
-          {f.category?.name && ` · ${f.category.name}`}
-        </p>
-      </div>
-      <p
-        className={`text-sm font-semibold tabular-nums flex-shrink-0 ${f.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'}`}
-      >
-        {f.type === 'income' ? '+' : '−'}
-        {fmt(f.amount)}
-      </p>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => setModal({ open: true, forecast: f })}
-          className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-        >
-          <Edit className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => handleDelete(f._id)}
-          className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      {/* Summary */}
-      <div className="card">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('finances.monthlyIncome')}
-            </p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">
-              ~{fmt(totalMonthlyIncome)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('finances.monthlyExpenses')}
-            </p>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">
-              ~{fmt(totalMonthlyExpense)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-              {t('financesDashboard.balance')}
-            </p>
-            <p
-              className={`text-lg font-bold tabular-nums ${totalMonthlyIncome - totalMonthlyExpense >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}
-            >
-              ~{fmt(totalMonthlyIncome - totalMonthlyExpense)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {forecasts.length === 0 ? (
-        <div className="card text-center py-12 space-y-3">
-          <p className="text-gray-400">{t('forecasts.noForecasts')}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Income */}
-          <div className="card p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/10">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
-                  {t('forecasts.types.income')}
-                </span>
-              </div>
-              <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">
-                {fmt(totalMonthlyIncome)}/mes
-              </span>
-            </div>
-            {income.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">{t('forecasts.noForecasts')}</p>
-            ) : (
-              income.map((f) => <ForecastRow key={f._id} f={f} />)
-            )}
-          </div>
-
-          {/* Expenses */}
-          <div className="card p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-red-50/50 dark:bg-red-900/10">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                  {t('forecasts.types.expense')}
-                </span>
-              </div>
-              <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
-                {fmt(totalMonthlyExpense)}/mes
-              </span>
-            </div>
-            {expenses.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">{t('forecasts.noForecasts')}</p>
-            ) : (
-              expenses.map((f) => <ForecastRow key={f._id} f={f} />)
-            )}
-          </div>
-        </div>
-      )}
-
-      <ForecastModal
-        open={modal.open}
-        forecast={modal.forecast}
-        categories={categories}
-        onSave={handleSave}
-        onClose={() => setModal({ open: false, forecast: null })}
-      />
     </div>
   );
 });
@@ -1560,6 +826,7 @@ const ForecastsTab = memo(() => {
 ═══════════════════════════════════════════════════ */
 const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
   const { t } = useTranslation();
+  const biz = useFinancesBiz();
   const [forecasts, setForecasts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [spending, setSpending] = useState({});
@@ -1581,12 +848,12 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
     const end = format(endOfMonth(month), 'yyyy-MM-dd');
     try {
       const [fRes, catStatRes, sumRes, catsRes] = await Promise.all([
-        api.get('/forecasts', { params: { business: 'null' } }),
+        api.get('/forecasts', { params: { business: biz || 'null' } }),
         api.get('/transactions/statistics/by-category', {
-          params: { startDate: start, endDate: end, business: 'null' },
+          params: { startDate: start, endDate: end, business: biz || 'null' },
         }),
         api.get('/transactions/statistics/summary', {
-          params: { startDate: start, endDate: end, business: 'null' },
+          params: { startDate: start, endDate: end, business: biz || 'null' },
         }),
         api.get('/categories'),
       ]);
@@ -1614,8 +881,9 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
 
   const handleSave = async (data) => {
     try {
-      if (modal.forecast) await api.put(`/forecasts/${modal.forecast._id}`, data);
-      else await api.post('/forecasts', data);
+      const payload = { ...data, business: biz || null };
+      if (modal.forecast) await api.put(`/forecasts/${modal.forecast._id}`, payload);
+      else await api.post('/forecasts', payload);
       setModal({ open: false, forecast: null });
       fetchData();
     } catch {
@@ -1912,10 +1180,9 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
 ═══════════════════════════════════════════════════ */
 const OverviewTab = memo(() => {
   const { t } = useTranslation();
+  const biz = useFinancesBiz();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
-  const [budgets, setBudgets] = useState([]);
-  const [spending, setSpending] = useState({});
   const [forecasts, setForecasts] = useState([]);
 
   const fetchData = useCallback(async () => {
@@ -1923,23 +1190,13 @@ const OverviewTab = memo(() => {
     const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
     const end = format(endOfMonth(new Date()), 'yyyy-MM-dd');
     try {
-      const [sumRes, budgetsRes, spendRes, forecastsRes] = await Promise.all([
+      const [sumRes, forecastsRes] = await Promise.all([
         api.get('/transactions/statistics/summary', {
-          params: { startDate: start, endDate: end, business: 'null' },
+          params: { startDate: start, endDate: end, business: biz || 'null' },
         }),
-        api.get('/budgets', { params: { business: 'null' } }),
-        api.get('/transactions/statistics/by-category', {
-          params: { startDate: start, endDate: end, business: 'null' },
-        }),
-        api.get('/forecasts', { params: { business: 'null' } }),
+        api.get('/forecasts', { params: { business: biz || 'null' } }),
       ]);
       setSummary(sumRes.data);
-      setBudgets((budgetsRes.data || []).filter((b) => b.isActive));
-      const map = {};
-      (spendRes.data || []).forEach((c) => {
-        map[c.category] = c.expenses || 0;
-      });
-      setSpending(map);
       setForecasts((forecastsRes.data || []).filter((f) => f.isActive));
     } catch {
       /* silent */
@@ -1974,14 +1231,6 @@ const OverviewTab = memo(() => {
   const projectedExpenses = forecasts
     .filter((f) => f.type === 'expense')
     .reduce((s, f) => s + monthlyAmt(f), 0);
-
-  const budgetRows = budgets.map((b) => {
-    const spent = spending[b.category?.name] || 0;
-    const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
-    return { b, spent, pct };
-  });
-  const exceeded = budgetRows.filter((r) => r.pct >= 100).length;
-  const onTrack = budgetRows.filter((r) => r.pct < 80).length;
 
   const upcomingForecasts = forecasts
     .filter((f) => {
@@ -2067,86 +1316,454 @@ const OverviewTab = memo(() => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Budget overview */}
-        <div className="card">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            {t('finances.budgetOverview')}
-          </h3>
-          {budgetRows.length === 0 ? (
-            <p className="text-sm text-gray-400">{t('finances.noBudgetsYet')}</p>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-xs text-gray-500">
-                    {onTrack} {t('finances.budgetsOnTrack')}
+      {/* Upcoming expiring forecasts */}
+      <div className="card">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          {t('finances.upcomingForecasts')}
+        </h3>
+        {upcomingForecasts.length === 0 ? (
+          <p className="text-sm text-gray-400">{t('forecasts.noForecasts')}</p>
+        ) : (
+          <div className="space-y-2">
+            {upcomingForecasts.map((f) => {
+              const days = differenceInDays(new Date(f.endDate), new Date());
+              return (
+                <div key={f._id} className="flex items-center justify-between text-sm">
+                  <div className="min-w-0">
+                    <p className="text-gray-700 dark:text-gray-300 font-medium truncate">
+                      {f.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {fmt(f.amount)} · {t(`forecasts.frequencies.${f.frequency}`)}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${days <= 7 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}
+                  >
+                    {days === 0 ? t('finances.expired') : `${days}d`}
                   </span>
                 </div>
-                {exceeded > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="text-xs text-red-500">
-                      {exceeded} {t('finances.budgetsExceeded')}
-                    </span>
-                  </div>
-                )}
-              </div>
-              {budgetRows.slice(0, 6).map(({ b, spent, pct }) => (
-                <div key={b._id} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600 dark:text-gray-400 truncate max-w-[140px]">
-                      {b.name}
-                    </span>
-                    <span
-                      className={`tabular-nums font-medium ${pct >= 100 ? 'text-red-600 dark:text-red-400' : pct >= 80 ? 'text-amber-600' : 'text-gray-500'}`}
-                    >
-                      {fmt(spent)} / {fmt(b.amount)}
-                    </span>
-                  </div>
-                  <ProgressBar pct={pct} />
-                </div>
-              ))}
-              {budgetRows.length > 6 && (
-                <p className="text-xs text-gray-400 pt-1">+{budgetRows.length - 6} más...</p>
-              )}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
-        {/* Upcoming expiring forecasts */}
-        <div className="card">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            {t('finances.upcomingForecasts')}
-          </h3>
-          {upcomingForecasts.length === 0 ? (
-            <p className="text-sm text-gray-400">{t('forecasts.noForecasts')}</p>
-          ) : (
-            <div className="space-y-2">
-              {upcomingForecasts.map((f) => {
-                const days = differenceInDays(new Date(f.endDate), new Date());
-                return (
-                  <div key={f._id} className="flex items-center justify-between text-sm">
-                    <div className="min-w-0">
-                      <p className="text-gray-700 dark:text-gray-300 font-medium truncate">
-                        {f.name}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {fmt(f.amount)} · {t(`forecasts.frequencies.${f.frequency}`)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${days <= 7 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}
-                    >
-                      {days === 0 ? t('finances.expired') : `${days}d`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+/* ═══════════════════════════════════════════════════
+   TAB CATEGORÍAS
+═══════════════════════════════════════════════════ */
+const DEFAULT_CATEGORIES = [
+  // Gastos
+  { name: 'Alimentación', type: 'expense', color: '#16a34a' },
+  { name: 'Supermercado', type: 'expense', color: '#22c55e', parentName: 'Alimentación' },
+  { name: 'Restaurantes', type: 'expense', color: '#4ade80', parentName: 'Alimentación' },
+  { name: 'Transporte', type: 'expense', color: '#0284c7' },
+  { name: 'Gasolina', type: 'expense', color: '#38bdf8', parentName: 'Transporte' },
+  { name: 'Transporte público', type: 'expense', color: '#0891b2', parentName: 'Transporte' },
+  { name: 'Hogar', type: 'expense', color: '#d97706' },
+  { name: 'Alquiler/Hipoteca', type: 'expense', color: '#f59e0b', parentName: 'Hogar' },
+  { name: 'Suministros', type: 'expense', color: '#b45309', parentName: 'Hogar' },
+  { name: 'Salud', type: 'expense', color: '#be185d' },
+  { name: 'Ocio', type: 'expense', color: '#7c3aed' },
+  { name: 'Viajes', type: 'expense', color: '#6d28d9', parentName: 'Ocio' },
+  { name: 'Ropa', type: 'expense', color: '#059669' },
+  { name: 'Educación', type: 'expense', color: '#0e7490' },
+  { name: 'Suscripciones', type: 'expense', color: '#dc2626' },
+  { name: 'Seguros', type: 'expense', color: '#b45309' },
+  { name: 'Otros gastos', type: 'expense', color: '#6B7280' },
+  // Ingresos
+  { name: 'Nómina', type: 'income', color: '#16a34a' },
+  { name: 'Freelance', type: 'income', color: '#0284c7' },
+  { name: 'Inversiones', type: 'income', color: '#7c3aed' },
+  { name: 'Alquiler cobrado', type: 'income', color: '#d97706' },
+  { name: 'Devoluciones', type: 'income', color: '#0891b2' },
+  { name: 'Otros ingresos', type: 'income', color: '#6B7280' },
+];
+
+const EMPTY_CAT_FORM = { name: '', type: 'expense', color: '#6B7280', parentCategory: '' };
+
+const CategoriesTab = memo(() => {
+  const biz = useFinancesBiz();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(null); // null=hidden, {}=new, {_id,..}=editing
+  const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [loadingDef, setLoadingDef] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await api.get('/categories');
+      setCategories(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        color: form.color,
+        parentCategory: form.parentCategory || null,
+      };
+      if (form._id) {
+        await api.put(`/categories/${form._id}`, payload);
+      } else {
+        await api.post('/categories', payload);
+      }
+      setForm(null);
+      await fetchCategories();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/categories/${id}`);
+      setDeleteId(null);
+      await fetchCategories();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      // Fetch all transactions to get unique category names + dominant type
+      const txRes = await api.get('/transactions', { params: { business: biz || 'null' } });
+      const txList = txRes.data || [];
+
+      // Count income vs expense per category name
+      const typeCount = {};
+      txList.forEach(({ category, type }) => {
+        if (!category) return;
+        if (!typeCount[category]) typeCount[category] = { income: 0, expense: 0 };
+        if (type === 'income' || type === 'expense') typeCount[category][type]++;
+      });
+
+      const existingNames = new Set(categories.map((c) => c.name.toLowerCase()));
+      const PALETTE = [
+        '#0284c7',
+        '#16a34a',
+        '#dc2626',
+        '#d97706',
+        '#7c3aed',
+        '#0891b2',
+        '#be185d',
+        '#b45309',
+        '#4f46e5',
+        '#059669',
+      ];
+      let idx = 0;
+
+      const toCreate = Object.entries(typeCount)
+        .filter(([name]) => !existingNames.has(name.toLowerCase()))
+        .map(([name, counts]) => ({
+          name,
+          type: counts.expense >= counts.income ? 'expense' : 'income',
+          color: PALETTE[idx++ % PALETTE.length],
+          parentCategory: null,
+        }));
+
+      await Promise.all(toCreate.map((cat) => api.post('/categories', cat)));
+      await fetchCategories();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleLoadDefaults = async () => {
+    setLoadingDef(true);
+    try {
+      // Create parents first, then children
+      const parents = DEFAULT_CATEGORIES.filter((c) => !c.parentName);
+      const children = DEFAULT_CATEGORIES.filter((c) => c.parentName);
+
+      const existingNames = new Set(categories.map((c) => c.name.toLowerCase()));
+      const nameToId = {};
+      categories.forEach((c) => {
+        nameToId[c.name] = c._id;
+      });
+
+      // Create missing parents
+      for (const cat of parents) {
+        if (!existingNames.has(cat.name.toLowerCase())) {
+          const res = await api.post('/categories', {
+            name: cat.name,
+            type: cat.type,
+            color: cat.color,
+            parentCategory: null,
+          });
+          nameToId[cat.name] = res.data._id;
+          existingNames.add(cat.name.toLowerCase());
+        }
+      }
+
+      // Create missing children
+      for (const cat of children) {
+        if (!existingNames.has(cat.name.toLowerCase())) {
+          const parentId = nameToId[cat.parentName] || null;
+          await api.post('/categories', {
+            name: cat.name,
+            type: cat.type,
+            color: cat.color,
+            parentCategory: parentId,
+          });
+          existingNames.add(cat.name.toLowerCase());
+        }
+      }
+
+      await fetchCategories();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingDef(false);
+    }
+  };
+
+  // Build tree: top-level + their children, grouped by type
+  const byType = { expense: [], income: [] };
+  const topLevel = categories.filter((c) => !c.parentCategory);
+  const childrenOf = {};
+  categories.forEach((c) => {
+    if (c.parentCategory) {
+      const pid = c.parentCategory._id || c.parentCategory;
+      if (!childrenOf[pid]) childrenOf[pid] = [];
+      childrenOf[pid].push(c);
+    }
+  });
+  topLevel.forEach((c) => {
+    const t = c.type === 'income' ? 'income' : 'expense';
+    byType[t].push(c);
+  });
+
+  const parentOptions = categories.filter((c) => !c.parentCategory);
+
+  if (loading) return <LoadingSpinner />;
+
+  const renderRow = (cat, indent = false) => (
+    <div key={cat._id}>
+      <div
+        className={`flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 group ${indent ? 'ml-6 border-l-2 border-gray-200 dark:border-gray-700 pl-4' : ''}`}
+      >
+        <div
+          className="w-3 h-3 rounded-full flex-shrink-0"
+          style={{ backgroundColor: cat.color }}
+        />
+        <span className="flex-1 text-sm text-gray-800 dark:text-gray-200 font-medium">
+          {cat.name}
+        </span>
+        {indent && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">subcategoría</span>
+        )}
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() =>
+              setForm({
+                ...cat,
+                parentCategory: cat.parentCategory?._id || cat.parentCategory || '',
+              })
+            }
+            className="p-1 text-gray-400 hover:text-blue-500 rounded"
+            title="Editar"
+          >
+            <Edit className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setDeleteId(cat._id)}
+            className="p-1 text-gray-400 hover:text-red-500 rounded"
+            title="Eliminar"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
+      </div>
+      {(childrenOf[cat._id] || []).map((child) => renderRow(child, true))}
+    </div>
+  );
+
+  const renderSection = (label, type, colorClass) => {
+    const items = byType[type];
+    return (
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className={`text-sm font-semibold uppercase tracking-wide ${colorClass}`}>{label}</h3>
+          <span className="text-xs text-gray-400">
+            {categories.filter((c) => c.type === type).length} categorías
+          </span>
+        </div>
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 py-2">
+            Sin categorías de {label.toLowerCase()}
+          </p>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {items.map((cat) => renderRow(cat))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setForm({ ...EMPTY_CAT_FORM })}
+            className="btn-primary flex items-center gap-1.5 text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva categoría
+          </button>
+          <button
+            onClick={handleLoadDefaults}
+            disabled={loadingDef}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            title="Carga un set estándar de categorías de finanzas personales"
+          >
+            {loadingDef ? '...' : '⚡ Categorías por defecto'}
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={importing}
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            title="Crea categorías a partir de las que ya usas en tus transacciones"
+          >
+            {importing ? '...' : '↓ Importar de transacciones'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">{categories.length} categorías en total</p>
+      </div>
+
+      {/* Inline form */}
+      {form && (
+        <div className="card border-2 border-blue-200 dark:border-blue-800">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            {form._id ? 'Editar categoría' : 'Nueva categoría'}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Nombre
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Ej: Alimentación"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Tipo
+              </label>
+              <select
+                className="input-field"
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                <option value="expense">Gasto</option>
+                <option value="income">Ingreso</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Color
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="w-10 h-9 rounded cursor-pointer border border-gray-300 dark:border-gray-600 p-0.5"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+                <span className="text-xs text-gray-500 font-mono">{form.color}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Categoría padre <span className="text-gray-400">(opcional)</span>
+              </label>
+              <select
+                className="input-field"
+                value={form.parentCategory || ''}
+                onChange={(e) => setForm({ ...form, parentCategory: e.target.value || '' })}
+              >
+                <option value="">— ninguna (nivel raíz)</option>
+                {parentOptions
+                  .filter((c) => c._id !== form._id && c.type === form.type)
+                  .map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.name.trim()}
+              className="btn-primary text-sm"
+            >
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button onClick={() => setForm(null)} className="btn-secondary text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete */}
+      {deleteId && (
+        <div className="card border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
+          <p className="text-sm text-red-700 dark:text-red-400 mb-3">
+            ¿Eliminar esta categoría? Las transacciones que la usen mantendrán el nombre, pero la
+            categoría ya no estará en la lista.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleDelete(deleteId)}
+              className="btn-primary bg-red-600 hover:bg-red-700 text-sm"
+            >
+              Eliminar
+            </button>
+            <button onClick={() => setDeleteId(null)} className="btn-secondary text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Category lists */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {renderSection('Gastos', 'expense', 'text-red-600 dark:text-red-400')}
+        {renderSection('Ingresos', 'income', 'text-green-600 dark:text-green-400')}
       </div>
     </div>
   );
@@ -2157,38 +1774,24 @@ const OverviewTab = memo(() => {
 ═══════════════════════════════════════════════════ */
 const TABS = [
   { key: 'overview', labelKey: 'finances.tabs.overview', icon: LayoutDashboard },
-  { key: 'budget', labelKey: 'finances.tabs.budget', icon: Wallet },
   { key: 'transactions', labelKey: 'finances.tabs.transactions', icon: ArrowLeftRight },
   { key: 'reports', labelKey: 'finances.tabs.reports', icon: BarChart2 },
   { key: 'forecasts', labelKey: 'finances.tabs.forecasts', icon: Calendar },
+  { key: 'categories', label: 'Categorías', icon: Tag },
 ];
 
-const BUDGET_MODES = [
-  { key: 'sobres', label: 'Sobres', icon: Wallet },
-  { key: 'previsiones', label: 'Previsiones', icon: Calendar },
-];
-
-const Finances = () => {
+export const FinancesTabsView = ({ businessId = null }) => {
   const { t } = useTranslation();
   const today = new Date();
   const [tab, setTab] = useState('overview');
   const [month, setMonth] = useState(startOfMonth(today));
   const [showAdd, setShowAdd] = useState(false);
-  const [budgetMode, setBudgetMode] = useState(
-    () => localStorage.getItem('financesBudgetMode') || 'sobres'
-  );
 
-  const handleBudgetModeChange = (mode) => {
-    setBudgetMode(mode);
-    localStorage.setItem('financesBudgetMode', mode);
-  };
-
-  const showMonthNav = tab === 'budget' || tab === 'transactions';
-  const canAdd = tab !== 'reports' && tab !== 'overview';
+  const showMonthNav = tab === 'forecasts' || tab === 'transactions';
+  const canAdd = tab !== 'reports' && tab !== 'overview' && tab !== 'categories';
   const isCurrentMonth = isSameMonth(month, today);
 
   const addLabels = {
-    budget: budgetMode === 'sobres' ? t('budgets.newBudget') : t('forecasts.newForecast'),
     transactions: t('quickTransaction.addTransaction'),
     reports: null,
     overview: null,
@@ -2196,416 +1799,87 @@ const Finances = () => {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Top bar: tabs + controls */}
-      <div className="flex flex-wrap items-center gap-3 justify-between">
-        {/* Primary tabs */}
-        <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded p-1">
-          {TABS.map(({ key, labelKey, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${tab === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t(labelKey)}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Budget mode sub-toggle — only on Presupuesto tab */}
-          {tab === 'budget' && (
-            <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded p-1">
-              {BUDGET_MODES.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => handleBudgetModeChange(key)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-semibold transition-all ${budgetMode === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                >
-                  <Icon className="h-3 w-3" />
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Month navigator */}
-          {showMonthNav && (
-            <div className="flex items-center gap-1">
+    <FinancesCtx.Provider value={businessId}>
+      <div className="space-y-5">
+        {/* Top bar: tabs + controls */}
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          {/* Primary tabs */}
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded p-1">
+            {TABS.map(({ key, labelKey, label, icon: Icon }) => (
               <button
-                onClick={() => setMonth(subMonths(month, 1))}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+                key={key}
+                onClick={() => setTab(key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${tab === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{label ?? t(labelKey)}</span>
               </button>
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 min-w-[130px] text-center capitalize">
-                {format(month, 'MMMM yyyy', { locale: es })}
-              </span>
-              <button
-                onClick={() => setMonth(addMonths(month, 1))}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                disabled={isCurrentMonth}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Add button */}
-          {canAdd && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="btn-primary flex items-center gap-1.5 text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{addLabels[tab]}</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Tab content */}
-      {tab === 'overview' && <OverviewTab />}
-      {tab === 'budget' && (
-        <BudgetTabWithAdd
-          month={month}
-          triggerAdd={showAdd}
-          onAddDone={() => setShowAdd(false)}
-          budgetMode={budgetMode}
-        />
-      )}
-      {tab === 'transactions' && (
-        <TransactionsTabWithAdd
-          month={month}
-          triggerAdd={showAdd}
-          onAddDone={() => setShowAdd(false)}
-        />
-      )}
-      {tab === 'reports' && <ReportsTab />}
-      {tab === 'forecasts' && (
-        <ForecastsTabWithAdd triggerAdd={showAdd} onAddDone={() => setShowAdd(false)} />
-      )}
-    </div>
-  );
-};
-
-/* ─── Wrappers that handle the external "add" trigger ─ */
-const BudgetTabWithAdd = ({ month, triggerAdd, onAddDone, budgetMode }) => {
-  const { t } = useTranslation();
-  // Sobres-mode state (declared unconditionally to satisfy Rules of Hooks)
-  const [budgets, setBudgets] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [spending, setSpending] = useState({});
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, budget: null, prefillCategory: '' });
-  const [sortBy, setSortBy] = useState('pct');
-
-  useEffect(() => {
-    if (triggerAdd && budgetMode === 'sobres') {
-      setModal({ open: true, budget: null, prefillCategory: '' });
-      onAddDone();
-    }
-  }, [triggerAdd]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const start = format(startOfMonth(month), 'yyyy-MM-dd');
-    const end = format(endOfMonth(month), 'yyyy-MM-dd');
-    try {
-      const [budgetsRes, catsRes, spendRes, sumRes] = await Promise.all([
-        api.get('/budgets', { params: { business: 'null' } }),
-        api.get('/categories?type=expense'),
-        api.get('/transactions/statistics/by-category', {
-          params: { startDate: start, endDate: end, business: 'null' },
-        }),
-        api.get('/transactions/statistics/summary', {
-          params: { startDate: start, endDate: end, business: 'null' },
-        }),
-      ]);
-      setBudgets(budgetsRes.data);
-      setCategories(catsRes.data);
-      const map = {};
-      (spendRes.data || []).forEach((c) => {
-        map[c.category] = c.expenses || 0;
-      });
-      setSpending(map);
-      setSummary(sumRes.data);
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }, [month]);
-
-  useEffect(() => {
-    if (budgetMode === 'sobres') fetchData();
-    else setLoading(false);
-  }, [fetchData, budgetMode]);
-
-  const handleSave = async (data) => {
-    try {
-      if (modal.budget) await api.put(`/budgets/${modal.budget._id}`, data);
-      else await api.post('/budgets', data);
-      setModal({ open: false, budget: null, prefillCategory: '' });
-      fetchData();
-    } catch {}
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('budgets.deleteConfirm'))) return;
-    try {
-      await api.delete(`/budgets/${id}`);
-      fetchData();
-    } catch {}
-  };
-
-  // Delegate to ForecastBudgetView when in previsiones mode (after all hooks)
-  if (budgetMode === 'previsiones') {
-    return <ForecastBudgetView month={month} triggerAdd={triggerAdd} onAddDone={onAddDone} />;
-  }
-
-  if (loading) return <LoadingSpinner />;
-
-  const activeBudgets = budgets.filter((b) => b.isActive);
-  const budgetedCats = new Set(activeBudgets.map((b) => b.category?.name).filter(Boolean));
-  const rows = activeBudgets
-    .map((b) => {
-      const catName = b.category?.name || '';
-      const spent = spending[catName] || 0;
-      const remaining = b.amount - spent;
-      const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
-      return { b, catName, spent, remaining, pct };
-    })
-    .sort((a, z) => {
-      if (sortBy === 'pct') return z.pct - a.pct;
-      if (sortBy === 'amount') return z.b.amount - a.b.amount;
-      if (sortBy === 'name') return a.b.name.localeCompare(z.b.name);
-      return 0;
-    });
-  const unbudgeted = Object.entries(spending)
-    .filter(([cat, amt]) => amt > 0 && !budgetedCats.has(cat))
-    .sort(([, a], [, b]) => b - a);
-  const totalBudgeted = rows.reduce((s, r) => s + r.b.amount, 0);
-  const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
-  const totalRemaining = totalBudgeted - totalSpent;
-  const monthIncome = summary?.totalIncome ?? 0;
-  const toAssign = monthIncome - totalBudgeted;
-
-  return (
-    <div className="space-y-4">
-      <div className="card">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            {
-              label: t('financesDashboard.totalIncome'),
-              val: monthIncome,
-              cls: 'text-green-600 dark:text-green-400',
-            },
-            {
-              label: t('budgets.totalBudgeted'),
-              val: totalBudgeted,
-              cls: 'text-gray-900 dark:text-gray-100',
-            },
-            {
-              label: t('financesDashboard.totalExpenses'),
-              val: totalSpent,
-              cls: 'text-red-600 dark:text-red-400',
-            },
-            {
-              label: t('budgets.totalRemaining'),
-              val: totalRemaining,
-              cls:
-                totalRemaining >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400',
-            },
-          ].map(({ label, val, cls }) => (
-            <div key={label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-                {label}
-              </p>
-              <p className={`text-lg font-bold tabular-nums ${cls}`}>{fmt(val)}</p>
-            </div>
-          ))}
-        </div>
-        {monthIncome > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
-            <span className="text-xs text-gray-500">{t('finances.toAssign')}:</span>
-            <span
-              className={`text-sm font-semibold tabular-nums ${toAssign >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}
-            >
-              {fmt(toAssign)}
-            </span>
-            {toAssign < 0 && (
-              <span className="text-xs text-red-500 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {t('finances.overBudget')}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {rows.length === 0 && unbudgeted.length === 0 ? (
-        <div className="card text-center py-12 space-y-3">
-          <p className="text-gray-400">{t('budgets.noBudgets')}</p>
-          <button
-            onClick={() => setModal({ open: true, budget: null, prefillCategory: '' })}
-            className="btn-primary mx-auto"
-          >
-            {t('budgets.newBudget')}
-          </button>
-        </div>
-      ) : (
-        <div className="card overflow-hidden p-0">
-          <div className="hidden sm:grid sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                {t('budgets.category')}
-              </span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="text-xs text-gray-400 bg-transparent border-none outline-none cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <option value="pct">{t('finances.sortByUsage')}</option>
-                <option value="amount">{t('finances.sortByAmount')}</option>
-                <option value="name">{t('finances.sortByName')}</option>
-              </select>
-            </div>
-            {[
-              t('budgets.budgeted'),
-              t('budgets.spent'),
-              t('budgets.remaining'),
-              t('budgets.usage'),
-              '',
-            ].map((h, i) => (
-              <span
-                key={i}
-                className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-right"
-              >
-                {h}
-              </span>
             ))}
           </div>
-          {rows.map(({ b, catName, spent, remaining, pct }) => (
-            <div
-              key={b._id}
-              className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3.5 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group items-center"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {b.category?.color && (
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: b.category.color }}
-                  />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                    {b.name}
-                  </p>
-                  {catName && <p className="text-xs text-gray-400 truncate">{catName}</p>}
-                </div>
-              </div>
-              <p className="hidden sm:block text-sm text-gray-600 dark:text-gray-400 text-right tabular-nums">
-                {fmt(b.amount)}
-              </p>
-              <p className="hidden sm:block text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums">
-                {fmt(spent)}
-              </p>
-              <div className="hidden sm:flex items-center justify-end gap-1">
-                {pct >= 100 && <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
-                <p
-                  className={`text-sm font-semibold text-right tabular-nums ${remaining >= 0 ? (pct >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400') : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {fmt(remaining)}
-                </p>
-              </div>
-              <div className="hidden sm:block">
-                <ProgressBar pct={pct} />
-                <p className="text-xs text-gray-400 text-center mt-0.5">{Math.round(pct)}%</p>
-              </div>
-              <div className="sm:hidden text-right">
-                <p
-                  className={`text-sm font-semibold tabular-nums ${remaining >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {fmt(remaining)}
-                </p>
-                <p className="text-xs text-gray-400">{Math.round(pct)}%</p>
-              </div>
-              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+          <div className="flex items-center gap-2">
+            {/* Month navigator */}
+            {showMonthNav && (
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setModal({ open: true, budget: b, prefillCategory: '' })}
-                  className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  onClick={() => setMonth(subMonths(month, 1))}
+                  className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
                 >
-                  <Edit className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-                <button
-                  onClick={() => handleDelete(b._id)}
-                  className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {unbudgeted.length > 0 && (
-            <>
-              <div className="px-5 py-2 bg-gray-50 dark:bg-gray-900/30 border-t border-b border-gray-100 dark:border-gray-800">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  {t('budgets.unbudgeted')}
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 min-w-[130px] text-center capitalize">
+                  {format(month, 'MMMM yyyy', { locale: es })}
                 </span>
+                <button
+                  onClick={() => setMonth(addMonths(month, 1))}
+                  className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  disabled={isCurrentMonth}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-              {unbudgeted.map(([cat, amt]) => {
-                const catObj = categories.find((c) => c.name === cat);
-                return (
-                  <div
-                    key={cat}
-                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_110px_110px_110px_90px_52px] gap-x-3 px-5 py-3 border-b border-gray-50 dark:border-gray-800/40 last:border-0 items-center group hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {cat || t('finances.uncategorized')}
-                      </p>
-                      <button
-                        onClick={() =>
-                          setModal({ open: true, budget: null, prefillCategory: catObj?._id || '' })
-                        }
-                        className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs text-[var(--user-color-600)] hover:text-[var(--user-color-700)] font-medium flex-shrink-0"
-                      >
-                        <Plus className="h-3 w-3" />
-                        {t('finances.suggestBudgets').split(' ')[0]}
-                      </button>
-                    </div>
-                    <p className="hidden sm:block text-sm text-gray-400 text-right">—</p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 text-right tabular-nums sm:col-start-3">
-                      {fmt(amt)}
-                    </p>
-                    <p className="hidden sm:block text-gray-400 text-right text-sm">—</p>
-                    <div className="hidden sm:block" />
-                    <div className="hidden sm:block" />
-                  </div>
-                );
-              })}
-            </>
-          )}
+            )}
+
+            {/* Add button */}
+            {canAdd && (
+              <button
+                onClick={() => setShowAdd(true)}
+                className="btn-primary flex items-center gap-1.5 text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{addLabels[tab]}</span>
+              </button>
+            )}
+          </div>
         </div>
-      )}
-      <BudgetModal
-        open={modal.open}
-        budget={modal.budget}
-        categories={categories}
-        prefillCategory={modal.prefillCategory}
-        onSave={handleSave}
-        onClose={() => setModal({ open: false, budget: null, prefillCategory: '' })}
-      />
-    </div>
+
+        {/* Tab content */}
+        {tab === 'overview' && <OverviewTab />}
+        {tab === 'transactions' && (
+          <TransactionsTabWithAdd
+            month={month}
+            triggerAdd={showAdd}
+            onAddDone={() => setShowAdd(false)}
+          />
+        )}
+        {tab === 'reports' && <ReportsTab />}
+        {tab === 'categories' && <CategoriesTab />}
+        {tab === 'forecasts' && (
+          <ForecastBudgetView
+            month={month}
+            triggerAdd={showAdd}
+            onAddDone={() => setShowAdd(false)}
+          />
+        )}
+      </div>
+    </FinancesCtx.Provider>
   );
 };
 
+const Finances = () => <FinancesTabsView businessId={null} />;
 const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
   const [showAdd, setShowAdd] = useState(false);
+  const biz = useFinancesBiz();
   useEffect(() => {
     if (triggerAdd) {
       setShowAdd(true);
@@ -2650,14 +1924,14 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
     const end = format(endOfMonth(month), 'yyyy-MM-dd');
     try {
       const res = await api.get('/transactions', {
-        params: { startDate: start, endDate: end, business: 'null' },
+        params: { startDate: start, endDate: end, business: biz || 'null' },
       });
       setTransactions(Array.isArray(res.data) ? res.data : []);
     } catch {
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, biz]);
 
   useEffect(() => {
     fetchData();
@@ -2830,7 +2104,7 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
       <QuickTransactionForm
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
-        businessId={null}
+        businessId={biz}
         defaultDate={defaultDate}
         onSuccess={() => {
           setShowAdd(false);
@@ -2849,256 +2123,6 @@ const TransactionsTabWithAdd = ({ month, triggerAdd, onAddDone }) => {
           setSelected(null);
           fetchData();
         }}
-      />
-    </div>
-  );
-};
-
-const ForecastsTabWithAdd = ({ triggerAdd, onAddDone }) => {
-  const { t } = useTranslation();
-  const [forecasts, setForecasts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, forecast: null });
-  const [showInactive, setShowInactive] = useState(false);
-
-  useEffect(() => {
-    if (triggerAdd) {
-      setModal({ open: true, forecast: null });
-      onAddDone();
-    }
-  }, [triggerAdd]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fRes, cRes] = await Promise.all([
-        api.get('/forecasts', { params: { business: 'null' } }),
-        api.get('/categories'),
-      ]);
-      setForecasts(fRes.data);
-      setCategories(cRes.data);
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSave = async (data) => {
-    try {
-      if (modal.forecast) await api.put(`/forecasts/${modal.forecast._id}`, data);
-      else await api.post('/forecasts', data);
-      setModal({ open: false, forecast: null });
-      fetchData();
-    } catch {}
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('forecasts.deleteConfirm'))) return;
-    try {
-      await api.delete(`/forecasts/${id}`);
-      fetchData();
-    } catch {}
-  };
-
-  if (loading) return <LoadingSpinner />;
-
-  const activeForecasts = forecasts.filter((f) => f.isActive);
-  const income = activeForecasts.filter((f) => f.type === 'income');
-  const expenses = activeForecasts.filter((f) => f.type === 'expense');
-  const inactiveForecasts = forecasts.filter((f) => !f.isActive);
-  const monthlyAmt = (f) =>
-    f.frequency === 'monthly'
-      ? f.amount
-      : f.frequency === 'yearly'
-        ? f.amount / 12
-        : f.frequency === 'weekly'
-          ? f.amount * 4.33
-          : f.frequency === 'biweekly'
-            ? f.amount * 2.17
-            : f.frequency === 'quarterly'
-              ? f.amount / 3
-              : 0;
-  const totalMonthlyIncome = income.reduce((s, f) => s + monthlyAmt(f), 0);
-  const totalMonthlyExpense = expenses.reduce((s, f) => s + monthlyAmt(f), 0);
-
-  const ForecastRow = ({ f }) => {
-    const daysLeft = f.endDate ? differenceInDays(new Date(f.endDate), new Date()) : null;
-    const expiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
-    const expired = daysLeft !== null && daysLeft < 0;
-    return (
-      <div
-        className={`flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/40 dark:hover:bg-gray-800/20 transition-colors group px-4 ${!f.isActive ? 'opacity-50' : ''}`}
-      >
-        <div
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-              {f.name}
-            </p>
-            {expiringSoon && (
-              <span
-                className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${daysLeft <= 7 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}
-              >
-                {daysLeft === 0 ? t('finances.expired') : `${daysLeft}d`}
-              </span>
-            )}
-            {expired && (
-              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 flex-shrink-0">
-                {t('finances.expired')}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400">
-            {t(`forecasts.frequencies.${f.frequency}`)}
-            {f.category?.name && ` · ${f.category.name}`}
-          </p>
-        </div>
-        <p
-          className={`text-sm font-semibold tabular-nums flex-shrink-0 ${f.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'}`}
-        >
-          {f.type === 'income' ? '+' : '−'}
-          {fmt(f.amount)}
-        </p>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => setModal({ open: true, forecast: f })}
-            className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-          >
-            <Edit className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => handleDelete(f._id)}
-            className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="card">
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            {
-              label: t('finances.monthlyIncome'),
-              val: totalMonthlyIncome,
-              cls: 'text-green-600 dark:text-green-400',
-            },
-            {
-              label: t('finances.monthlyExpenses'),
-              val: totalMonthlyExpense,
-              cls: 'text-red-600 dark:text-red-400',
-            },
-            {
-              label: t('financesDashboard.balance'),
-              val: totalMonthlyIncome - totalMonthlyExpense,
-              cls:
-                totalMonthlyIncome - totalMonthlyExpense >= 0
-                  ? 'text-gray-900 dark:text-gray-100'
-                  : 'text-red-600 dark:text-red-400',
-            },
-          ].map(({ label, val, cls }) => (
-            <div key={label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-                {label}
-              </p>
-              <p className={`text-lg font-bold tabular-nums ${cls}`}>~{fmt(val)}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {forecasts.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-gray-400">{t('forecasts.noForecasts')}</p>
-        </div>
-      ) : (
-        <>
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowInactive((v) => !v)}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              {showInactive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              {showInactive ? t('finances.hideInactive') : t('finances.showInactive')}
-              {inactiveForecasts.length > 0 && (
-                <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full px-1.5 py-0.5 text-xs">
-                  {inactiveForecasts.length}
-                </span>
-              )}
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="card p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-green-50/50 dark:bg-green-900/10">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
-                    {t('forecasts.types.income')}
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">
-                  ~{fmt(totalMonthlyIncome)}
-                  {t('finances.perMonth')}
-                </span>
-              </div>
-              {income.length === 0 ? (
-                <p className="text-sm text-gray-400 py-6 text-center">
-                  {t('forecasts.noForecasts')}
-                </p>
-              ) : (
-                income.map((f) => <ForecastRow key={f._id} f={f} />)
-              )}
-              {showInactive &&
-                inactiveForecasts
-                  .filter((f) => f.type === 'income')
-                  .map((f) => <ForecastRow key={f._id} f={f} />)}
-            </div>
-            <div className="card p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-red-50/50 dark:bg-red-900/10">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                  <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                    {t('forecasts.types.expense')}
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-red-600 dark:text-red-400 tabular-nums">
-                  ~{fmt(totalMonthlyExpense)}
-                  {t('finances.perMonth')}
-                </span>
-              </div>
-              {expenses.length === 0 ? (
-                <p className="text-sm text-gray-400 py-6 text-center">
-                  {t('forecasts.noForecasts')}
-                </p>
-              ) : (
-                expenses.map((f) => <ForecastRow key={f._id} f={f} />)
-              )}
-              {showInactive &&
-                inactiveForecasts
-                  .filter((f) => f.type === 'expense')
-                  .map((f) => <ForecastRow key={f._id} f={f} />)}
-            </div>
-          </div>
-        </>
-      )}
-
-      <ForecastModal
-        open={modal.open}
-        forecast={modal.forecast}
-        categories={categories}
-        onSave={handleSave}
-        onClose={() => setModal({ open: false, forecast: null })}
       />
     </div>
   );

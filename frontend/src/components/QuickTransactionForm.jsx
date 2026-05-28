@@ -13,6 +13,7 @@ const QuickTransactionForm = ({
   const { t } = useTranslation();
   const [subAccounts, setSubAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
   const [activeDebts, setActiveDebts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -44,11 +45,12 @@ const QuickTransactionForm = ({
       const requests = [
         api.get('/subaccounts'),
         api.get('/categories', { params: { business: businessId || 'null' } }),
+        api.get('/transactions', { params: { business: businessId || 'null' } }),
       ];
       if (!businessId) requests.push(api.get('/debts', { params: { status: 'active' } }));
 
       const results = await Promise.all(requests);
-      const [subAccountsRes, categoriesRes] = results;
+      const [subAccountsRes, categoriesRes, txRes] = results;
 
       const filteredSubAccounts = subAccountsRes.data.filter(
         (sa) => sa.isActive && (sa.type === 'cash' || sa.type === 'savings')
@@ -58,17 +60,18 @@ const QuickTransactionForm = ({
       const filteredCategories = categoriesRes.data.filter((cat) => cat.isActive);
       setCategories(filteredCategories);
 
-      if (!businessId && results[2]) {
-        setActiveDebts(results[2].data || []);
+      // Sugerencias: categorías API + categorías únicas de transacciones existentes
+      const apiNames = new Set(filteredCategories.map((c) => c.name));
+      const txNames = (txRes.data || []).map((tx) => tx.category).filter(Boolean);
+      const extra = txNames.filter((n) => !apiNames.has(n));
+      setCategorySuggestions([...filteredCategories.map((c) => c.name), ...new Set(extra)]);
+
+      if (!businessId && results[3]) {
+        setActiveDebts(results[3].data || []);
       }
 
       const updates = {};
       if (filteredSubAccounts.length > 0) updates.subAccount = filteredSubAccounts[0]._id;
-      if (filteredCategories.length > 0) {
-        const defaultCategory =
-          filteredCategories.find((cat) => cat.type === 'expense') || filteredCategories[0];
-        updates.category = defaultCategory.name;
-      }
       if (Object.keys(updates).length > 0) {
         setFormData((prev) => ({ ...prev, ...updates }));
       }
@@ -117,18 +120,7 @@ const QuickTransactionForm = ({
   };
 
   const handleTypeChange = (type) => {
-    setFormData((prev) => {
-      const newType = type;
-      // Filtrar categorías por tipo
-      const availableCategories = categories.filter((cat) => cat.type === newType);
-      const newCategory = availableCategories.length > 0 ? availableCategories[0].name : '';
-
-      return {
-        ...prev,
-        type: newType,
-        category: newCategory,
-      };
-    });
+    setFormData((prev) => ({ ...prev, type, category: '' }));
   };
 
   if (!isOpen) return null;
@@ -189,21 +181,44 @@ const QuickTransactionForm = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('transactions.category')}
             </label>
-            <select
-              className="input-field"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              required
-            >
-              <option value="">
-                {t('common.select')} {t('transactions.category').toLowerCase()}
-              </option>
-              {availableCategories.map((category) => (
-                <option key={category._id} value={category.name}>
-                  {category.name}
+            {availableCategories.length > 0 ? (
+              <select
+                className="input-field"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                required
+              >
+                <option value="">
+                  {t('common.select')} {t('transactions.category').toLowerCase()}
                 </option>
-              ))}
-            </select>
+                {availableCategories.map((cat) => (
+                  <option key={cat._id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  list="qtf-categories"
+                  className="input-field"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="Escribe una categoría..."
+                  required
+                  autoComplete="off"
+                />
+                <datalist id="qtf-categories">
+                  {categorySuggestions.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Sin categorías — ve a Finanzas → Categorías para crearlas.
+                </p>
+              </>
+            )}
           </div>
 
           {/* Cantidad */}
