@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_PORTFOLIO_ALLOCATION,
-  DEFAULT_RV_DISTRIBUTION,
   DEFAULT_SECTION_DESCRIPTIONS,
   DEFAULT_SECTION_TIPS,
   DEFAULT_SECTION_VIDEOS,
@@ -74,6 +73,9 @@ const PortfolioBuilder = () => {
     ],
   });
 
+  const [esgOnly, setEsgOnly] = useState(false);
+  const rawConfigRef = useRef(null);
+
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
   const [addingExtra, setAddingExtra] = useState(null);
@@ -82,23 +84,118 @@ const PortfolioBuilder = () => {
   const [refreshingMetrics, setRefreshingMetrics] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
 
+  const handleEsgOnlyChange = async (value) => {
+    setEsgOnly(value);
+    if (rawConfigRef.current) {
+      const updatedConfig = { ...rawConfigRef.current, esgOnly: value };
+      rawConfigRef.current = updatedConfig;
+      setPortfolioData(buildPortfolioDataFromConfig(updatedConfig, t));
+    }
+    try {
+      await api.put('/portfolio-builder/config', { esgOnly: value });
+    } catch (err) {
+      console.error('Error guardando preferencia ESG:', err);
+    }
+  };
+
   // Mapear un fondo de la API al formato que usa la UI
   const mapFundToSection = (f) => ({
     name: f.name,
     isin: f.isin ?? null,
     link: f.link ?? null,
-    volatility12M: f.volatility12M ?? null,
     return12M: f.return12M ?? null,
+    return3Y: f.return3Y ?? null,
+    return5Y: f.return5Y ?? null,
+    return10Y: f.return10Y ?? null,
+    volatility12M: f.volatility12M ?? null,
+    volatility3Y: f.volatility3Y ?? null,
+    volatility5Y: f.volatility5Y ?? null,
+    ratingOverall: f.ratingOverall ?? null,
     notes: f.notes ?? null,
-    isMain: f.isMain ?? false,
+    tags: f.tags ?? [],
     _seq: f._seq ?? null,
   });
 
   // Construir datos del portfolio desde config (API: allocation, rvDistribution, funds con showInSection)
   // Solo se muestran fondos "principales" (Cartera1) + los que el usuario ha añadido como extra.
+  const ESG_TAGS = ['esg-alto', 'esg-moderado', 'esg-superficial'];
+
+  const renderFundMetrics = (fund) => {
+    const hasReturns = fund.return12M || fund.return3Y || fund.return5Y || fund.return10Y;
+    const hasVol = fund.volatility12M || fund.volatility3Y || fund.volatility5Y;
+    const hasRating = fund.ratingOverall != null;
+    if (!hasReturns && !hasVol && !hasRating) return null;
+
+    const renderRow = (label, periods) => {
+      const filled = periods.filter(([, v]) => v);
+      if (!filled.length) return null;
+      return (
+        <div className="flex items-baseline gap-2 text-xs">
+          <span className="text-gray-400 dark:text-gray-500 shrink-0 w-7">{label}</span>
+          <span className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {filled.map(([period, value]) => (
+              <span key={period}>
+                <span className="text-gray-400 dark:text-gray-500">{period}</span>{' '}
+                <span className="font-medium text-gray-800 dark:text-gray-200">{value}</span>
+              </span>
+            ))}
+          </span>
+        </div>
+      );
+    };
+
+    return (
+      <div className="mt-2 mb-2 space-y-1.5">
+        {hasRating && (
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <span
+                key={i}
+                className={`text-sm leading-none ${i < fund.ratingOverall ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`}
+              >
+                ★
+              </span>
+            ))}
+          </div>
+        )}
+        {renderRow('Rent.', [
+          ['12M', fund.return12M],
+          ['3A', fund.return3Y],
+          ['5A', fund.return5Y],
+          ['10A', fund.return10Y],
+        ])}
+        {renderRow('Vol.', [
+          ['12M', fund.volatility12M],
+          ['3A', fund.volatility3Y],
+          ['5A', fund.volatility5Y],
+        ])}
+      </div>
+    );
+  };
+
+  const getEsgBadge = (tags) => {
+    if ((tags || []).includes('esg-alto'))
+      return {
+        label: 'Responsable',
+        cls: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700',
+      };
+    if ((tags || []).includes('esg-moderado'))
+      return {
+        label: 'Responsable',
+        cls: 'bg-gray-100 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-500',
+      };
+    if ((tags || []).includes('esg-superficial'))
+      return {
+        label: 'Responsable',
+        cls: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-700',
+      };
+    return null;
+  };
+
   const buildPortfolioDataFromConfig = (config, tFn) => {
     const allocation = config?.allocation || DEFAULT_PORTFOLIO_ALLOCATION;
-    const rvDist = config?.rvDistribution || DEFAULT_RV_DISTRIBUTION;
+    const rvDist = config?.rvDistribution;
+    const onlyEsg = config?.esgOnly ?? false;
     // Deduplicate by isin+category (or name+category when no isin) to guard against DB duplicates
     const seen = new Set();
     const fundsList = (config?.funds || []).filter((f) => {
@@ -112,16 +209,19 @@ const PortfolioBuilder = () => {
     const rvDistributionIsins = new Set(
       (rvDist || []).map((d) => (d.isin || '').trim()).filter(Boolean)
     );
+    const fundVisible = (f) =>
+      onlyEsg ? (f.tags || []).some((tag) => ESG_TAGS.includes(tag)) : f.showInSection === true;
+
     const byCategory = (cat, onlyShowInSection = true) => {
       const extraOrder = (config?.extraFundIsinsByCategory?.[cat] || []).map((s) =>
         (s || '').trim()
       );
       return fundsList
-        .filter((f) => f.category === cat && (!onlyShowInSection || f.showInSection === true))
+        .filter((f) => f.category === cat && (!onlyShowInSection || fundVisible(f)))
         .sort((a, b) => {
-          const aMain = a.isMain ?? false;
-          const bMain = b.isMain ?? false;
-          if (aMain !== bMain) return bMain ? 1 : -1; // mains first
+          const aMain = (a.tags || []).includes('recomendado');
+          const bMain = (b.tags || []).includes('recomendado');
+          if (aMain !== bMain) return bMain ? 1 : -1; // recomendados first
           // both extras: preserve insertion order from extraFundIsinsByCategory
           const aIdx = extraOrder.indexOf((a.isin || '').trim());
           const bIdx = extraOrder.indexOf((b.isin || '').trim());
@@ -147,27 +247,16 @@ const PortfolioBuilder = () => {
       volatility12M: f.volatility12M ?? null,
       return12M: f.return12M ?? null,
       notes: null,
-      isMain: false,
+      tags: [],
       _seq: null,
       _manual: true,
       _id: f._id,
     });
 
-    // Fallback para fondos conocidos que pueden no estar en fundsList (p. ej. Heptagon en configs antiguas)
-    const KNOWN_RV_FUND_FALLBACKS = {
-      Heptagon: {
-        name: 'Heptagon Fund ICAV - Kopernik Global All-Cap Equity Fund AE EUR Acc',
-        isin: 'IE00BH6XSF26',
-        link: 'https://www.finect.com/fondos-inversion/IE00BH6XSF26-Heptagon_kopernik_glb_allcp_eq_ae__acc',
-        volatility12M: '9.87%',
-        return12M: '54.87%',
-      },
-    };
-
-    // Enriquecer cada ítem de la distribución RV con datos de fundsList (p. ej. Heptagon con ISIN, link, volatilidad, rentabilidad)
+    // Enriquecer cada ítem de la distribución RV con datos de fundsList
     const enrichDistributionItem = (d) => {
       const isin = (d.isin || '').trim();
-      let fund =
+      const fund =
         (isin && fundsList.find((f) => (f.isin || '').trim() === isin)) ||
         (d.name &&
           fundsList.find((f) =>
@@ -177,9 +266,6 @@ const PortfolioBuilder = () => {
           fundsList.find((f) =>
             (d.name || '').toLowerCase().includes((f.name || '').split(' ')[0].toLowerCase())
           ));
-      if (!fund && d.name && KNOWN_RV_FUND_FALLBACKS[d.name.trim()]) {
-        fund = KNOWN_RV_FUND_FALLBACKS[d.name.trim()];
-      }
       if (fund) {
         return {
           amount: null,
@@ -187,10 +273,16 @@ const PortfolioBuilder = () => {
           name: d.name || fund.name,
           isin: isin || (fund.isin || '').trim() || null,
           link: d.link || fund.link || null,
-          volatility12M: d.volatility12M ?? fund.volatility12M ?? null,
           return12M: d.return12M ?? fund.return12M ?? null,
+          return3Y: fund.return3Y ?? null,
+          return5Y: fund.return5Y ?? null,
+          return10Y: fund.return10Y ?? null,
+          volatility12M: d.volatility12M ?? fund.volatility12M ?? null,
+          volatility3Y: fund.volatility3Y ?? null,
+          volatility5Y: fund.volatility5Y ?? null,
+          ratingOverall: fund.ratingOverall ?? null,
           calculatedAmount: d.calculatedAmount ?? null,
-          isMain: fund.isMain ?? false,
+          tags: fund.tags ?? [],
           _seq: d._seq ?? null,
         };
       }
@@ -200,10 +292,16 @@ const PortfolioBuilder = () => {
         name: d.name,
         isin: d.isin ?? null,
         link: d.link ?? null,
-        volatility12M: d.volatility12M ?? null,
         return12M: d.return12M ?? null,
+        return3Y: null,
+        return5Y: null,
+        return10Y: null,
+        volatility12M: d.volatility12M ?? null,
+        volatility3Y: null,
+        volatility5Y: null,
+        ratingOverall: null,
         calculatedAmount: d.calculatedAmount ?? null,
-        isMain: false,
+        tags: [],
         _seq: d._seq ?? null,
       };
     };
@@ -293,6 +391,8 @@ const PortfolioBuilder = () => {
       .get('/portfolio-builder/config')
       .then((res) => {
         const config = res.data;
+        rawConfigRef.current = config;
+        setEsgOnly(config.esgOnly ?? false);
         const processedData = buildPortfolioDataFromConfig(config, t);
         setPortfolioData(processedData);
 
@@ -327,21 +427,6 @@ const PortfolioBuilder = () => {
             message ||
               t('portfolioBuilder.errors.loadConfig') + ': ' + (err.message || 'Sin conexión')
           );
-
-          const fallback = buildPortfolioDataFromConfig(null, t);
-          setPortfolioData(fallback);
-          const allocation = DEFAULT_PORTFOLIO_ALLOCATION;
-          setCalculatorData({
-            totalAmount: allocation.totalAmountCalculated || 120000,
-            categories: allocation.categories.map((cat) => ({
-              name: cat.name,
-              expectedReturn: cat.expectedReturn
-                ? parseFloat(String(cat.expectedReturn).replace('%', ''))
-                : 0,
-              weight: cat.weight ? parseFloat(String(cat.weight).replace('%', '')) : 0,
-              description: cat.description || '',
-            })),
-          });
         }
       })
       .finally(() => setLoading(false));
@@ -481,7 +566,7 @@ const PortfolioBuilder = () => {
         volatility12M: null,
         return12M: null,
         notes: null,
-        isMain: false,
+        tags: [],
         _seq: newSeq,
         _manual: true,
         _id: addedId,
@@ -1177,12 +1262,33 @@ const PortfolioBuilder = () => {
   return (
     <div className="space-y-8">
       <div className="mb-2">
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-          {t('portfolioBuilder.title')}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 tracking-tight">
-          {t('portfolioBuilder.subtitle')}
-        </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
+              {t('portfolioBuilder.title')}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 tracking-tight">
+              {t('portfolioBuilder.subtitle')}
+            </p>
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer select-none mt-1">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Solo fondos responsables
+            </span>
+            <div
+              onClick={() => handleEsgOnlyChange(!esgOnly)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                esgOnly ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                  esgOnly ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </div>
+          </label>
+        </div>
       </div>
 
       {/* Tabla de Cálculos Interactiva - Asignación de Cartera */}
@@ -1991,11 +2097,23 @@ const PortfolioBuilder = () => {
                                           <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                                             {item.name}
                                           </h4>
-                                          {item.isMain && (
-                                            <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                          {item.tags?.includes('recomendado') && (
+                                            <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                               Recomendado
                                             </span>
                                           )}
+                                          {(() => {
+                                            const esg = getEsgBadge(item.tags);
+                                            return (
+                                              esg && (
+                                                <span
+                                                  className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${esg.cls}`}
+                                                >
+                                                  {esg.label}
+                                                </span>
+                                              )
+                                            );
+                                          })()}
                                         </div>
                                         {item.isin && (
                                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -2017,7 +2135,8 @@ const PortfolioBuilder = () => {
                                         )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    {renderFundMetrics(item)}
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       {item.link && (
                                         <a
                                           href={item.link}
@@ -2110,11 +2229,23 @@ const PortfolioBuilder = () => {
                                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                                           {fund.name}
                                         </h4>
-                                        {fund.isMain && (
-                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                        {fund.tags?.includes('recomendado') && (
+                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                             Recomendado
                                           </span>
                                         )}
+                                        {(() => {
+                                          const esg = getEsgBadge(fund.tags);
+                                          return (
+                                            esg && (
+                                              <span
+                                                className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${esg.cls}`}
+                                              >
+                                                {esg.label}
+                                              </span>
+                                            )
+                                          );
+                                        })()}
                                       </div>
                                       {fund.isin && (
                                         <p
@@ -2126,29 +2257,7 @@ const PortfolioBuilder = () => {
                                       )}
                                     </div>
                                   </div>
-                                  {(fund.volatility12M || fund.return12M) && (
-                                    <div
-                                      className="flex items-center gap-4 text-xs mb-2"
-                                      style={{ color: 'var(--tc-text-2)' }}
-                                    >
-                                      {fund.volatility12M && (
-                                        <span>
-                                          {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
-                                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                                            {fund.volatility12M}
-                                          </span>
-                                        </span>
-                                      )}
-                                      {fund.return12M && (
-                                        <span>
-                                          R 12M{' '}
-                                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                                            {fund.return12M}
-                                          </span>
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                  {renderFundMetrics(fund)}
                                   <div className="flex items-center gap-3 flex-wrap">
                                     {fund.link && (
                                       <a
@@ -2188,6 +2297,16 @@ const PortfolioBuilder = () => {
                       </div>
                     );
                   })()}
+
+                  {/* Subsección vacía por filtro ESG */}
+                  {isSubsection &&
+                    subsection &&
+                    esgOnly &&
+                    (!subsection.funds || subsection.funds.length === 0) && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
+                        No hay fondos responsables disponibles en esta categoría.
+                      </p>
+                    )}
 
                   {/* Fondos de subsección (para Renta Fija Corto Plazo y Renta Fija Medio Plazo cuando son cards separadas) */}
                   {isSubsection &&
@@ -2241,11 +2360,23 @@ const PortfolioBuilder = () => {
                                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                                           {fund.name || '(Sin nombre)'}
                                         </h4>
-                                        {fund.isMain && (
-                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                        {fund.tags?.includes('recomendado') && (
+                                          <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                             Recomendado
                                           </span>
                                         )}
+                                        {(() => {
+                                          const esg = getEsgBadge(fund.tags);
+                                          return (
+                                            esg && (
+                                              <span
+                                                className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${esg.cls}`}
+                                              >
+                                                {esg.label}
+                                              </span>
+                                            )
+                                          );
+                                        })()}
                                       </div>
                                       {fund.isin && (
                                         <p
@@ -2300,29 +2431,7 @@ const PortfolioBuilder = () => {
                                       </div>
                                     )}
                                   </div>
-                                  {!isManual && (fund.volatility12M || fund.return12M) && (
-                                    <div
-                                      className="flex items-center gap-4 text-xs mb-2"
-                                      style={{ color: 'var(--tc-text-2)' }}
-                                    >
-                                      {fund.volatility12M && (
-                                        <span>
-                                          {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
-                                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                                            {fund.volatility12M}
-                                          </span>
-                                        </span>
-                                      )}
-                                      {fund.return12M && (
-                                        <span>
-                                          R 12M{' '}
-                                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                                            {fund.return12M}
-                                          </span>
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                  {!isManual && renderFundMetrics(fund)}
                                   <div className="flex items-center gap-3 flex-wrap">
                                     {fund.link && (
                                       <a
@@ -2372,6 +2481,16 @@ const PortfolioBuilder = () => {
                       );
                     })()}
 
+                  {/* Sección vacía por filtro ESG */}
+                  {!isSubsection &&
+                    !section.distribution?.length &&
+                    esgOnly &&
+                    section.funds?.length === 0 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic py-2">
+                        No hay fondos responsables disponibles en esta categoría.
+                      </p>
+                    )}
+
                   {/* Fondos de la sección (Monetarios, Alternativos — no RV, ya están en el grid de distribución) */}
                   {!isSubsection &&
                     !section.distribution?.length &&
@@ -2412,11 +2531,23 @@ const PortfolioBuilder = () => {
                                       <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                                         {fund.name || '(Sin nombre)'}
                                       </h4>
-                                      {fund.isMain && (
-                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                      {fund.tags?.includes('recomendado') && (
+                                        <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                                           Recomendado
                                         </span>
                                       )}
+                                      {(() => {
+                                        const esg = getEsgBadge(fund.tags);
+                                        return (
+                                          esg && (
+                                            <span
+                                              className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${esg.cls}`}
+                                            >
+                                              {esg.label}
+                                            </span>
+                                          )
+                                        );
+                                      })()}
                                     </div>
                                     {fund.isin && (
                                       <p
@@ -2443,29 +2574,7 @@ const PortfolioBuilder = () => {
                                     </div>
                                   )}
                                 </div>
-                                {!isManual && (fund.volatility12M || fund.return12M) && (
-                                  <div
-                                    className="flex items-center gap-4 text-xs mb-2"
-                                    style={{ color: 'var(--tc-text-2)' }}
-                                  >
-                                    {fund.volatility12M && (
-                                      <span>
-                                        {t('portfolioBuilder.sections.capitalDistribution.vol')}{' '}
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                                          {fund.volatility12M}
-                                        </span>
-                                      </span>
-                                    )}
-                                    {fund.return12M && (
-                                      <span>
-                                        R 12M{' '}
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                                          {fund.return12M}
-                                        </span>
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
+                                {!isManual && renderFundMetrics(fund)}
                                 <div className="flex items-center gap-3 flex-wrap">
                                   {fund.link && (
                                     <a

@@ -1,13 +1,9 @@
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import PortfolioBuilderConfig from '../models/PortfolioBuilderConfig.js';
-import PortfolioFund from '../models/PortfolioFund.js';
+import Fund from '../models/Fund.js';
 import User from '../models/User.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
 router.use(authenticateToken);
@@ -50,46 +46,6 @@ async function requirePortfolioBuilderAccess(req, res, next) {
       message: 'Error al verificar permisos de Portfolio Builder',
     });
   }
-}
-
-/** Cargar lista de fondos por defecto (Excel) */
-function getDefaultFunds() {
-  try {
-    const filePath = path.join(__dirname, '../data/defaultPortfolioFunds.json');
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    console.error('Error cargando defaultPortfolioFunds.json:', e.message);
-    return [];
-  }
-}
-
-/** Rellena la BBDD con los fondos del Excel para un usuario que no tiene ninguno */
-async function seedFundsForUserIfEmpty(userId) {
-  const count = await PortfolioFund.countDocuments({ user: userId });
-  if (count > 0) return;
-  await forceSeedFunds(userId);
-}
-
-/** Borra todos los fondos del usuario y los reinserta desde el JSON por defecto. */
-async function forceSeedFunds(userId) {
-  const defaultFunds = getDefaultFunds();
-  if (defaultFunds.length === 0) return;
-  await PortfolioFund.deleteMany({ user: userId });
-  const toInsert = defaultFunds.map((f) => ({
-    name: f.name,
-    isin: f.isin || null,
-    link: f.link || null,
-    volatility12M: f.volatility12M || null,
-    return12M: f.return12M || null,
-    notes: f.notes || null,
-    category: f.category,
-    user: userId,
-  }));
-  // ordered: false → continúa aunque falle algún ISIN duplicado dentro del JSON
-  await PortfolioFund.insertMany(toInsert, { ordered: false }).catch((err) => {
-    if (err.code !== 11000) throw err; // ignorar solo errores de duplicado
-  });
 }
 
 /** Valores por defecto (equivalente al Excel Cartera1) */
@@ -140,51 +96,29 @@ const DEFAULT_ALLOCATION = {
   ],
 };
 
-// Distribución RV por defecto: solo Vanguard, Fidelity y Cobas. Heptagon se puede añadir desde la lista.
-const DEFAULT_RV_DISTRIBUTION = [
-  {
-    percentage: '20%',
-    name: 'Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation',
-    isin: 'IE0031786696',
-    link: 'https://www.finect.com/fondos-inversion/IE0031786142-Vanguard_emerg_mkts_stk_idx_inv_eur_acc',
-    volatility12M: '11.84%',
-    return12M: '9.92%',
-    calculatedAmount: null,
-  },
-  {
-    percentage: '50%',
-    name: 'Fidelity MSCI World Index Fund EUR P Acc',
-    isin: 'IE00BYX5NX33',
-    link: 'https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc',
-    volatility12M: '10.38%',
-    return12M: '19.39%',
-    calculatedAmount: null,
-  },
-  {
-    percentage: '30%',
-    name: 'Cobas Internacional C FI',
-    isin: 'ES0119199000',
-    link: 'https://www.finect.com/fondos-inversion/ES0119199000-Cobas_internacional_c_fi',
-    volatility12M: '9.35%',
-    return12M: '-1.08%',
-    calculatedAmount: null,
-  },
+const DEFAULT_RV_ISINS = [
+  { isin: 'IE0031786696', percentage: '20%' },
+  { isin: 'IE00BYX5NX33', percentage: '50%' },
+  { isin: 'ES0119199000', percentage: '30%' },
 ];
 
-/** Fondos que aparecen en Cartera1 (principales por categoría). El resto se pueden añadir como "extra". */
-const MAIN_FUND_ISINS_BY_CATEGORY = {
-  Monetarios: ['FR0000989626'],
-  'RF corto plazo': ['FI0008811997', 'IE00BFZMJT78', 'ES0112618006'],
-  'RF medio plazo': ['LU1623762843', 'LU0942882589', 'ES0140794001', 'ES0140072002'],
-  'Renta Variable': ['IE0031786696', 'IE00BYX5NX33', 'ES0119199000'],
-  Alternativos: ['ES0175414012', 'LU1694789451', 'LU1508158430', 'IE00BLP5S460'],
-};
+async function buildDefaultRvDistribution() {
+  const isins = DEFAULT_RV_ISINS.map((e) => e.isin);
+  const funds = await Fund.find({ isin: { $in: isins } }).lean();
+  const byIsin = Object.fromEntries(funds.map((f) => [f.isin, f]));
 
-function isMainFund(category, isin) {
-  const set = MAIN_FUND_ISINS_BY_CATEGORY[category];
-  if (!set) return false;
-  const normalized = (isin || '').trim();
-  return set.some((s) => s.trim() === normalized);
+  return DEFAULT_RV_ISINS.map(({ isin, percentage }) => {
+    const f = byIsin[isin];
+    return {
+      percentage,
+      name: f?.name ?? isin,
+      isin,
+      link: f?.link ?? null,
+      volatility12M: f?.volatility12M ?? null,
+      return12M: f?.return12M ?? null,
+      calculatedAmount: null,
+    };
+  });
 }
 
 function getExtraIsinsForCategory(extraFundIsinsByCategory, category) {
@@ -213,32 +147,20 @@ function parseReturn12M(value) {
   return Number.isFinite(n) ? n : -Infinity;
 }
 
-// GET config: devuelve config + lista de fondos (del Excel en BBDD). Si es la primera vez, crea config y siembra fondos.
+// GET config: devuelve config + catálogo global de fondos.
 router.get('/config', requirePortfolioBuilderAccess, async (req, res) => {
   try {
-    await seedFundsForUserIfEmpty(req.userId);
     let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
     if (!config) {
       config = await PortfolioBuilderConfig.create({
         user: req.userId,
         allocation: DEFAULT_ALLOCATION,
-        rvDistribution: DEFAULT_RV_DISTRIBUTION,
+        rvDistribution: await buildDefaultRvDistribution(),
       });
     }
-    const rawFunds = await PortfolioFund.find({ user: req.userId }).sort({
-      category: 1,
-      name: 1,
-    });
-    // Dedup by isin+category — protects against pre-index duplicates in the DB
-    const seenFundKeys = new Set();
-    const funds = rawFunds.filter((f) => {
-      const key = (f.isin || '').trim()
-        ? `${(f.isin || '').trim()}|${f.category}`
-        : f._id.toString();
-      if (seenFundKeys.has(key)) return false;
-      seenFundKeys.add(key);
-      return true;
-    });
+
+    const funds = await Fund.find().sort({ category: 1, name: 1 }).lean();
+
     const extraByCat =
       config.extraFundIsinsByCategory && typeof config.extraFundIsinsByCategory === 'object'
         ? { ...config.extraFundIsinsByCategory }
@@ -251,30 +173,39 @@ router.get('/config', requirePortfolioBuilderAccess, async (req, res) => {
       config.manualFundsByCategory && typeof config.manualFundsByCategory === 'object'
         ? { ...config.manualFundsByCategory }
         : {};
+
     res.json({
       allocation: config.allocation,
       rvDistribution: config.rvDistribution || [],
       extraFundIsinsByCategory: extraByCat,
       excludedFundIsinsByCategory: excludedByCat,
       manualFundsByCategory: manualByCat,
+      esgOnly: config.esgOnly ?? false,
       funds: funds.map((f) => {
         const isin = (f.isin || '').trim();
-        const isMain = isMainFund(f.category, isin);
         const extraIsins = getExtraIsinsForCategory(extraByCat, f.category);
         const isExtra = extraIsins.some((e) => (e || '').trim() === isin);
         const excludedIsins = getExcludedIsinsForCategory(excludedByCat, f.category);
         const isExcluded = excludedIsins.some((e) => (e || '').trim() === isin);
-        const wouldShow = !!isMain || !!isExtra;
+        const wouldShow = (f.tags || []).includes('recomendado') || !!isExtra;
         return {
           _id: f._id,
           name: f.name,
           isin: f.isin,
           link: f.link,
           volatility12M: f.volatility12M,
+          volatility3Y: f.volatility3Y,
+          volatility5Y: f.volatility5Y,
           return12M: f.return12M,
+          return3Y: f.return3Y,
+          return5Y: f.return5Y,
+          return10Y: f.return10Y,
+          ratingOverall: f.ratingOverall,
+          morningstarCategory: f.morningstarCategory,
+          managementCompany: f.managementCompany,
           notes: f.notes,
           category: f.category,
-          isMain: !!isMain,
+          tags: f.tags ?? [],
           showInSection: wouldShow && !isExcluded,
         };
       }),
@@ -288,14 +219,19 @@ router.get('/config', requirePortfolioBuilderAccess, async (req, res) => {
 // PUT config: actualiza allocation, rvDistribution, extraFundIsinsByCategory y/o excludedFundIsinsByCategory
 router.put('/config', requirePortfolioBuilderAccess, async (req, res) => {
   try {
-    const { allocation, rvDistribution, extraFundIsinsByCategory, excludedFundIsinsByCategory } =
-      req.body;
+    const {
+      allocation,
+      rvDistribution,
+      extraFundIsinsByCategory,
+      excludedFundIsinsByCategory,
+      esgOnly,
+    } = req.body;
     let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
     if (!config) {
       config = new PortfolioBuilderConfig({
         user: req.userId,
         allocation: DEFAULT_ALLOCATION,
-        rvDistribution: DEFAULT_RV_DISTRIBUTION,
+        rvDistribution: await buildDefaultRvDistribution(),
       });
     }
     if (allocation != null && typeof allocation === 'object') {
@@ -322,6 +258,9 @@ router.put('/config', requirePortfolioBuilderAccess, async (req, res) => {
     if (excludedFundIsinsByCategory != null && typeof excludedFundIsinsByCategory === 'object') {
       config.excludedFundIsinsByCategory = excludedFundIsinsByCategory;
     }
+    if (esgOnly != null) {
+      config.esgOnly = !!esgOnly;
+    }
     await config.save();
     const extraByCat =
       config.extraFundIsinsByCategory && typeof config.extraFundIsinsByCategory === 'object'
@@ -336,6 +275,7 @@ router.put('/config', requirePortfolioBuilderAccess, async (req, res) => {
       rvDistribution: config.rvDistribution,
       extraFundIsinsByCategory: extraByCat,
       excludedFundIsinsByCategory: excludedByCat,
+      esgOnly: config.esgOnly ?? false,
     });
   } catch (error) {
     console.error('Error al actualizar config Portfolio Builder:', error);
@@ -359,7 +299,7 @@ router.post('/config/extra-fund', requirePortfolioBuilderAccess, async (req, res
       config = await PortfolioBuilderConfig.create({
         user: req.userId,
         allocation: DEFAULT_ALLOCATION,
-        rvDistribution: DEFAULT_RV_DISTRIBUTION,
+        rvDistribution: await buildDefaultRvDistribution(),
       });
     }
     const extra =
@@ -374,11 +314,7 @@ router.post('/config/extra-fund', requirePortfolioBuilderAccess, async (req, res
     let isinToAdd = isin ? String(isin).trim() : null;
 
     if (!isinToAdd) {
-      const funds = await PortfolioFund.find({
-        user: req.userId,
-        category: catKey,
-      });
-      const mainSet = new Set((MAIN_FUND_ISINS_BY_CATEGORY[catKey] || []).map((s) => s.trim()));
+      const funds = await Fund.find({ category: catKey }).lean();
       const extraSet = new Set(list.map((e) => (e || '').trim()));
       const excludedSet = new Set(
         (Array.isArray(excluded[catKey]) ? excluded[catKey] : []).map((i) => (i || '').trim())
@@ -388,7 +324,7 @@ router.post('/config/extra-fund', requirePortfolioBuilderAccess, async (req, res
         if (!isinNorm) return false;
         if (extraSet.has(isinNorm)) return false; // ya añadido como extra
         // Fondo principal: solo disponible si fue excluido (el usuario lo quitó)
-        if (mainSet.has(isinNorm)) return excludedSet.has(isinNorm);
+        if ((f.tags || []).includes('recomendado')) return excludedSet.has(isinNorm);
         return true;
       });
       if (available.length === 0) {
@@ -482,7 +418,6 @@ router.delete('/config/extra-fund', requirePortfolioBuilderAccess, async (req, r
 });
 
 // POST resetear config: vuelve a los valores por defecto (allocation, rvDistribution, extra/excluded/manual vacíos)
-// También re-siembra los fondos desde el JSON por defecto para eliminar duplicados o datos corruptos.
 router.post('/config/reset', requirePortfolioBuilderAccess, async (req, res) => {
   try {
     let config = await PortfolioBuilderConfig.findOne({ user: req.userId });
@@ -490,14 +425,11 @@ router.post('/config/reset', requirePortfolioBuilderAccess, async (req, res) => 
       config = new PortfolioBuilderConfig({ user: req.userId });
     }
     config.allocation = DEFAULT_ALLOCATION;
-    config.rvDistribution = DEFAULT_RV_DISTRIBUTION;
+    config.rvDistribution = await buildDefaultRvDistribution();
     config.extraFundIsinsByCategory = {};
     config.excludedFundIsinsByCategory = {};
     config.manualFundsByCategory = {};
     await config.save();
-
-    // Re-sembrar fondos desde el JSON por defecto (elimina duplicados y datos corruptos)
-    await forceSeedFunds(req.userId);
 
     res.json({
       allocation: config.allocation,
@@ -525,7 +457,7 @@ router.post('/config/manual-fund', requirePortfolioBuilderAccess, async (req, re
       config = await PortfolioBuilderConfig.create({
         user: req.userId,
         allocation: DEFAULT_ALLOCATION,
-        rvDistribution: DEFAULT_RV_DISTRIBUTION,
+        rvDistribution: await buildDefaultRvDistribution(),
       });
     }
     const manual =

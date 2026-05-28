@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -114,7 +115,7 @@ const BudgetDetailModal = ({ isOpen, onClose, budget, budgetStats, onUpdate, onD
       !cat.business || cat.business === formData.business || (!formData.business && !cat.business)
   );
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
@@ -455,7 +456,8 @@ const BudgetDetailModal = ({ isOpen, onClose, budget, budgetStats, onUpdate, onD
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -906,6 +906,7 @@
       "weekly": "Semanal",
       "biweekly": "Quincenal",
       "monthly": "Mensual",
+      "bimonthly": "Bimensual",
       "quarterly": "Trimestral",
       "yearly": "Anual"
     },

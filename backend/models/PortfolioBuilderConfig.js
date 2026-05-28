@@ -54,6 +54,11 @@ const portfolioBuilderConfigSchema = new mongoose.Schema(
       type: Object,
       default: () => ({}),
     },
+    /** Mostrar solo fondos ESG en el Portfolio Builder */
+    esgOnly: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

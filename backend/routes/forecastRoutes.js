@@ -1,7 +1,7 @@
-import express from "express";
-import Forecast from "../models/Forecast.js";
-import Category from "../models/Category.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import Forecast from '../models/Forecast.js';
+import Category from '../models/Category.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // GET todas las previsiones
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { type, isActive, startDate, endDate, business } = req.query;
     const query = { user: req.userId };
@@ -18,7 +18,7 @@ router.get("/", async (req, res) => {
       query.type = type;
     }
     if (isActive !== undefined) {
-      query.isActive = isActive === "true";
+      query.isActive = isActive === 'true';
     }
     if (startDate || endDate) {
       query.startDate = {};
@@ -28,7 +28,7 @@ router.get("/", async (req, res) => {
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -36,8 +36,8 @@ router.get("/", async (req, res) => {
     }
 
     const forecasts = await Forecast.find(query)
-      .populate("category", "name type color")
-      .populate("business", "name color")
+      .populate('category', 'name type color')
+      .populate('business', 'name color')
       .sort({ startDate: -1 });
     res.json(forecasts);
   } catch (error) {
@@ -46,15 +46,15 @@ router.get("/", async (req, res) => {
 });
 
 // GET previsión por ID
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const forecast = await Forecast.findOne({
       _id: req.params.id,
       user: req.userId,
-    }).populate("category", "name type color");
+    }).populate('category', 'name type color');
 
     if (!forecast) {
-      return res.status(404).json({ message: "Previsión no encontrada" });
+      return res.status(404).json({ message: 'Previsión no encontrada' });
     }
     res.json(forecast);
   } catch (error) {
@@ -63,14 +63,12 @@ router.get("/:id", async (req, res) => {
 });
 
 // GET proyecciones calculadas para un rango de fechas
-router.get("/projections/calculate", async (req, res) => {
+router.get('/projections/calculate', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
-      return res
-        .status(400)
-        .json({ message: "Se requieren startDate y endDate" });
+      return res.status(400).json({ message: 'Se requieren startDate y endDate' });
     }
 
     const forecasts = await Forecast.find({
@@ -78,22 +76,20 @@ router.get("/projections/calculate", async (req, res) => {
       isActive: true,
       $or: [{ endDate: null }, { endDate: { $gte: new Date(startDate) } }],
       startDate: { $lte: new Date(endDate) },
-    }).populate("category", "name type color");
+    }).populate('category', 'name type color');
 
     const projections = [];
 
     forecasts.forEach((forecast) => {
-      const start = new Date(
-        Math.max(new Date(startDate), new Date(forecast.startDate)),
-      );
+      const start = new Date(Math.max(new Date(startDate), new Date(forecast.startDate)));
       const end = new Date(
         Math.min(
           new Date(endDate),
-          forecast.endDate ? new Date(forecast.endDate) : new Date(endDate),
-        ),
+          forecast.endDate ? new Date(forecast.endDate) : new Date(endDate)
+        )
       );
 
-      if (forecast.frequency === "one-time") {
+      if (forecast.frequency === 'one-time') {
         if (start <= end) {
           projections.push({
             forecastId: forecast._id,
@@ -140,22 +136,25 @@ function calculateOccurrences(start, end, frequency) {
     dates.push(new Date(current));
 
     switch (frequency) {
-      case "daily":
+      case 'daily':
         current.setDate(current.getDate() + 1);
         break;
-      case "weekly":
+      case 'weekly':
         current.setDate(current.getDate() + 7);
         break;
-      case "biweekly":
+      case 'biweekly':
         current.setDate(current.getDate() + 14);
         break;
-      case "monthly":
+      case 'monthly':
         current.setMonth(current.getMonth() + 1);
         break;
-      case "quarterly":
+      case 'bimonthly':
+        current.setMonth(current.getMonth() + 2);
+        break;
+      case 'quarterly':
         current.setMonth(current.getMonth() + 3);
         break;
-      case "yearly":
+      case 'yearly':
         current.setFullYear(current.getFullYear() + 1);
         break;
       default:
@@ -167,7 +166,7 @@ function calculateOccurrences(start, end, frequency) {
 }
 
 // POST crear nueva previsión
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     // Verificar que la categoría pertenece al usuario si se proporciona
     if (req.body.category) {
@@ -177,7 +176,7 @@ router.post("/", async (req, res) => {
       });
 
       if (!category) {
-        return res.status(404).json({ message: "Categoría no encontrada" });
+        return res.status(404).json({ message: 'Categoría no encontrada' });
       }
     }
 
@@ -186,9 +185,10 @@ router.post("/", async (req, res) => {
       user: req.userId,
     });
     const savedForecast = await forecast.save();
-    const populatedForecast = await Forecast.findById(
-      savedForecast._id,
-    ).populate("category", "name type color");
+    const populatedForecast = await Forecast.findById(savedForecast._id).populate(
+      'category',
+      'name type color'
+    );
     res.status(201).json(populatedForecast);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -196,7 +196,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT actualizar previsión
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const forecast = await Forecast.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
@@ -204,11 +204,11 @@ router.put("/:id", async (req, res) => {
       {
         new: true,
         runValidators: true,
-      },
-    ).populate("category", "name type color");
+      }
+    ).populate('category', 'name type color');
 
     if (!forecast) {
-      return res.status(404).json({ message: "Previsión no encontrada" });
+      return res.status(404).json({ message: 'Previsión no encontrada' });
     }
     res.json(forecast);
   } catch (error) {
@@ -217,16 +217,16 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE eliminar previsión
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const forecast = await Forecast.findOneAndDelete({
       _id: req.params.id,
       user: req.userId,
     });
     if (!forecast) {
-      return res.status(404).json({ message: "Previsión no encontrada" });
+      return res.status(404).json({ message: 'Previsión no encontrada' });
     }
-    res.json({ message: "Previsión eliminada" });
+    res.json({ message: 'Previsión eliminada' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

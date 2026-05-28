@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const forecastSchema = new mongoose.Schema(
   {
@@ -15,11 +15,11 @@ const forecastSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["income", "expense"],
+      enum: ['income', 'expense'],
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      ref: 'Category',
     },
     amount: {
       type: Number,
@@ -28,21 +28,22 @@ const forecastSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: "EUR",
+      default: 'EUR',
     },
     frequency: {
       type: String,
       required: true,
       enum: [
-        "one-time",
-        "daily",
-        "weekly",
-        "biweekly",
-        "monthly",
-        "quarterly",
-        "yearly",
+        'one-time',
+        'daily',
+        'weekly',
+        'biweekly',
+        'monthly',
+        'bimonthly',
+        'quarterly',
+        'yearly',
       ],
-      default: "monthly",
+      default: 'monthly',
     },
     startDate: {
       type: Date,
@@ -61,13 +62,13 @@ const forecastSchema = new mongoose.Schema(
     },
     business: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Business",
+      ref: 'Business',
       default: null, // null = personal
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 // Índice compuesto para búsquedas eficientes
@@ -79,4 +80,4 @@ forecastSchema.index({
   business: 1,
 });
 
-export default mongoose.model("Forecast", forecastSchema);
+export default mongoose.model('Forecast', forecastSchema);

@@ -1,16 +1,40 @@
-import express from "express";
-import Transaction from "../models/Transaction.js";
-import SubAccount from "../models/SubAccount.js";
-import Account from "../models/Account.js";
-import Debt from "../models/Debt.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import Transaction from '../models/Transaction.js';
+import SubAccount from '../models/SubAccount.js';
+import Account from '../models/Account.js';
+import Debt from '../models/Debt.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, '..', 'uploads', 'transactions');
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Solo se permiten imágenes o PDFs'));
+  },
+});
 
 // Reduce debt.remainingAmount by amount. Marks as paid if reaches 0.
 async function applyDebtPayment(debtId, userId, amount) {
   const debt = await Debt.findOne({ _id: debtId, user: userId });
-  if (!debt || debt.status === "paid") return;
+  if (!debt || debt.status === 'paid') return;
   debt.remainingAmount = Math.max(0, debt.remainingAmount - amount);
-  if (debt.remainingAmount <= 0) debt.status = "paid";
+  if (debt.remainingAmount <= 0) debt.status = 'paid';
   await debt.save();
 }
 
@@ -19,7 +43,7 @@ async function reverseDebtPayment(debtId, userId, amount) {
   const debt = await Debt.findOne({ _id: debtId, user: userId });
   if (!debt) return;
   debt.remainingAmount = Math.min(debt.totalAmount, debt.remainingAmount + amount);
-  if (debt.status === "paid" && debt.remainingAmount > 0) debt.status = "active";
+  if (debt.status === 'paid' && debt.remainingAmount > 0) debt.status = 'active';
   await debt.save();
 }
 
@@ -29,18 +53,10 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // GET todas las transacciones
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const {
-      subAccountId,
-      accountId,
-      startDate,
-      endDate,
-      type,
-      category,
-      business,
-      debt,
-    } = req.query;
+    const { subAccountId, accountId, startDate, endDate, type, category, business, debt } =
+      req.query;
     const query = { user: req.userId };
 
     if (subAccountId) {
@@ -67,7 +83,7 @@ router.get("/", async (req, res) => {
 
     // Filtro por negocio: "null" o "" = personal, ID = negocio específico
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -86,22 +102,22 @@ router.get("/", async (req, res) => {
 
     const transactions = await Transaction.find(query)
       .populate({
-        path: "account",
-        select: "name bankName currency",
+        path: 'account',
+        select: 'name bankName currency',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
-        select: "name type balance currency",
+        path: 'subAccount',
+        select: 'name type balance currency',
         match: { user: req.userId },
         populate: {
-          path: "account",
-          select: "name bankName",
+          path: 'account',
+          select: 'name bankName',
           match: { user: req.userId },
         },
       })
-      .populate("business", "name color")
-      .populate("debt", "name type remainingAmount totalAmount")
+      .populate('business', 'name color')
+      .populate('debt', 'name type remainingAmount totalAmount')
       .sort({ date: -1 });
     res.json(transactions);
   } catch (error) {
@@ -110,14 +126,14 @@ router.get("/", async (req, res) => {
 });
 
 // GET fecha más antigua de transacciones
-router.get("/oldest-date", async (req, res) => {
+router.get('/oldest-date', async (req, res) => {
   try {
     const { business } = req.query;
     const query = { user: req.userId };
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -127,7 +143,7 @@ router.get("/oldest-date", async (req, res) => {
     // Obtener solo la fecha más antigua usando sort y limit
     const oldestTransaction = await Transaction.findOne(query)
       .sort({ date: 1 })
-      .select("date")
+      .select('date')
       .limit(1);
 
     if (oldestTransaction && oldestTransaction.date) {
@@ -142,7 +158,7 @@ router.get("/oldest-date", async (req, res) => {
 });
 
 // GET estadísticas de transacciones
-router.get("/statistics/summary", async (req, res) => {
+router.get('/statistics/summary', async (req, res) => {
   try {
     const { startDate, endDate, type, business } = req.query;
     const query = { user: req.userId };
@@ -153,7 +169,7 @@ router.get("/statistics/summary", async (req, res) => {
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -169,11 +185,11 @@ router.get("/statistics/summary", async (req, res) => {
     const transactions = await Transaction.find(query);
 
     const totalIncome = transactions
-      .filter((t) => t.type === "income")
+      .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const totalExpenses = transactions
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const balance = totalIncome - totalExpenses;
@@ -182,11 +198,11 @@ router.get("/statistics/summary", async (req, res) => {
     // Agrupar por categoría
     const byCategory = {};
     transactions.forEach((t) => {
-      if (t.type === "expense" || t.type === "income") {
+      if (t.type === 'expense' || t.type === 'income') {
         if (!byCategory[t.category]) {
           byCategory[t.category] = { income: 0, expense: 0 };
         }
-        if (t.type === "income") {
+        if (t.type === 'income') {
           byCategory[t.category].income += t.amount;
         } else {
           byCategory[t.category].expense += t.amount;
@@ -194,14 +210,12 @@ router.get("/statistics/summary", async (req, res) => {
       }
     });
 
-    const categoryBreakdown = Object.entries(byCategory).map(
-      ([category, amounts]) => ({
-        category,
-        income: amounts.income,
-        expense: amounts.expense,
-        net: amounts.income - amounts.expense,
-      }),
-    );
+    const categoryBreakdown = Object.entries(byCategory).map(([category, amounts]) => ({
+      category,
+      income: amounts.income,
+      expense: amounts.expense,
+      net: amounts.income - amounts.expense,
+    }));
 
     res.json({
       totalIncome,
@@ -220,14 +234,14 @@ router.get("/statistics/summary", async (req, res) => {
 });
 
 // GET estadísticas agregadas por período
-router.get("/statistics/by-period", async (req, res) => {
+router.get('/statistics/by-period', async (req, res) => {
   try {
     const { period, startDate, endDate, business, compareWith } = req.query;
     const query = { user: req.userId };
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -248,10 +262,8 @@ router.get("/statistics/by-period", async (req, res) => {
 
     // Período de comparación (si existe)
     let compareStartDate, compareEndDate;
-    if (compareWith === "previous") {
-      const periodDays = Math.ceil(
-        (baseEndDate - baseStartDate) / (1000 * 60 * 60 * 24),
-      );
+    if (compareWith === 'previous') {
+      const periodDays = Math.ceil((baseEndDate - baseStartDate) / (1000 * 60 * 60 * 24));
       compareEndDate = new Date(baseStartDate);
       compareEndDate.setDate(compareEndDate.getDate() - 1);
       compareStartDate = new Date(compareEndDate);
@@ -266,12 +278,12 @@ router.get("/statistics/by-period", async (req, res) => {
         const date = new Date(t.date);
         let key;
 
-        if (periodType === "monthly") {
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        } else if (periodType === "quarterly") {
+        if (periodType === 'monthly') {
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        } else if (periodType === 'quarterly') {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           key = `${date.getFullYear()}-Q${quarter}`;
-        } else if (periodType === "yearly") {
+        } else if (periodType === 'yearly') {
           key = `${date.getFullYear()}`;
         }
 
@@ -285,18 +297,16 @@ router.get("/statistics/by-period", async (req, res) => {
           };
         }
 
-        if (t.type === "income") {
+        if (t.type === 'income') {
           grouped[key].income += t.amount;
-        } else if (t.type === "expense") {
+        } else if (t.type === 'expense') {
           grouped[key].expenses += t.amount;
         }
         grouped[key].balance = grouped[key].income - grouped[key].expenses;
         grouped[key].transactionCount += 1;
       });
 
-      return Object.values(grouped).sort((a, b) =>
-        a.period.localeCompare(b.period),
-      );
+      return Object.values(grouped).sort((a, b) => a.period.localeCompare(b.period));
     };
 
     // Obtener transacciones del período base
@@ -306,29 +316,29 @@ router.get("/statistics/by-period", async (req, res) => {
     };
     const baseTransactions = await Transaction.find(query);
 
-    const baseData = groupByPeriod(baseTransactions, period || "monthly");
+    const baseData = groupByPeriod(baseTransactions, period || 'monthly');
 
     // Obtener transacciones del período de comparación (si existe)
     let compareData = [];
-    if (compareWith === "previous" && compareStartDate && compareEndDate) {
+    if (compareWith === 'previous' && compareStartDate && compareEndDate) {
       const compareQuery = { ...query };
       compareQuery.date = {
         $gte: compareStartDate,
         $lte: compareEndDate,
       };
       const compareTransactions = await Transaction.find(compareQuery);
-      compareData = groupByPeriod(compareTransactions, period || "monthly");
+      compareData = groupByPeriod(compareTransactions, period || 'monthly');
     }
 
     res.json({
-      period: period || "monthly",
+      period: period || 'monthly',
       basePeriod: {
         startDate: baseStartDate.toISOString(),
         endDate: baseEndDate.toISOString(),
         data: baseData,
       },
       comparePeriod:
-        compareWith === "previous" && compareData.length > 0
+        compareWith === 'previous' && compareData.length > 0
           ? {
               startDate: compareStartDate.toISOString(),
               endDate: compareEndDate.toISOString(),
@@ -342,7 +352,7 @@ router.get("/statistics/by-period", async (req, res) => {
 });
 
 // GET estadísticas por categoría
-router.get("/statistics/by-category", async (req, res) => {
+router.get('/statistics/by-category', async (req, res) => {
   try {
     const { startDate, endDate, type, business } = req.query;
     const query = { user: req.userId };
@@ -353,7 +363,7 @@ router.get("/statistics/by-category", async (req, res) => {
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -378,9 +388,9 @@ router.get("/statistics/by-category", async (req, res) => {
           count: 0,
         };
       }
-      if (t.type === "income") {
+      if (t.type === 'income') {
         categoryStats[t.category].income += t.amount;
-      } else if (t.type === "expense") {
+      } else if (t.type === 'expense') {
         categoryStats[t.category].expenses += t.amount;
       }
       categoryStats[t.category].count += 1;
@@ -396,36 +406,78 @@ router.get("/statistics/by-category", async (req, res) => {
         const totalA = a.income + a.expenses;
         const totalB = b.income + b.expenses;
         return totalB - totalA;
-      }),
+      })
     );
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
+// GET estadísticas por tag
+router.get('/statistics/by-tag', async (req, res) => {
+  try {
+    const { startDate, endDate, type, business } = req.query;
+    const query = { user: req.userId };
+
+    if (type) query.type = type;
+
+    if (business !== undefined) {
+      query.business = business === 'null' || business === '' ? null : business;
+    }
+
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    // Only load transactions that have at least one tag
+    const transactions = await Transaction.find({ ...query, 'tags.0': { $exists: true } });
+
+    const tagStats = {};
+    transactions.forEach((t) => {
+      (t.tags || []).forEach((tag) => {
+        if (!tagStats[tag]) tagStats[tag] = { tag, income: 0, expenses: 0, count: 0 };
+        if (t.type === 'income') tagStats[tag].income += t.amount;
+        else if (t.type === 'expense') tagStats[tag].expenses += t.amount;
+        tagStats[tag].count += 1;
+      });
+    });
+
+    const result = Object.values(tagStats).map((s) => ({
+      ...s,
+      balance: s.income - s.expenses,
+    }));
+
+    res.json(result.sort((a, b) => b.income + b.expenses - (a.income + a.expenses)));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET transacción por ID
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findOne({
       _id: req.params.id,
       user: req.userId,
     })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
-      .populate("business", "name color")
-      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
+      .populate('business', 'name color')
+      .populate('debt', 'name type remainingAmount totalAmount monthlyPayment');
     if (!transaction) {
-      return res.status(404).json({ message: "Transacción no encontrada" });
+      return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
     res.json(transaction);
@@ -435,7 +487,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST crear nueva transacci?n
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     let targetSubAccount = null;
 
@@ -446,7 +498,7 @@ router.post("/", async (req, res) => {
         user: req.userId,
       });
       if (!targetSubAccount) {
-        return res.status(404).json({ message: "Subcuenta no encontrada" });
+        return res.status(404).json({ message: 'Subcuenta no encontrada' });
       }
     }
     // Si se proporciona account pero no subAccount, buscar o crear una subcuenta de tipo cash
@@ -456,14 +508,14 @@ router.post("/", async (req, res) => {
         user: req.userId,
       });
       if (!account) {
-        return res.status(404).json({ message: "Cuenta no encontrada" });
+        return res.status(404).json({ message: 'Cuenta no encontrada' });
       }
 
       // Buscar una subcuenta de tipo cash en esta cuenta
       targetSubAccount = await SubAccount.findOne({
         account: req.body.account,
         user: req.userId,
-        type: "cash",
+        type: 'cash',
       });
 
       // Si no existe, crear una autom?ticamente
@@ -471,17 +523,17 @@ router.post("/", async (req, res) => {
         targetSubAccount = new SubAccount({
           user: req.userId,
           account: req.body.account,
-          name: "Cuenta Principal",
-          type: "cash",
+          name: 'Cuenta Principal',
+          type: 'cash',
           balance: 0,
           currency: account.currency,
-          description: "Subcuenta creada autom?ticamente para transacciones",
+          description: 'Subcuenta creada autom?ticamente para transacciones',
         });
         await targetSubAccount.save();
       }
     } else {
       return res.status(400).json({
-        message: "Debe especificar una cuenta o subcuenta",
+        message: 'Debe especificar una cuenta o subcuenta',
       });
     }
 
@@ -495,9 +547,9 @@ router.post("/", async (req, res) => {
     const savedTransaction = await transaction.save();
 
     // Actualizar balance de la subcuenta
-    if (req.body.type === "income") {
+    if (req.body.type === 'income') {
       targetSubAccount.balance += req.body.amount;
-    } else if (req.body.type === "expense") {
+    } else if (req.body.type === 'expense') {
       targetSubAccount.balance -= req.body.amount;
       // Validar que el balance no sea negativo
       if (targetSubAccount.balance < 0) {
@@ -507,7 +559,7 @@ router.post("/", async (req, res) => {
         // Eliminar la transacci?n creada
         await Transaction.findByIdAndDelete(savedTransaction._id);
         return res.status(400).json({
-          message: "El balance de la subcuenta no puede ser negativo",
+          message: 'El balance de la subcuenta no puede ser negativo',
         });
       }
     }
@@ -515,14 +567,14 @@ router.post("/", async (req, res) => {
     await targetSubAccount.save();
 
     // Si la transacción está vinculada a una deuda, reducir el importe pendiente
-    if (req.body.debt && req.body.type === "expense") {
+    if (req.body.debt && req.body.type === 'expense') {
       await applyDebtPayment(req.body.debt, req.userId, parseFloat(req.body.amount));
     }
 
     const populatedTransaction = await Transaction.findById(savedTransaction._id)
-      .populate({ path: "account" })
-      .populate({ path: "subAccount", populate: { path: "account" } })
-      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
+      .populate({ path: 'account' })
+      .populate({ path: 'subAccount', populate: { path: 'account' } })
+      .populate('debt', 'name type remainingAmount totalAmount monthlyPayment');
     res.status(201).json(populatedTransaction);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -530,7 +582,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT actualizar transacción
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     // Obtener la transacción original antes de actualizarla
     const oldTransaction = await Transaction.findOne({
@@ -538,13 +590,12 @@ router.put("/:id", async (req, res) => {
       user: req.userId,
     });
     if (!oldTransaction) {
-      return res.status(404).json({ message: "Transacción no encontrada" });
+      return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
     // Valores nuevos (o los antiguos si no se proporcionaron)
     const newType = req.body.type || oldTransaction.type;
-    const newAmount =
-      req.body.amount !== undefined ? req.body.amount : oldTransaction.amount;
+    const newAmount = req.body.amount !== undefined ? req.body.amount : oldTransaction.amount;
     const newAccountId = req.body.account || oldTransaction.account;
     const newSubAccountId = req.body.subAccount || oldTransaction.subAccount;
 
@@ -554,9 +605,9 @@ router.put("/:id", async (req, res) => {
       user: req.userId,
     });
     if (oldSubAccount) {
-      if (oldTransaction.type === "income") {
+      if (oldTransaction.type === 'income') {
         oldSubAccount.balance -= oldTransaction.amount;
-      } else if (oldTransaction.type === "expense") {
+      } else if (oldTransaction.type === 'expense') {
         oldSubAccount.balance += oldTransaction.amount;
       }
       await oldSubAccount.save();
@@ -578,21 +629,21 @@ router.put("/:id", async (req, res) => {
       if (!account) {
         // Revertir el cambio en la subcuenta original
         if (oldSubAccount) {
-          if (oldTransaction.type === "income") {
+          if (oldTransaction.type === 'income') {
             oldSubAccount.balance += oldTransaction.amount;
-          } else if (oldTransaction.type === "expense") {
+          } else if (oldTransaction.type === 'expense') {
             oldSubAccount.balance -= oldTransaction.amount;
           }
           await oldSubAccount.save();
         }
-        return res.status(404).json({ message: "Cuenta no encontrada" });
+        return res.status(404).json({ message: 'Cuenta no encontrada' });
       }
 
       // Buscar una subcuenta de tipo cash en esta cuenta
       newSubAccount = await SubAccount.findOne({
         account: newAccountId,
         user: req.userId,
-        type: "cash",
+        type: 'cash',
       });
 
       // Si no existe, crear una automáticamente
@@ -600,11 +651,11 @@ router.put("/:id", async (req, res) => {
         newSubAccount = new SubAccount({
           user: req.userId,
           account: newAccountId,
-          name: "Cuenta Principal",
-          type: "cash",
+          name: 'Cuenta Principal',
+          type: 'cash',
           balance: 0,
           currency: account.currency,
-          description: "Subcuenta creada automáticamente para transacciones",
+          description: 'Subcuenta creada automáticamente para transacciones',
         });
         await newSubAccount.save();
       }
@@ -613,20 +664,20 @@ router.put("/:id", async (req, res) => {
     if (!newSubAccount) {
       // Revertir el cambio en la subcuenta original si la nueva no existe
       if (oldSubAccount) {
-        if (oldTransaction.type === "income") {
+        if (oldTransaction.type === 'income') {
           oldSubAccount.balance += oldTransaction.amount;
-        } else if (oldTransaction.type === "expense") {
+        } else if (oldTransaction.type === 'expense') {
           oldSubAccount.balance -= oldTransaction.amount;
         }
         await oldSubAccount.save();
       }
-      return res.status(404).json({ message: "Subcuenta no encontrada" });
+      return res.status(404).json({ message: 'Subcuenta no encontrada' });
     }
 
     // Aplicar el nuevo balance
-    if (newType === "income") {
+    if (newType === 'income') {
       newSubAccount.balance += newAmount;
-    } else if (newType === "expense") {
+    } else if (newType === 'expense') {
       newSubAccount.balance -= newAmount;
       // Validar que el balance no sea negativo (solo para expenses)
       if (newSubAccount.balance < 0) {
@@ -635,15 +686,15 @@ router.put("/:id", async (req, res) => {
         await newSubAccount.save();
         // Revertir también el cambio en la subcuenta original
         if (oldSubAccount) {
-          if (oldTransaction.type === "income") {
+          if (oldTransaction.type === 'income') {
             oldSubAccount.balance += oldTransaction.amount;
-          } else if (oldTransaction.type === "expense") {
+          } else if (oldTransaction.type === 'expense') {
             oldSubAccount.balance -= oldTransaction.amount;
           }
           await oldSubAccount.save();
         }
         return res.status(400).json({
-          message: "El balance de la subcuenta no puede ser negativo",
+          message: 'El balance de la subcuenta no puede ser negativo',
         });
       }
     }
@@ -653,16 +704,14 @@ router.put("/:id", async (req, res) => {
 
     // Sincronizar deuda: revertir efecto de la deuda anterior, aplicar la nueva
     const oldDebtId = oldTransaction.debt?.toString?.() || oldTransaction.debt;
-    const newDebtId = req.body.debt !== undefined
-      ? (req.body.debt || null)
-      : oldDebtId;
+    const newDebtId = req.body.debt !== undefined ? req.body.debt || null : oldDebtId;
     const oldAmount = oldTransaction.amount;
     const newAmountVal = req.body.amount !== undefined ? parseFloat(req.body.amount) : oldAmount;
 
-    if (oldDebtId && oldTransaction.type === "expense") {
+    if (oldDebtId && oldTransaction.type === 'expense') {
       await reverseDebtPayment(oldDebtId, req.userId, oldAmount);
     }
-    if (newDebtId && (req.body.type || oldTransaction.type) === "expense") {
+    if (newDebtId && (req.body.type || oldTransaction.type) === 'expense') {
       await applyDebtPayment(newDebtId, req.userId, newAmountVal);
     }
 
@@ -675,18 +724,18 @@ router.put("/:id", async (req, res) => {
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
       updateData,
-      { new: true, runValidators: true },
+      { new: true, runValidators: true }
     )
-      .populate({ path: "account", match: { user: req.userId } })
+      .populate({ path: 'account', match: { user: req.userId } })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
-        populate: { path: "account", match: { user: req.userId } },
+        populate: { path: 'account', match: { user: req.userId } },
       })
-      .populate("business", "name color")
-      .populate("debt", "name type remainingAmount totalAmount monthlyPayment");
+      .populate('business', 'name color')
+      .populate('debt', 'name type remainingAmount totalAmount monthlyPayment');
     if (!transaction) {
-      return res.status(404).json({ message: "Transacción no encontrada" });
+      return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
     res.json(transaction);
@@ -696,7 +745,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE eliminar transacci?n
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findOne({
       _id: req.params.id,
@@ -704,7 +753,7 @@ router.delete("/:id", async (req, res) => {
     });
 
     if (!transaction) {
-      return res.status(404).json({ message: "Transacción no encontrada" });
+      return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
     // Revertir balance de la subcuenta (verificar que pertenece al usuario)
@@ -714,9 +763,9 @@ router.delete("/:id", async (req, res) => {
         user: req.userId,
       });
       if (subAccount) {
-        if (transaction.type === "income") {
+        if (transaction.type === 'income') {
           subAccount.balance -= transaction.amount;
-        } else if (transaction.type === "expense") {
+        } else if (transaction.type === 'expense') {
           subAccount.balance += transaction.amount;
         }
         await subAccount.save();
@@ -724,12 +773,64 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Si la transacción estaba vinculada a una deuda, restaurar el importe pendiente
-    if (transaction.debt && transaction.type === "expense") {
+    if (transaction.debt && transaction.type === 'expense') {
       await reverseDebtPayment(transaction.debt, req.userId, transaction.amount);
     }
 
     await Transaction.findByIdAndDelete(req.params.id);
-    res.json({ message: "Transacción eliminada" });
+    res.json({ message: 'Transacción eliminada' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// POST subir imagen a una transacción
+router.post('/:id/image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se ha enviado ninguna imagen' });
+    }
+
+    const transaction = await Transaction.findOne({ _id: req.params.id, user: req.userId });
+    if (!transaction) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: 'Transacción no encontrada' });
+    }
+
+    // Eliminar imagen anterior si existe
+    if (transaction.imageUrl) {
+      const oldPath = path.join(__dirname, '..', transaction.imageUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    transaction.imageUrl = `/uploads/transactions/${req.file.filename}`;
+    await transaction.save();
+
+    res.json({ imageUrl: transaction.imageUrl });
+  } catch (error) {
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (_) {}
+    }
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE eliminar imagen de una transacción
+router.delete('/:id/image', async (req, res) => {
+  try {
+    const transaction = await Transaction.findOne({ _id: req.params.id, user: req.userId });
+    if (!transaction) return res.status(404).json({ message: 'Transacción no encontrada' });
+
+    if (transaction.imageUrl) {
+      const filePath = path.join(__dirname, '..', transaction.imageUrl.replace(/^\//, ''));
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      transaction.imageUrl = null;
+      await transaction.save();
+    }
+
+    res.json({ message: 'Imagen eliminada' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

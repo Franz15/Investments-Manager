@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -9,18 +9,18 @@ const transactionSchema = new mongoose.Schema(
     },
     account: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Account",
+      ref: 'Account',
       index: true,
     },
     subAccount: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "SubAccount",
+      ref: 'SubAccount',
       index: true,
     },
     type: {
       type: String,
       required: true,
-      enum: ["income", "expense", "transfer"],
+      enum: ['income', 'expense', 'transfer'],
     },
     category: {
       type: String,
@@ -34,7 +34,7 @@ const transactionSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: "EUR",
+      default: 'EUR',
     },
     description: {
       type: String,
@@ -53,24 +53,28 @@ const transactionSchema = new mongoose.Schema(
     ],
     business: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Business",
+      ref: 'Business',
       default: null, // null = personal
     },
     debt: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Debt",
+      ref: 'Debt',
+      default: null,
+    },
+    imageUrl: {
+      type: String,
       default: null,
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 // Validación: debe tener account o subAccount
-transactionSchema.pre("validate", function (next) {
+transactionSchema.pre('validate', function (next) {
   if (!this.account && !this.subAccount) {
-    return next(new Error("Debe especificar una cuenta o subcuenta"));
+    return next(new Error('Debe especificar una cuenta o subcuenta'));
   }
   next();
 });
@@ -78,4 +82,4 @@ transactionSchema.pre("validate", function (next) {
 // Índice compuesto para búsquedas por negocio
 transactionSchema.index({ user: 1, business: 1 });
 
-export default mongoose.model("Transaction", transactionSchema);
+export default mongoose.model('Transaction', transactionSchema);

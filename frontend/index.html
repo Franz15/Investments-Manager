@@ -5,6 +5,79 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Investments Manager - Dashboard</title>
+    <!-- Apply user accent color before React mounts to avoid gold flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('currentUser');
+          if (!stored) return;
+          var hex = JSON.parse(stored).color;
+          if (!hex || !/^#?[0-9a-f]{6}$/i.test(hex)) return;
+          hex = hex.replace('#', '');
+          var rgb = {
+            r: parseInt(hex.slice(0, 2), 16),
+            g: parseInt(hex.slice(2, 4), 16),
+            b: parseInt(hex.slice(4, 6), 16),
+          };
+          // mix(a, b, fractionB) → (1-fractionB)*a + fractionB*b
+          function mix(a, b, f) {
+            return {
+              r: Math.round(a.r * (1 - f) + b.r * f),
+              g: Math.round(a.g * (1 - f) + b.g * f),
+              b: Math.round(a.b * (1 - f) + b.b * f),
+            };
+          }
+          function toHex(c) {
+            return (
+              '#' +
+              [c.r, c.g, c.b]
+                .map(function (x) {
+                  var h = x.toString(16);
+                  return h.length < 2 ? '0' + h : h;
+                })
+                .join('')
+            );
+          }
+          var W = { r: 255, g: 255, b: 255 },
+            B = { r: 0, g: 0, b: 0 };
+          var N = { r: 80, g: 80, b: 80 },
+            D = { r: 10, g: 10, b: 12 };
+          var c600 = mix(rgb, B, 0.1);
+          var el = document.documentElement;
+          el.style.setProperty('--user-color', '#' + hex);
+          el.style.setProperty('--user-color-50', toHex(mix(rgb, W, 0.95)));
+          el.style.setProperty('--user-color-100', toHex(mix(rgb, W, 0.9)));
+          el.style.setProperty('--user-color-200', toHex(mix(rgb, W, 0.75)));
+          el.style.setProperty('--user-color-300', toHex(mix(rgb, W, 0.5)));
+          el.style.setProperty('--user-color-400', toHex(mix(rgb, W, 0.25)));
+          el.style.setProperty('--user-color-500', toHex(rgb));
+          el.style.setProperty('--user-color-600', toHex(c600));
+          el.style.setProperty('--user-color-700', toHex(mix(rgb, B, 0.2)));
+          el.style.setProperty('--user-color-800', toHex(mix(rgb, B, 0.35)));
+          el.style.setProperty('--user-color-900', toHex(mix(rgb, B, 0.5)));
+          el.style.setProperty('--user-color-surface', toHex(mix(rgb, W, 0.975)));
+          el.style.setProperty('--user-color-bg', toHex(mix(rgb, W, 0.94)));
+          el.style.setProperty('--user-color-surface-2', toHex(mix(rgb, W, 0.9)));
+          el.style.setProperty('--user-color-surface-3', toHex(mix(rgb, W, 0.8)));
+          el.style.setProperty('--user-color-sidebar', toHex(mix(rgb, W, 0.86)));
+          // mixWithNeutral(rgb, amount) uses amount as fraction of COLOR
+          // → mix(rgb, N, 1-amount)
+          el.style.setProperty('--user-color-text-muted', toHex(mix(rgb, N, 0.75)));
+          el.style.setProperty('--user-color-text-subtle', toHex(mix(rgb, N, 0.85)));
+          // mixWithDark(rgb, amount) uses amount as fraction of COLOR
+          // → mix(rgb, D, 1-amount)
+          el.style.setProperty('--user-color-dark-bg', toHex(mix(rgb, D, 0.95)));
+          el.style.setProperty('--user-color-dark-surface', toHex(mix(rgb, D, 0.92)));
+          el.style.setProperty('--user-color-dark-surface-2', toHex(mix(rgb, D, 0.89)));
+          el.style.setProperty('--user-color-dark-surface-3', toHex(mix(rgb, D, 0.85)));
+          el.style.setProperty('--user-color-dark-sidebar', toHex(mix(rgb, D, 0.94)));
+          el.style.setProperty(
+            '--user-color-600-rgb',
+            c600.r + ', ' + c600.g + ', ' + c600.b
+          );
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
