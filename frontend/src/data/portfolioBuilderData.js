@@ -52,37 +52,6 @@ export const DEFAULT_PORTFOLIO_ALLOCATION = {
   ],
 };
 
-/** Distribución de Renta Variable por defecto: Vanguard 20%, Fidelity 50%, Cobas 30%. Heptagon se puede añadir desde la lista. */
-export const DEFAULT_RV_DISTRIBUTION = [
-  {
-    percentage: '20%',
-    name: 'Vanguard Emerging Markets Stock Index Fund Investor EUR Accumulation',
-    isin: 'IE0031786696',
-    link: 'https://www.finect.com/fondos-inversion/IE0031786142-Vanguard_emerg_mkts_stk_idx_inv_eur_acc',
-    volatility12M: '11.84%',
-    return12M: '9.92%',
-    calculatedAmount: null,
-  },
-  {
-    percentage: '50%',
-    name: 'Fidelity MSCI World Index Fund EUR P Acc',
-    isin: 'IE00BYX5NX33',
-    link: 'https://www.finect.com/fondos-inversion/IE00BYX5NX33-Fidelity_msci_world_index_eur_p_acc',
-    volatility12M: '10.38%',
-    return12M: '19.39%',
-    calculatedAmount: null,
-  },
-  {
-    percentage: '30%',
-    name: 'Cobas Internacional C FI',
-    isin: 'ES0119199000',
-    link: 'https://www.finect.com/fondos-inversion/ES0119199000-Cobas_internacional_c_fi',
-    volatility12M: '9.35%',
-    return12M: '-1.08%',
-    calculatedAmount: null,
-  },
-];
-
 /**
  * Descripciones por sección (del Excel Cartera1).
  * Se usan como "clave" para que translateDescription() devuelva la traducción (es/cat).

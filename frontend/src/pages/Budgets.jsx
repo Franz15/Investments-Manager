@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
@@ -365,160 +366,162 @@ const Budgets = () => {
       )}
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="modal-content max-w-md w-full">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-5">
-              {editingBudget ? t('budgets.editBudget') : t('budgets.newBudget')}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                  {t('budgets.name')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                  {t('budgets.category')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                >
-                  <option value="">{t('budgets.selectCategory')}</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="modal-content max-w-md w-full">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-5">
+                {editingBudget ? t('budgets.editBudget') : t('budgets.newBudget')}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    {t('budgets.amount')}
+                    {t('budgets.name')}
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
                     className="input-field"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    {t('budgets.period')}
+                    {t('budgets.category')}
                   </label>
                   <select
                     className="input-field"
-                    value={formData.period}
-                    onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-                  >
-                    <option value="weekly">{t('budgets.periods.weekly')}</option>
-                    <option value="monthly">{t('budgets.periods.monthly')}</option>
-                    <option value="quarterly">{t('budgets.periods.quarterly')}</option>
-                    <option value="yearly">{t('budgets.periods.yearly')}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    {t('budgets.startDate')}
-                  </label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    {t('budgets.endDate')} {t('common.optional')}
-                  </label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {businesses.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    {t('budgets.business')} {t('common.optional')}
-                  </label>
-                  <select
-                    className="input-field"
-                    value={formData.business || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        business: e.target.value || null,
-                      })
-                    }
                   >
-                    <option value="">{t('budgets.personal')}</option>
-                    {businesses.map((b) => (
-                      <option key={b._id} value={b._id}>
-                        {b.name}
+                    <option value="">{t('budgets.selectCategory')}</option>
+                    {categories.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              )}
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {t('budgets.isActive')}
-                </span>
-              </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      {t('budgets.amount')}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-field"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      {t('budgets.period')}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.period}
+                      onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                    >
+                      <option value="weekly">{t('budgets.periods.weekly')}</option>
+                      <option value="monthly">{t('budgets.periods.monthly')}</option>
+                      <option value="quarterly">{t('budgets.periods.quarterly')}</option>
+                      <option value="yearly">{t('budgets.periods.yearly')}</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingBudget ? t('common.save') : t('budgets.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingBudget(null);
-                    setFormData(EMPTY_FORM);
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      {t('budgets.startDate')}
+                    </label>
+                    <input
+                      type="date"
+                      className="input-field"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      {t('budgets.endDate')} {t('common.optional')}
+                    </label>
+                    <input
+                      type="date"
+                      className="input-field"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {businesses.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      {t('budgets.business')} {t('common.optional')}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.business || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          business: e.target.value || null,
+                        })
+                      }
+                    >
+                      <option value="">{t('budgets.personal')}</option>
+                      {businesses.map((b) => (
+                        <option key={b._id} value={b._id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {t('budgets.isActive')}
+                  </span>
+                </label>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingBudget ? t('common.save') : t('budgets.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setEditingBudget(null);
+                      setFormData(EMPTY_FORM);
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

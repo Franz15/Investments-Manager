@@ -3,6 +3,10 @@ node_modules/
 .env.local
 *.log
 .DS_Store
+uploads/*
+!uploads/transactions/
+uploads/transactions/*
+!uploads/transactions/.gitkeep
 
 
 

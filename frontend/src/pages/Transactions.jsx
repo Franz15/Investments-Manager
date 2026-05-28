@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   ArrowUp,
@@ -11,11 +12,13 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
+  Camera,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import { useTranslation } from '../contexts/TranslationContext';
 
 const Transactions = () => {
@@ -59,6 +62,11 @@ const Transactions = () => {
     useAccount: false, // true si se usa cuenta, false si se usa subcuenta
     business: null,
   });
+
+  const fileInputRef = useRef(null);
+  const [pendingImage, setPendingImage] = useState(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -201,7 +209,16 @@ const Transactions = () => {
         if (editingTransaction) {
           await api.put(`/transactions/${editingTransaction._id}`, transactionData);
         } else {
-          await api.post('/transactions', transactionData);
+          const res = await api.post('/transactions', transactionData);
+          if (pendingImage && res.data?._id) {
+            const fd = new FormData();
+            fd.append('image', pendingImage);
+            await api
+              .post(`/transactions/${res.data._id}/image`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+              })
+              .catch(console.error);
+          }
         }
       }
 
@@ -235,16 +252,18 @@ const Transactions = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm(t('transactions.deleteConfirm'))) {
-      try {
-        await api.delete(`/transactions/${id}`);
-        fetchTransactions();
-        fetchStatistics();
-      } catch (error) {
-        console.error('Error deleting transaction:', error);
-        alert('Error al eliminar la transacción');
-      }
+  const [deletingTransaction, setDeletingTransaction] = useState(null);
+
+  const handleDelete = async () => {
+    if (!deletingTransaction) return;
+    try {
+      await api.delete(`/transactions/${deletingTransaction._id}`);
+      fetchTransactions();
+      fetchStatistics();
+    } catch (error) {
+      console.error('Error al eliminar la transacción:', error);
+    } finally {
+      setDeletingTransaction(null);
     }
   };
 
@@ -265,6 +284,17 @@ const Transactions = () => {
         selectedContext === 'personal' ? null : selectedContext !== 'all' ? selectedContext : null,
     });
     setEditingTransaction(null);
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(null);
+    setPendingImagePreview(null);
+    setIsDragOver(false);
+  };
+
+  const handleImageFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(file);
+    setPendingImagePreview(URL.createObjectURL(file));
   };
 
   const applyQuickFilter = (period) => {
@@ -913,7 +943,7 @@ const Transactions = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(transaction._id)}
+                          onClick={() => setDeletingTransaction(transaction)}
                           className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -937,304 +967,384 @@ const Transactions = () => {
       </div>
 
       {/* Modal de formulario */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="modal-content max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingTransaction
-                ? t('transactions.editTransaction')
-                : t('transactions.newTransaction')}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!editingTransaction && (
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="modal-content max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                {editingTransaction
+                  ? t('transactions.editTransaction')
+                  : t('transactions.newTransaction')}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!editingTransaction && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('transactions.selectType') || 'Tipo de selección'}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.useAccount ? 'account' : 'subAccount'}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          useAccount: e.target.value === 'account',
+                          account: e.target.value === 'account' ? formData.account : '',
+                          subAccount: e.target.value === 'subAccount' ? formData.subAccount : '',
+                        })
+                      }
+                    >
+                      <option value="account">{t('transactions.account') || 'Cuenta'}</option>
+                      <option value="subAccount">
+                        {t('transactions.subAccount') || 'Subcuenta'}
+                      </option>
+                    </select>
+                  </div>
+                )}
+
+                {formData.useAccount ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('transactions.account')}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.account}
+                      onChange={(e) => setFormData({ ...formData, account: e.target.value })}
+                      required
+                      disabled={!!editingTransaction}
+                    >
+                      <option value="">
+                        {t('transactions.selectAccount') || 'Seleccionar cuenta'}
+                      </option>
+                      {accounts.map((account) => (
+                        <option key={account._id} value={account._id}>
+                          {account.bankName} - {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('transactions.subAccount')}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={formData.subAccount}
+                      onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
+                      required
+                      disabled={!!editingTransaction}
+                    >
+                      <option value="">{t('transactions.selectSubAccount')}</option>
+                      {subAccounts.map((subAccount) => (
+                        <option key={subAccount._id} value={subAccount._id}>
+                          {subAccount.account?.name || subAccount.account} - {subAccount.name} (
+                          {subAccount.type === 'cash'
+                            ? t('accounts.subAccountTypes.cash')
+                            : subAccount.type === 'investment'
+                              ? t('accounts.subAccountTypes.investment')
+                              : subAccount.type === 'savings'
+                                ? t('accounts.subAccountTypes.savings')
+                                : t('accounts.subAccountTypes.credit')}
+                          )
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {formData.type === 'transfer' && !editingTransaction && (
+                  <>
+                    {formData.useAccount ? (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('transactions.toAccount') || 'Cuenta Destino'}
+                        </label>
+                        <select
+                          className="input-field"
+                          value={formData.toAccount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              toAccount: e.target.value,
+                            })
+                          }
+                          required
+                        >
+                          <option value="">
+                            {t('transactions.selectToAccount') || 'Seleccionar cuenta destino'}
+                          </option>
+                          {accounts
+                            .filter((a) => a._id !== formData.account)
+                            .map((account) => (
+                              <option key={account._id} value={account._id}>
+                                {account.bankName} - {account.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('transactions.toSubAccount') || 'Subcuenta Destino'}
+                        </label>
+                        <select
+                          className="input-field"
+                          value={formData.toSubAccount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              toSubAccount: e.target.value,
+                            })
+                          }
+                          required
+                        >
+                          <option value="">
+                            {t('transactions.selectToSubAccount') ||
+                              'Seleccionar subcuenta destino'}
+                          </option>
+                          {subAccounts
+                            .filter((sa) => sa._id !== formData.subAccount)
+                            .map((subAccount) => (
+                              <option key={subAccount._id} value={subAccount._id}>
+                                {subAccount.account?.name || subAccount.account} - {subAccount.name}{' '}
+                                (
+                                {subAccount.type === 'cash'
+                                  ? t('accounts.subAccountTypes.cash')
+                                  : subAccount.type === 'investment'
+                                    ? t('accounts.subAccountTypes.investment')
+                                    : subAccount.type === 'savings'
+                                      ? t('accounts.subAccountTypes.savings')
+                                      : t('accounts.subAccountTypes.credit')}
+                                )
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('transactions.selectType') || 'Tipo de selección'}
+                    {t('transactions.type')}
                   </label>
                   <select
                     className="input-field"
-                    value={formData.useAccount ? 'account' : 'subAccount'}
+                    value={formData.type}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        useAccount: e.target.value === 'account',
-                        account: e.target.value === 'account' ? formData.account : '',
-                        subAccount: e.target.value === 'subAccount' ? formData.subAccount : '',
+                        type: e.target.value,
+                        toSubAccount: '',
+                        toAccount: '',
+                        category: '',
+                      })
+                    }
+                    required
+                    disabled={!!editingTransaction}
+                  >
+                    <option value="income">{t('transactions.types.income')}</option>
+                    <option value="expense">{t('transactions.types.expense')}</option>
+                    <option value="transfer">{t('transactions.types.transfer')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('transactions.business')} {t('common.optional')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={formData.business || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        business: e.target.value || null,
                       })
                     }
                   >
-                    <option value="account">{t('transactions.account') || 'Cuenta'}</option>
-                    <option value="subAccount">
-                      {t('transactions.subAccount') || 'Subcuenta'}
-                    </option>
-                  </select>
-                </div>
-              )}
-
-              {formData.useAccount ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('transactions.account')}
-                  </label>
-                  <select
-                    className="input-field"
-                    value={formData.account}
-                    onChange={(e) => setFormData({ ...formData, account: e.target.value })}
-                    required
-                    disabled={!!editingTransaction}
-                  >
-                    <option value="">
-                      {t('transactions.selectAccount') || 'Seleccionar cuenta'}
-                    </option>
-                    {accounts.map((account) => (
-                      <option key={account._id} value={account._id}>
-                        {account.bankName} - {account.name}
+                    <option value="">{t('transactions.personal')}</option>
+                    {businesses.map((business) => (
+                      <option key={business._id} value={business._id}>
+                        {business.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('transactions.subAccount')}
+                    {t('transactions.category')}
                   </label>
-                  <select
-                    className="input-field"
-                    value={formData.subAccount}
-                    onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
-                    required
-                    disabled={!!editingTransaction}
-                  >
-                    <option value="">{t('transactions.selectSubAccount')}</option>
-                    {subAccounts.map((subAccount) => (
-                      <option key={subAccount._id} value={subAccount._id}>
-                        {subAccount.account?.name || subAccount.account} - {subAccount.name} (
-                        {subAccount.type === 'cash'
-                          ? t('accounts.subAccountTypes.cash')
-                          : subAccount.type === 'investment'
-                            ? t('accounts.subAccountTypes.investment')
-                            : subAccount.type === 'savings'
-                              ? t('accounts.subAccountTypes.savings')
-                              : t('accounts.subAccountTypes.credit')}
-                        )
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {formData.type === 'transfer' && !editingTransaction && (
-                <>
-                  {formData.useAccount ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('transactions.toAccount') || 'Cuenta Destino'}
-                      </label>
-                      <select
-                        className="input-field"
-                        value={formData.toAccount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            toAccount: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">
-                          {t('transactions.selectToAccount') || 'Seleccionar cuenta destino'}
-                        </option>
-                        {accounts
-                          .filter((a) => a._id !== formData.account)
-                          .map((account) => (
-                            <option key={account._id} value={account._id}>
-                              {account.bankName} - {account.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                  {formData.type === 'transfer' ? (
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      required
+                    />
                   ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('transactions.toSubAccount') || 'Subcuenta Destino'}
-                      </label>
-                      <select
-                        className="input-field"
-                        value={formData.toSubAccount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            toSubAccount: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">
-                          {t('transactions.selectToSubAccount') || 'Seleccionar subcuenta destino'}
-                        </option>
-                        {subAccounts
-                          .filter((sa) => sa._id !== formData.subAccount)
-                          .map((subAccount) => (
-                            <option key={subAccount._id} value={subAccount._id}>
-                              {subAccount.account?.name || subAccount.account} - {subAccount.name} (
-                              {subAccount.type === 'cash'
-                                ? t('accounts.subAccountTypes.cash')
-                                : subAccount.type === 'investment'
-                                  ? t('accounts.subAccountTypes.investment')
-                                  : subAccount.type === 'savings'
-                                    ? t('accounts.subAccountTypes.savings')
-                                    : t('accounts.subAccountTypes.credit')}
-                              )
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                    <select
+                      className="input-field"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      required
+                    >
+                      <option value="">{t('transactions.selectCategory')}</option>
+                      {availableCategories
+                        .filter(
+                          (cat) =>
+                            !cat.business ||
+                            cat.business === formData.business ||
+                            (!formData.business && !cat.business)
+                        )
+                        .map((category) => (
+                          <option key={category._id} value={category.name}>
+                            {category.name}
+                          </option>
+                        ))}
+                    </select>
                   )}
-                </>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.type')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      type: e.target.value,
-                      toSubAccount: '',
-                      toAccount: '',
-                      category: '',
-                    })
-                  }
-                  required
-                  disabled={!!editingTransaction}
-                >
-                  <option value="income">{t('transactions.types.income')}</option>
-                  <option value="expense">{t('transactions.types.expense')}</option>
-                  <option value="transfer">{t('transactions.types.transfer')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.business')} {t('common.optional')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.business || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      business: e.target.value || null,
-                    })
-                  }
-                >
-                  <option value="">{t('transactions.personal')}</option>
-                  {businesses.map((business) => (
-                    <option key={business._id} value={business._id}>
-                      {business.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.category')}
-                </label>
-                {formData.type === 'transfer' ? (
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('transactions.amount')}
+                  </label>
                   <input
-                    type="text"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     className="input-field"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        amount: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     required
                   />
-                ) : (
-                  <select
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('transactions.date')}
+                  </label>
+                  <input
+                    type="date"
                     className="input-field"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
-                  >
-                    <option value="">{t('transactions.selectCategory')}</option>
-                    {availableCategories
-                      .filter(
-                        (cat) =>
-                          !cat.business ||
-                          cat.business === formData.business ||
-                          (!formData.business && !cat.business)
-                      )
-                      .map((category) => (
-                        <option key={category._id} value={category.name}>
-                          {category.name}
-                        </option>
-                      ))}
-                  </select>
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('transactions.description')}
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                {/* Imagen adjunta — solo al crear */}
+                {!editingTransaction && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Imagen adjunta <span className="text-gray-400 font-normal">(opcional)</span>
+                    </label>
+                    {pendingImage ? (
+                      <div className="flex items-center gap-3 p-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <img
+                          src={pendingImagePreview}
+                          alt="Preview"
+                          className="h-14 w-14 object-cover rounded flex-shrink-0"
+                        />
+                        <p className="flex-1 text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {pendingImage.name}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            URL.revokeObjectURL(pendingImagePreview);
+                            setPendingImage(null);
+                            setPendingImagePreview(null);
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                          title="Quitar imagen"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragOver(true);
+                        }}
+                        onDragLeave={() => setIsDragOver(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragOver(false);
+                          handleImageFile(e.dataTransfer.files[0]);
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors select-none ${
+                          isDragOver
+                            ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-500'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500'
+                        }`}
+                      >
+                        <Camera className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm">
+                          {isDragOver ? 'Suelta aquí' : 'Arrastra una imagen o haz clic'}
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        handleImageFile(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.amount')}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="input-field"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      amount: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.date')}
-                </label>
-                <input
-                  type="date"
-                  className="input-field"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.description')}
-                </label>
-                <textarea
-                  className="input-field"
-                  rows="3"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingTransaction ? t('transactions.update') : t('transactions.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingTransaction ? t('transactions.update') : t('transactions.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+      <ConfirmDeleteModal
+        isOpen={!!deletingTransaction}
+        title={deletingTransaction?.description || deletingTransaction?.category}
+        amount={deletingTransaction?.amount}
+        type={deletingTransaction?.type}
+        currency={deletingTransaction?.currency || 'EUR'}
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingTransaction(null)}
+      />
     </div>
   );
 };

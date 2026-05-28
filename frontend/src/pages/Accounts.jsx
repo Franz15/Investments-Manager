@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CgAdd,
   CgCreditCard,
@@ -94,6 +95,8 @@ const Accounts = () => {
   const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [editingTransaction, setEditingTransaction] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(null); // account object
+  const [confirmDeleteSubAccount, setConfirmDeleteSubAccount] = useState(null); // subaccount object
   const [transactionFormData, setTransactionFormData] = useState({
     subAccount: '',
     type: 'expense',
@@ -705,22 +708,22 @@ const Accounts = () => {
     setShowSubAccountModal(true);
   };
 
-  const handleDeleteAccount = async (id) => {
-    if (window.confirm(t('accounts.deleteAccountConfirm'))) {
-      try {
-        await api.delete(`/accounts/${id}`);
-        fetchData();
-      } catch (error) {}
-    }
+  const handleDeleteAccount = async () => {
+    if (!confirmDeleteAccount) return;
+    try {
+      await api.delete(`/accounts/${confirmDeleteAccount._id}`);
+      setConfirmDeleteAccount(null);
+      fetchData();
+    } catch (error) {}
   };
 
-  const handleDeleteSubAccount = async (id) => {
-    if (window.confirm(t('accounts.deleteSubAccountConfirm'))) {
-      try {
-        await api.delete(`/subaccounts/${id}`);
-        fetchData();
-      } catch (error) {}
-    }
+  const handleDeleteSubAccount = async () => {
+    if (!confirmDeleteSubAccount) return;
+    try {
+      await api.delete(`/subaccounts/${confirmDeleteSubAccount._id}`);
+      setConfirmDeleteSubAccount(null);
+      fetchData();
+    } catch (error) {}
   };
 
   const resetAccountForm = () => {
@@ -962,7 +965,7 @@ const Accounts = () => {
                     <CgEditMarkup className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteAccount(account._id)}
+                    onClick={() => setConfirmDeleteAccount(account)}
                     className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                   >
                     <CgTrash className="h-4 w-4" />
@@ -1091,7 +1094,7 @@ const Accounts = () => {
                                   <CgEditMarkup className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteSubAccount(subAccount._id)}
+                                  onClick={() => setConfirmDeleteSubAccount(subAccount)}
                                   className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                                 >
                                   <CgTrash className="h-4 w-4" />
@@ -1705,1354 +1708,1487 @@ const Accounts = () => {
       </div>
 
       {/* Modal para Cuenta Principal */}
-      {showAccountModal && (
-        <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          style={{ zIndex: 10000 }}
-        >
-          <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {editingAccount
-                  ? t('accounts.modals.editAccount')
-                  : t('accounts.modals.newAccount')}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowAccountModal(false);
-                  resetAccountForm();
-                }}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleAccountSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.accountName')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={accountFormData.name}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder={t('accounts.modals.accountNamePlaceholder')}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.bankName')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={accountFormData.bankName}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      bankName: e.target.value,
-                    })
-                  }
-                  placeholder={t('accounts.modals.bankNamePlaceholder')}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.accountNumber')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={accountFormData.accountNumber}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      accountNumber: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('common.currency')}
-                </label>
-                <select
-                  className="input-field"
-                  value={accountFormData.currency}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      currency: e.target.value,
-                    })
-                  }
+      {showAccountModal &&
+        createPortal(
+          <div
+            className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+          >
+            <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {editingAccount
+                    ? t('accounts.modals.editAccount')
+                    : t('accounts.modals.newAccount')}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowAccountModal(false);
+                    resetAccountForm();
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
                 >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="GBP">GBP</option>
-                </select>
+                  ✕
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.description')}
-                </label>
-                <textarea
-                  className="input-field"
-                  rows="3"
-                  value={accountFormData.description}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.business')} {t('common.optional')}
-                </label>
-                <select
-                  className="input-field"
-                  value={accountFormData.business || ''}
-                  onChange={(e) =>
-                    setAccountFormData({
-                      ...accountFormData,
-                      business: e.target.value || null,
-                    })
-                  }
-                >
-                  <option value="">{t('accounts.personal')}</option>
-                  {businesses.map((business) => (
-                    <option key={business._id} value={business._id}>
-                      {business.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.bankColor')}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    className="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                    value={accountFormData.color}
-                    onChange={(e) =>
-                      setAccountFormData({
-                        ...accountFormData,
-                        color: e.target.value,
-                      })
-                    }
-                  />
-                  <input
-                    type="text"
-                    className="input-field flex-1"
-                    value={accountFormData.color}
-                    onChange={(e) =>
-                      setAccountFormData({
-                        ...accountFormData,
-                        color: e.target.value,
-                      })
-                    }
-                    placeholder="#3b82f6"
-                    pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t('accounts.modals.bankColorDescription')}
-                </p>
-              </div>
-              {!editingAccount && (
+              <form onSubmit={handleAccountSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('accounts.modals.initialBalance')}
+                    {t('accounts.modals.accountName')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={accountFormData.name}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder={t('accounts.modals.accountNamePlaceholder')}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.bankName')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={accountFormData.bankName}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        bankName: e.target.value,
+                      })
+                    }
+                    placeholder={t('accounts.modals.bankNamePlaceholder')}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.accountNumber')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={accountFormData.accountNumber}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        accountNumber: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('common.currency')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={accountFormData.currency}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        currency: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.description')}
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    value={accountFormData.description}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.business')} {t('common.optional')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={accountFormData.business || ''}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        business: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">{t('accounts.personal')}</option>
+                    {businesses.map((business) => (
+                      <option key={business._id} value={business._id}>
+                        {business.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.bankColor')}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      className="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      value={accountFormData.color}
+                      onChange={(e) =>
+                        setAccountFormData({
+                          ...accountFormData,
+                          color: e.target.value,
+                        })
+                      }
+                    />
+                    <input
+                      type="text"
+                      className="input-field flex-1"
+                      value={accountFormData.color}
+                      onChange={(e) =>
+                        setAccountFormData({
+                          ...accountFormData,
+                          color: e.target.value,
+                        })
+                      }
+                      placeholder="#3b82f6"
+                      pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t('accounts.modals.bankColorDescription')}
+                  </p>
+                </div>
+                {!editingAccount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('accounts.modals.initialBalance')}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input-field"
+                      value={accountFormData.initialBalance}
+                      onChange={(e) =>
+                        setAccountFormData({
+                          ...accountFormData,
+                          initialBalance: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('accounts.modals.initialBalanceDescription')}
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountModal(false);
+                      resetAccountForm();
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal para Subcuenta */}
+      {showSubAccountModal &&
+        createPortal(
+          <div
+            className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+          >
+            <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {editingSubAccount
+                    ? t('accounts.modals.editSubAccount')
+                    : t('accounts.modals.newSubAccount')}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowSubAccountModal(false);
+                    resetSubAccountForm();
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleSubAccountSubmit} className="space-y-4">
+                {!editingSubAccount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('accounts.modals.mainAccount')}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={selectedAccountId || ''}
+                      onChange={(e) => setSelectedAccountId(e.target.value)}
+                      required
+                    >
+                      <option value="">{t('accounts.modals.selectAccount')}</option>
+                      {accounts.map((acc) => (
+                        <option key={acc._id} value={acc._id}>
+                          {acc.name} - {acc.bankName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.accountName')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={subAccountFormData.name}
+                    onChange={(e) =>
+                      setSubAccountFormData({
+                        ...subAccountFormData,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder={t('accounts.modals.subAccountNamePlaceholder')}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.subAccountType')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={subAccountFormData.type}
+                    onChange={(e) =>
+                      setSubAccountFormData({
+                        ...subAccountFormData,
+                        type: e.target.value,
+                      })
+                    }
+                    required
+                  >
+                    <option value="cash">{t('accounts.subAccountTypes.cash')}</option>
+                    <option value="investment">{t('accounts.subAccountTypes.investment')}</option>
+                    <option value="savings">{t('accounts.subAccountTypes.savings')}</option>
+                    <option value="credit">{t('accounts.subAccountTypes.credit')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.balance')}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     className="input-field"
-                    value={accountFormData.initialBalance}
-                    onChange={(e) =>
-                      setAccountFormData({
-                        ...accountFormData,
-                        initialBalance: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="0.00"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {t('accounts.modals.initialBalanceDescription')}
-                  </p>
-                </div>
-              )}
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAccountModal(false);
-                    resetAccountForm();
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Subcuenta */}
-      {showSubAccountModal && (
-        <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          style={{ zIndex: 10000 }}
-        >
-          <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {editingSubAccount
-                  ? t('accounts.modals.editSubAccount')
-                  : t('accounts.modals.newSubAccount')}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowSubAccountModal(false);
-                  resetSubAccountForm();
-                }}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSubAccountSubmit} className="space-y-4">
-              {!editingSubAccount && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('accounts.modals.mainAccount')}
-                  </label>
-                  <select
-                    className="input-field"
-                    value={selectedAccountId || ''}
-                    onChange={(e) => setSelectedAccountId(e.target.value)}
-                    required
-                  >
-                    <option value="">{t('accounts.modals.selectAccount')}</option>
-                    {accounts.map((acc) => (
-                      <option key={acc._id} value={acc._id}>
-                        {acc.name} - {acc.bankName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.accountName')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={subAccountFormData.name}
-                  onChange={(e) =>
-                    setSubAccountFormData({
-                      ...subAccountFormData,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder={t('accounts.modals.subAccountNamePlaceholder')}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.subAccountType')}
-                </label>
-                <select
-                  className="input-field"
-                  value={subAccountFormData.type}
-                  onChange={(e) =>
-                    setSubAccountFormData({
-                      ...subAccountFormData,
-                      type: e.target.value,
-                    })
-                  }
-                  required
-                >
-                  <option value="cash">{t('accounts.subAccountTypes.cash')}</option>
-                  <option value="investment">{t('accounts.subAccountTypes.investment')}</option>
-                  <option value="savings">{t('accounts.subAccountTypes.savings')}</option>
-                  <option value="credit">{t('accounts.subAccountTypes.credit')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.balance')}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input-field"
-                  value={subAccountFormData.balance}
-                  onChange={(e) =>
-                    setSubAccountFormData({
-                      ...subAccountFormData,
-                      balance: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('common.currency')}
-                </label>
-                <select
-                  className="input-field"
-                  value={subAccountFormData.currency}
-                  onChange={(e) =>
-                    setSubAccountFormData({
-                      ...subAccountFormData,
-                      currency: e.target.value,
-                    })
-                  }
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="GBP">GBP</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('accounts.modals.description')}
-                </label>
-                <textarea
-                  className="input-field"
-                  rows="3"
-                  value={subAccountFormData.description}
-                  onChange={(e) =>
-                    setSubAccountFormData({
-                      ...subAccountFormData,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              {(subAccountFormData.type === 'cash' || subAccountFormData.type === 'savings') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('accounts.modals.cashCreationDate')}
-                  </label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={subAccountFormData.initialDate}
+                    value={subAccountFormData.balance}
                     onChange={(e) =>
                       setSubAccountFormData({
                         ...subAccountFormData,
-                        initialDate: e.target.value,
+                        balance: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('common.currency')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={subAccountFormData.currency}
+                    onChange={(e) =>
+                      setSubAccountFormData({
+                        ...subAccountFormData,
+                        currency: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.description')}
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    value={subAccountFormData.description}
+                    onChange={(e) =>
+                      setSubAccountFormData({
+                        ...subAccountFormData,
+                        description: e.target.value,
                       })
                     }
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {t('accounts.modals.cashCreationDateDescription')}
-                  </p>
                 </div>
-              )}
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingSubAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSubAccountModal(false);
-                    resetSubAccountForm();
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                {(subAccountFormData.type === 'cash' || subAccountFormData.type === 'savings') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('accounts.modals.cashCreationDate')}
+                    </label>
+                    <input
+                      type="date"
+                      className="input-field"
+                      value={subAccountFormData.initialDate}
+                      onChange={(e) =>
+                        setSubAccountFormData({
+                          ...subAccountFormData,
+                          initialDate: e.target.value,
+                        })
+                      }
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('accounts.modals.cashCreationDateDescription')}
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingSubAccount ? t('accounts.modals.update') : t('accounts.modals.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSubAccountModal(false);
+                      resetSubAccountForm();
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Modal de detalles de inversión */}
-      {showDetailModal && detailInvestment && (
-        <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          style={{ zIndex: 10000 }}
-          onClick={() => {
-            setShowDetailModal(false);
-            setDetailInvestment(null);
-            setDetailInvestmentHistory([]);
-            setDetailDailyVariations([]);
-          }}
-        >
+      {showDetailModal &&
+        detailInvestment &&
+        createPortal(
           <div
-            className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+            onClick={() => {
+              setShowDetailModal(false);
+              setDetailInvestment(null);
+              setDetailInvestmentHistory([]);
+              setDetailDailyVariations([]);
+            }}
           >
-            <div className="flex justify-between items-start mb-4 flex-shrink-0">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {detailInvestment.name}
-                </h2>
-                {detailInvestment.symbol && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {detailInvestment.symbol}
-                  </p>
-                )}
-                {detailInvestment.isin && !detailInvestment.symbol && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {t('accounts.modals.isinLabel')} {detailInvestment.isin}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setDetailInvestment(null);
-                  setDetailInvestmentHistory([]);
-                  setDetailDailyVariations([]);
-                }}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
-              {/* Columna izquierda */}
-              <div className="space-y-4 overflow-y-auto pr-2 h-full">
-                {/* Información básica */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    {t('investments.detail.basicInfo')}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('investments.detail.typeLabel')}
-                      </span>
-                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                        {getTypeLabel(detailInvestment.type, detailInvestment.isAutomatedPortfolio)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('investments.detail.currencyLabel')}
-                      </span>
-                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                        {detailInvestment.currency}
-                      </span>
-                    </div>
-                    {(detailInvestment.account || detailInvestment.subAccount) && (
-                      <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {t('investments.detail.accountLabel')}
-                        </span>
-                        <div className="mt-1">
-                          {detailInvestment.account && (
-                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                              {detailInvestment.account.name ||
-                                detailInvestment.account.bankName ||
-                                'N/A'}
-                            </span>
-                          )}
-                          {detailInvestment.subAccount && (
-                            <span className="ml-2 text-gray-600 dark:text-gray-400">
-                              → {detailInvestment.subAccount.name}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {detailInvestment.assetClass && (
-                      <div className="col-span-2">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {t('investments.detail.assetClassLabel')}
-                        </span>
-                        <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          {detailInvestment.assetClass === 'fixed_income' && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                                {t('investments.assetClassLabels.fixedIncome')}
-                              </span>
-                              {getFixedIncomeSubtypeLabel(detailInvestment.fixedIncomeSubtype) && (
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
-                                    detailInvestment.fixedIncomeSubtype
-                                  )}`}
-                                >
-                                  {getFixedIncomeSubtypeLabel(detailInvestment.fixedIncomeSubtype)}
-                                </span>
-                              )}
-                            </>
-                          )}
-                          {detailInvestment.assetClass === 'variable_income' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                              {t('investments.assetClassLabels.variableIncome')}
-                            </span>
-                          )}
-                          {detailInvestment.assetClass === 'mixed' && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                {t('investments.assetClassLabels.mixed')}
-                              </span>
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                {t('investments.assetClassLabels.fixedIncomeShort')}:{' '}
-                                {detailInvestment.fixedIncomePercentage || 0}% |
-                                {t('investments.assetClassLabels.variableIncomeShort')}:{' '}
-                                {detailInvestment.variableIncomePercentage || 0}%
-                              </span>
-                            </>
-                          )}
-                          {detailInvestment.isAlternative && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                              {t('investments.assetClassLabels.alternative')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {detailInvestment.isAutomatedPortfolio && (
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                          {t('accounts.modals.automatedPortfolio')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            <div
+              className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4 flex-shrink-0">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {detailInvestment.name}
+                  </h2>
+                  {detailInvestment.symbol && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {detailInvestment.symbol}
+                    </p>
+                  )}
+                  {detailInvestment.isin && !detailInvestment.symbol && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {t('accounts.modals.isinLabel')} {detailInvestment.isin}
+                    </p>
+                  )}
                 </div>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setDetailInvestment(null);
+                    setDetailInvestmentHistory([]);
+                    setDetailDailyVariations([]);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
 
-                {/* Información financiera */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    {t('investments.detail.financialInfo')}
-                  </h3>
-                  <div className="space-y-3 text-sm">
-                    {detailInvestment.isAutomatedPortfolio ? (
-                      <>
-                        <div className="flex justify-between">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
+                {/* Columna izquierda */}
+                <div className="space-y-4 overflow-y-auto pr-2 h-full">
+                  {/* Información básica */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      {t('investments.detail.basicInfo')}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {t('investments.detail.typeLabel')}
+                        </span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {getTypeLabel(
+                            detailInvestment.type,
+                            detailInvestment.isAutomatedPortfolio
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {t('investments.detail.currencyLabel')}
+                        </span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {detailInvestment.currency}
+                        </span>
+                      </div>
+                      {(detailInvestment.account || detailInvestment.subAccount) && (
+                        <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                           <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.amountInvested')}
+                            {t('investments.detail.accountLabel')}
                           </span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: detailInvestment.currency,
-                            }).format(detailInvestment.quantity)}
+                          <div className="mt-1">
+                            {detailInvestment.account && (
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                {detailInvestment.account.name ||
+                                  detailInvestment.account.bankName ||
+                                  'N/A'}
+                              </span>
+                            )}
+                            {detailInvestment.subAccount && (
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                → {detailInvestment.subAccount.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {detailInvestment.assetClass && (
+                        <div className="col-span-2">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {t('investments.detail.assetClassLabel')}
+                          </span>
+                          <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            {detailInvestment.assetClass === 'fixed_income' && (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                  {t('investments.assetClassLabels.fixedIncome')}
+                                </span>
+                                {getFixedIncomeSubtypeLabel(
+                                  detailInvestment.fixedIncomeSubtype
+                                ) && (
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                      detailInvestment.fixedIncomeSubtype
+                                    )}`}
+                                  >
+                                    {getFixedIncomeSubtypeLabel(
+                                      detailInvestment.fixedIncomeSubtype
+                                    )}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {detailInvestment.assetClass === 'variable_income' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                                {t('investments.assetClassLabels.variableIncome')}
+                              </span>
+                            )}
+                            {detailInvestment.assetClass === 'mixed' && (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                                  {t('investments.assetClassLabels.mixed')}
+                                </span>
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  {t('investments.assetClassLabels.fixedIncomeShort')}:{' '}
+                                  {detailInvestment.fixedIncomePercentage || 0}% |
+                                  {t('investments.assetClassLabels.variableIncomeShort')}:{' '}
+                                  {detailInvestment.variableIncomePercentage || 0}%
+                                </span>
+                              </>
+                            )}
+                            {detailInvestment.isAlternative && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                                {t('investments.assetClassLabels.alternative')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {detailInvestment.isAutomatedPortfolio && (
+                        <div className="col-span-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                            {t('accounts.modals.automatedPortfolio')}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.currentValue')}
-                          </span>
-                          <span className="font-bold text-gray-900 dark:text-gray-100">
-                            {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.quantityLabel')}
-                          </span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {t('accounts.modals.units', {
-                              quantity: detailInvestment.quantity,
-                            })}
-                          </span>
-                        </div>
-                        {detailInvestment.averagePurchasePrice && (
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Información financiera */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      {t('investments.detail.financialInfo')}
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      {detailInvestment.isAutomatedPortfolio ? (
+                        <>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">
-                              {t('investments.detail.averagePurchasePriceLabel')}
+                              {t('investments.detail.amountInvested')}
                             </span>
                             <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: detailInvestment.currency,
+                              }).format(detailInvestment.quantity)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('investments.detail.currentValue')}
+                            </span>
+                            <span className="font-bold text-gray-900 dark:text-gray-100">
                               {formatPrice(
-                                detailInvestment.averagePurchasePrice,
+                                detailInvestment.currentPrice,
                                 detailInvestment.currency
                               )}
                             </span>
                           </div>
-                        )}
-                        {detailInvestment.purchasePrice &&
-                          !detailInvestment.averagePurchasePrice && (
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('investments.detail.quantityLabel')}
+                            </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {t('accounts.modals.units', {
+                                quantity: detailInvestment.quantity,
+                              })}
+                            </span>
+                          </div>
+                          {detailInvestment.averagePurchasePrice && (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">
-                                {t('investments.detail.purchasePriceLabel')}
+                                {t('investments.detail.averagePurchasePriceLabel')}
                               </span>
                               <span className="font-medium text-gray-900 dark:text-gray-100">
                                 {formatPrice(
-                                  detailInvestment.purchasePrice,
+                                  detailInvestment.averagePurchasePrice,
                                   detailInvestment.currency
                                 )}
                               </span>
                             </div>
                           )}
+                          {detailInvestment.purchasePrice &&
+                            !detailInvestment.averagePurchasePrice && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {t('investments.detail.purchasePriceLabel')}
+                                </span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  {formatPrice(
+                                    detailInvestment.purchasePrice,
+                                    detailInvestment.currency
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('investments.detail.currentPriceLabel')}
+                            </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {formatPrice(
+                                detailInvestment.currentPrice,
+                                detailInvestment.currency
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('investments.detail.totalValueLabel')}
+                            </span>
+                            <span className="font-bold text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: detailInvestment.currency,
+                              }).format(detailInvestment.quantity * detailInvestment.currentPrice)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {t('investments.detail.profitLossLabel')}
+                        </span>
+                        <span
+                          className={`font-bold flex items-center ${
+                            calculateProfitLoss(detailInvestment) >= 0
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {calculateProfitLoss(detailInvestment) >= 0 ? (
+                            <CgTrending className="h-4 w-4 mr-1" />
+                          ) : (
+                            <CgTrendingDown className="h-4 w-4 mr-1" />
+                          )}
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: detailInvestment.currency,
+                          }).format(calculateProfitLoss(detailInvestment))}
+                          <span className="ml-2">
+                            ({calculateProfitLossPercentage(detailInvestment).toFixed(2)}
+                            %)
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fechas */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      {t('investments.detail.dates')}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      {detailInvestment.purchaseDate && (
                         <div className="flex justify-between">
                           <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.currentPriceLabel')}
+                            {t('investments.detail.purchaseDateLabel')}
                           </span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {formatPrice(detailInvestment.currentPrice, detailInvestment.currency)}
+                            {new Date(detailInvestment.purchaseDate).toLocaleDateString('es-ES')}
                           </span>
                         </div>
-                        <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                      )}
+                      {detailInvestment.createdAt && (
+                        <div className="flex justify-between">
                           <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.totalValueLabel')}
+                            {t('investments.detail.createdDateLabel')}
                           </span>
-                          <span className="font-bold text-gray-900 dark:text-gray-100">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: detailInvestment.currency,
-                            }).format(detailInvestment.quantity * detailInvestment.currentPrice)}
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(detailInvestment.createdAt).toLocaleDateString('es-ES')}
                           </span>
                         </div>
-                      </>
-                    )}
-                    <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {t('investments.detail.profitLossLabel')}
-                      </span>
-                      <span
-                        className={`font-bold flex items-center ${
-                          calculateProfitLoss(detailInvestment) >= 0
-                            ? 'text-green-600'
-                            : 'text-red-600'
-                        }`}
-                      >
-                        {calculateProfitLoss(detailInvestment) >= 0 ? (
-                          <CgTrending className="h-4 w-4 mr-1" />
-                        ) : (
-                          <CgTrendingDown className="h-4 w-4 mr-1" />
-                        )}
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: detailInvestment.currency,
-                        }).format(calculateProfitLoss(detailInvestment))}
-                        <span className="ml-2">
-                          ({calculateProfitLossPercentage(detailInvestment).toFixed(2)}
-                          %)
-                        </span>
-                      </span>
+                      )}
+                      {detailInvestment.updatedAt && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {t('investments.detail.lastUpdateLabel')}
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(detailInvestment.updatedAt).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Fechas */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    {t('investments.detail.dates')}
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    {detailInvestment.purchaseDate && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {t('investments.detail.purchaseDateLabel')}
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(detailInvestment.purchaseDate).toLocaleDateString('es-ES')}
-                        </span>
-                      </div>
-                    )}
-                    {detailInvestment.createdAt && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {t('investments.detail.createdDateLabel')}
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(detailInvestment.createdAt).toLocaleDateString('es-ES')}
-                        </span>
-                      </div>
-                    )}
-                    {detailInvestment.updatedAt && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {t('investments.detail.lastUpdateLabel')}
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(detailInvestment.updatedAt).toLocaleDateString('es-ES')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
-                {(detailInvestment.symbol || detailInvestment.isin) &&
-                  !detailInvestment.isAutomatedPortfolio && (
-                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        {t('investments.detail.configuration')}
-                      </h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {t('investments.detail.autoUpdateLabel')}
-                          </span>
-                          <span
-                            className={`font-medium ${
-                              detailInvestment.autoUpdate !== false
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {detailInvestment.autoUpdate !== false
-                              ? t('investments.detail.enabled')
-                              : t('investments.detail.disabled')}
-                          </span>
-                        </div>
-                        {detailInvestment.platformUrl && (
-                          <div>
+                  {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
+                  {(detailInvestment.symbol || detailInvestment.isin) &&
+                    !detailInvestment.isAutomatedPortfolio && (
+                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                          {t('investments.detail.configuration')}
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between">
                             <span className="text-gray-600 dark:text-gray-400">
-                              {t('investments.detail.platform')}
+                              {t('investments.detail.autoUpdateLabel')}
                             </span>
-                            <a
-                              href={detailInvestment.platformUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                            <span
+                              className={`font-medium ${
+                                detailInvestment.autoUpdate !== false
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
                             >
-                              {detailInvestment.platformUrl}
-                            </a>
+                              {detailInvestment.autoUpdate !== false
+                                ? t('investments.detail.enabled')
+                                : t('investments.detail.disabled')}
+                            </span>
                           </div>
-                        )}
+                          {detailInvestment.platformUrl && (
+                            <div>
+                              <span className="text-gray-600 dark:text-gray-400">
+                                {t('investments.detail.platform')}
+                              </span>
+                              <a
+                                href={detailInvestment.platformUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                {detailInvestment.platformUrl}
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                {/* Notas */}
-                {detailInvestment.notes && (
-                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {t('investments.detail.notes')}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                      {detailInvestment.notes}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Columna derecha */}
-              <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
-                {/* Gráfica de evolución del valor */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Evolución del Valor
-                  </h3>
-                  {detailInvestmentHistory.length > 0 ? (
-                    <div style={{ height: '290px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={detailInvestmentHistory.map((h) => ({
-                            date: new Date(h.date).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: 'short',
-                            }),
-                            value: h.totalValue,
-                            dailyChange: h.dailyChangeAmount || 0,
-                          }))}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
-                          />
-                          <XAxis
-                            dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                          />
-                          <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: detailInvestment.currency,
-                                notation: 'compact',
-                                maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
-                          />
-                          <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload || !payload.length) return null;
-
-                              const data = payload[0]?.payload;
-                              const totalValue = data?.value || 0;
-
-                              const formattedValue = new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: detailInvestment.currency,
-                              }).format(totalValue);
-
-                              return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
-                                    {label}
-                                  </p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                        {t('accounts.modals.totalValue')}
-                                      </span>
-                                      <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                        {formattedValue}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="#0ea5e9"
-                            name="Valor Total"
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 5 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">{t('accounts.modals.noHistoryData')}</p>
-                      <p className="text-xs mt-2">
-                        El historial se genera automáticamente con las operaciones
+                  {/* Notas */}
+                  {detailInvestment.notes && (
+                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        {t('investments.detail.notes')}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                        {detailInvestment.notes}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Gráfica de variación diaria */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Variación Diaria
-                  </h3>
-                  {detailDailyVariations.length > 0 ? (
-                    <div style={{ height: '290px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={detailDailyVariations.map((v) => {
-                            const changeAmount =
-                              v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined
-                                ? v.dailyChangeAmount
-                                : 0;
-                            return {
-                              date: new Date(v.date).toLocaleDateString('es-ES', {
+                {/* Columna derecha */}
+                <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
+                  {/* Gráfica de evolución del valor */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Evolución del Valor
+                    </h3>
+                    {detailInvestmentHistory.length > 0 ? (
+                      <div style={{ height: '290px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={detailInvestmentHistory.map((h) => ({
+                              date: new Date(h.date).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: 'short',
                               }),
-                              dailyChange: changeAmount,
-                              dailyChangePercent:
-                                v.dailyChangePercent !== null && v.dailyChangePercent !== undefined
-                                  ? v.dailyChangePercent
-                                  : null,
-                              dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
-                              dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
-                            };
-                          })}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#e5e7eb"
-                            className="dark:stroke-gray-600"
-                          />
-                          <XAxis
-                            dataKey="date"
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            angle={-45}
-                            textAnchor="end"
-                            height={80}
-                          />
-                          <YAxis
-                            stroke="#6b7280"
-                            className="dark:stroke-gray-400"
-                            tickFormatter={(value) => {
-                              return new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: detailInvestment.currency,
-                                notation: 'compact',
-                                maximumFractionDigits: 0,
-                              }).format(value);
-                            }}
-                          />
-                          <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload || !payload.length) return null;
+                              value: h.totalValue,
+                              dailyChange: h.dailyChangeAmount || 0,
+                            }))}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#e5e7eb"
+                              className="dark:stroke-gray-600"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#6b7280"
+                              className="dark:stroke-gray-400"
+                              angle={-45}
+                              textAnchor="end"
+                              height={80}
+                            />
+                            <YAxis
+                              stroke="#6b7280"
+                              className="dark:stroke-gray-400"
+                              tickFormatter={(value) => {
+                                return new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: detailInvestment.currency,
+                                  notation: 'compact',
+                                  maximumFractionDigits: 0,
+                                }).format(value);
+                              }}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload || !payload.length) return null;
 
-                              const data = payload[0]?.payload;
-                              const dailyChange =
-                                data?.dailyChange !== null && data?.dailyChange !== undefined
-                                  ? data.dailyChange
-                                  : 0;
-                              const dailyChangePercent = data?.dailyChangePercent;
+                                const data = payload[0]?.payload;
+                                const totalValue = data?.value || 0;
 
-                              const formattedChange = new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: detailInvestment.currency,
-                              }).format(Math.abs(dailyChange));
+                                const formattedValue = new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: detailInvestment.currency,
+                                }).format(totalValue);
 
-                              return (
-                                <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
-                                    {label}
-                                  </p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                        {t('accounts.modals.dailyChange')}
-                                      </span>
-                                      <span
-                                        className={`font-medium text-sm ${
-                                          dailyChange > 0
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : dailyChange < 0
-                                              ? 'text-red-600 dark:text-red-400'
-                                              : 'text-gray-500 dark:text-gray-400'
-                                        }`}
-                                      >
-                                        {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}
-                                        {formattedChange}
-                                        {dailyChange === 0 && ' (Sin variación)'}
-                                      </span>
-                                    </div>
-                                    {dailyChangePercent !== null &&
-                                    dailyChangePercent !== undefined ? (
+                                return (
+                                  <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                      {label}
+                                    </p>
+                                    <div className="space-y-1">
                                       <div className="flex justify-between items-center">
                                         <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                          {t('accounts.modals.variation')}
+                                          {t('accounts.modals.totalValue')}
+                                        </span>
+                                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                          {formattedValue}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="value"
+                              stroke="#0ea5e9"
+                              name="Valor Total"
+                              strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <p className="text-sm">{t('accounts.modals.noHistoryData')}</p>
+                        <p className="text-xs mt-2">
+                          El historial se genera automáticamente con las operaciones
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gráfica de variación diaria */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Variación Diaria
+                    </h3>
+                    {detailDailyVariations.length > 0 ? (
+                      <div style={{ height: '290px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={detailDailyVariations.map((v) => {
+                              const changeAmount =
+                                v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined
+                                  ? v.dailyChangeAmount
+                                  : 0;
+                              return {
+                                date: new Date(v.date).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                }),
+                                dailyChange: changeAmount,
+                                dailyChangePercent:
+                                  v.dailyChangePercent !== null &&
+                                  v.dailyChangePercent !== undefined
+                                    ? v.dailyChangePercent
+                                    : null,
+                                dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
+                                dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
+                              };
+                            })}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#e5e7eb"
+                              className="dark:stroke-gray-600"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#6b7280"
+                              className="dark:stroke-gray-400"
+                              angle={-45}
+                              textAnchor="end"
+                              height={80}
+                            />
+                            <YAxis
+                              stroke="#6b7280"
+                              className="dark:stroke-gray-400"
+                              tickFormatter={(value) => {
+                                return new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: detailInvestment.currency,
+                                  notation: 'compact',
+                                  maximumFractionDigits: 0,
+                                }).format(value);
+                              }}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload || !payload.length) return null;
+
+                                const data = payload[0]?.payload;
+                                const dailyChange =
+                                  data?.dailyChange !== null && data?.dailyChange !== undefined
+                                    ? data.dailyChange
+                                    : 0;
+                                const dailyChangePercent = data?.dailyChangePercent;
+
+                                const formattedChange = new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: detailInvestment.currency,
+                                }).format(Math.abs(dailyChange));
+
+                                return (
+                                  <div className="bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#404040] rounded shadow-lg p-3">
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
+                                      {label}
+                                    </p>
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                          {t('accounts.modals.dailyChange')}
                                         </span>
                                         <span
                                           className={`font-medium text-sm ${
-                                            dailyChangePercent > 0
+                                            dailyChange > 0
                                               ? 'text-green-600 dark:text-green-400'
-                                              : dailyChangePercent < 0
+                                              : dailyChange < 0
                                                 ? 'text-red-600 dark:text-red-400'
                                                 : 'text-gray-500 dark:text-gray-400'
                                           }`}
                                         >
-                                          {dailyChangePercent > 0 ? '+' : ''}
-                                          {dailyChangePercent.toFixed(2)}%
+                                          {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}
+                                          {formattedChange}
+                                          {dailyChange === 0 && ' (Sin variación)'}
                                         </span>
                                       </div>
-                                    ) : (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                          {t('accounts.modals.variation')}
-                                        </span>
-                                        <span className="text-gray-500 dark:text-gray-400 text-sm">
-                                          Sin datos previos
-                                        </span>
-                                      </div>
-                                    )}
+                                      {dailyChangePercent !== null &&
+                                      dailyChangePercent !== undefined ? (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                            {t('accounts.modals.variation')}
+                                          </span>
+                                          <span
+                                            className={`font-medium text-sm ${
+                                              dailyChangePercent > 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : dailyChangePercent < 0
+                                                  ? 'text-red-600 dark:text-red-400'
+                                                  : 'text-gray-500 dark:text-gray-400'
+                                            }`}
+                                          >
+                                            {dailyChangePercent > 0 ? '+' : ''}
+                                            {dailyChangePercent.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600 dark:text-gray-400 text-sm">
+                                            {t('accounts.modals.variation')}
+                                          </span>
+                                          <span className="text-gray-500 dark:text-gray-400 text-sm">
+                                            Sin datos previos
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Bar
-                            dataKey="dailyChangePositive"
-                            fill="#10b981"
-                            name="Ganancia"
-                            radius={[4, 4, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="dailyChangeNegative"
-                            fill="#ef4444"
-                            name="Pérdida"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">{t('accounts.modals.noVariationData')}</p>
-                      <p className="text-xs mt-2">
-                        Las variaciones se generan automáticamente al actualizar precios
-                      </p>
-                    </div>
-                  )}
+                                );
+                              }}
+                            />
+                            <Bar
+                              dataKey="dailyChangePositive"
+                              fill="#10b981"
+                              name="Ganancia"
+                              radius={[4, 4, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="dailyChangeNegative"
+                              fill="#ef4444"
+                              name="Pérdida"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <p className="text-sm">{t('accounts.modals.noVariationData')}</p>
+                        <p className="text-xs mt-2">
+                          Las variaciones se generan automáticamente al actualizar precios
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Botones de acción */}
-            <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <button
-                onClick={() => {
-                  navigate('/investments');
-                }}
-                className="flex-1 btn-secondary flex items-center justify-center"
-              >
-                <CgTime className="h-4 w-4 mr-2" />
-                Ver en Inversiones
-              </button>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setDetailInvestment(null);
-                  setDetailInvestmentHistory([]);
-                  setDetailDailyVariations([]);
-                }}
-                className="flex-1 btn-primary"
-              >
-                Cerrar
-              </button>
+              {/* Botones de acción */}
+              <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    navigate('/investments');
+                  }}
+                  className="flex-1 btn-secondary flex items-center justify-center"
+                >
+                  <CgTime className="h-4 w-4 mr-2" />
+                  Ver en Inversiones
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setDetailInvestment(null);
+                    setDetailInvestmentHistory([]);
+                    setDetailDailyVariations([]);
+                  }}
+                  className="flex-1 btn-primary"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Modal de detalle de transacción */}
-      {showTransactionDetailModal && selectedTransaction && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
-          onClick={() => {
-            if (!editingTransaction) {
-              setShowTransactionDetailModal(false);
-              setSelectedTransaction(null);
-              setEditingTransaction(false);
-            }
-          }}
-        >
-          <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {editingTransaction
-                  ? t('transactions.editTransaction') || 'Editar Transacción'
-                  : t('transactions.details') || 'Detalle de Transacción'}
-              </h2>
-              {!editingTransaction && (
-                <button
-                  onClick={handleEditTransaction}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title={t('transactions.editTransaction') || 'Editar'}
-                >
-                  <CgEditMarkup className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-            <div className="space-y-4">
-              {editingTransaction ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.subAccount')}
-                    </label>
-                    <select
-                      className="input-field"
-                      value={transactionFormData.subAccount}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          subAccount: e.target.value,
-                        })
-                      }
-                      required
-                      disabled
-                    >
-                      <option value={transactionFormData.subAccount}>
-                        {selectedTransaction.subAccount?.account?.name ||
-                          selectedTransaction.account?.name ||
-                          ''}{' '}
-                        - {selectedTransaction.subAccount?.name || ''}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.type')}
-                    </label>
-                    <select
-                      className="input-field"
-                      value={transactionFormData.type}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          type: e.target.value,
-                        })
-                      }
-                      required
-                      disabled
-                    >
-                      <option value="income">{t('transactions.types.income')}</option>
-                      <option value="expense">{t('transactions.types.expense')}</option>
-                      <option value="transfer">{t('transactions.types.transfer')}</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.category')}
-                    </label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      value={transactionFormData.category}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          category: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.amount')}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="input-field"
-                      value={transactionFormData.amount}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          amount: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.date')}
-                    </label>
-                    <input
-                      type="date"
-                      className="input-field"
-                      value={transactionFormData.date}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          date: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.description')}
-                    </label>
-                    <textarea
-                      className="input-field"
-                      rows="3"
-                      value={transactionFormData.description}
-                      onChange={(e) =>
-                        setTransactionFormData({
-                          ...transactionFormData,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.type')}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          selectedTransaction.type === 'income'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : selectedTransaction.type === 'expense'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        }`}
+      {showTransactionDetailModal &&
+        selectedTransaction &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              if (!editingTransaction) {
+                setShowTransactionDetailModal(false);
+                setSelectedTransaction(null);
+                setEditingTransaction(false);
+              }
+            }}
+          >
+            <div className="modal-content max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {editingTransaction
+                    ? t('transactions.editTransaction') || 'Editar Transacción'
+                    : t('transactions.details') || 'Detalle de Transacción'}
+                </h2>
+                {!editingTransaction && (
+                  <button
+                    onClick={handleEditTransaction}
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title={t('transactions.editTransaction') || 'Editar'}
+                  >
+                    <CgEditMarkup className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+              <div className="space-y-4">
+                {editingTransaction ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.subAccount')}
+                      </label>
+                      <select
+                        className="input-field"
+                        value={transactionFormData.subAccount}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            subAccount: e.target.value,
+                          })
+                        }
+                        required
+                        disabled
                       >
-                        {selectedTransaction.type === 'income'
-                          ? t('transactions.types.income')
-                          : selectedTransaction.type === 'expense'
-                            ? t('transactions.types.expense')
-                            : t('transactions.types.transfer')}
-                      </span>
+                        <option value={transactionFormData.subAccount}>
+                          {selectedTransaction.subAccount?.account?.name ||
+                            selectedTransaction.account?.name ||
+                            ''}{' '}
+                          - {selectedTransaction.subAccount?.name || ''}
+                        </option>
+                      </select>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.amount')}
-                    </label>
-                    <p
-                      className={`text-lg font-semibold ${
-                        selectedTransaction.type === 'income'
-                          ? 'text-green-600 dark:text-green-400'
-                          : selectedTransaction.type === 'expense'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-blue-600 dark:text-blue-400'
-                      }`}
-                    >
-                      {selectedTransaction.type === 'income'
-                        ? '+'
-                        : selectedTransaction.type === 'expense'
-                          ? '-'
-                          : '↔'}
-                      {new Intl.NumberFormat('es-ES', {
-                        style: 'currency',
-                        currency: selectedTransaction.currency,
-                      }).format(selectedTransaction.amount)}
-                    </p>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.type')}
+                      </label>
+                      <select
+                        className="input-field"
+                        value={transactionFormData.type}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            type: e.target.value,
+                          })
+                        }
+                        required
+                        disabled
+                      >
+                        <option value="income">{t('transactions.types.income')}</option>
+                        <option value="expense">{t('transactions.types.expense')}</option>
+                        <option value="transfer">{t('transactions.types.transfer')}</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.category')}
-                    </label>
-                    <p className="text-gray-900 dark:text-gray-100">
-                      {selectedTransaction.category}
-                    </p>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.category')}
+                      </label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={transactionFormData.category}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            category: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('transactions.date')}
-                    </label>
-                    <p className="text-gray-900 dark:text-gray-100">
-                      {format(new Date(selectedTransaction.date), "dd 'de' MMMM 'de' yyyy", {
-                        locale: es,
-                      })}
-                    </p>
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.amount')}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="input-field"
+                        value={transactionFormData.amount}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            amount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        required
+                      />
+                    </div>
 
-                  {selectedTransaction.description && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.date')}
+                      </label>
+                      <input
+                        type="date"
+                        className="input-field"
+                        value={transactionFormData.date}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            date: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {t('transactions.description')}
                       </label>
-                      <p className="text-gray-900 dark:text-gray-100">
-                        {selectedTransaction.description}
+                      <textarea
+                        className="input-field"
+                        rows="3"
+                        value={transactionFormData.description}
+                        onChange={(e) =>
+                          setTransactionFormData({
+                            ...transactionFormData,
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.type')}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            selectedTransaction.type === 'income'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : selectedTransaction.type === 'expense'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          }`}
+                        >
+                          {selectedTransaction.type === 'income'
+                            ? t('transactions.types.income')
+                            : selectedTransaction.type === 'expense'
+                              ? t('transactions.types.expense')
+                              : t('transactions.types.transfer')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.amount')}
+                      </label>
+                      <p
+                        className={`text-lg font-semibold ${
+                          selectedTransaction.type === 'income'
+                            ? 'text-green-600 dark:text-green-400'
+                            : selectedTransaction.type === 'expense'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                        }`}
+                      >
+                        {selectedTransaction.type === 'income'
+                          ? '+'
+                          : selectedTransaction.type === 'expense'
+                            ? '-'
+                            : '↔'}
+                        {new Intl.NumberFormat('es-ES', {
+                          style: 'currency',
+                          currency: selectedTransaction.currency,
+                        }).format(selectedTransaction.amount)}
                       </p>
                     </div>
-                  )}
-                </>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('transactions.account')}
-                </label>
-                <p className="text-gray-900 dark:text-gray-100">
-                  {selectedTransaction.account?.name
-                    ? `${selectedTransaction.account.bankName || ''} ${selectedTransaction.account.name}`.trim()
-                    : selectedTransaction.subAccount?.account?.name
-                      ? `${selectedTransaction.subAccount.account.bankName || ''} ${selectedTransaction.subAccount.account.name}`.trim()
-                      : '-'}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.category')}
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {selectedTransaction.category}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('transactions.date')}
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {format(new Date(selectedTransaction.date), "dd 'de' MMMM 'de' yyyy", {
+                          locale: es,
+                        })}
+                      </p>
+                    </div>
+
+                    {selectedTransaction.description && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('transactions.description')}
+                        </label>
+                        <p className="text-gray-900 dark:text-gray-100">
+                          {selectedTransaction.description}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('transactions.account')}
+                  </label>
+                  <p className="text-gray-900 dark:text-gray-100">
+                    {selectedTransaction.account?.name
+                      ? `${selectedTransaction.account.bankName || ''} ${selectedTransaction.account.name}`.trim()
+                      : selectedTransaction.subAccount?.account?.name
+                        ? `${selectedTransaction.subAccount.account.bankName || ''} ${selectedTransaction.subAccount.account.name}`.trim()
+                        : '-'}
+                  </p>
+                </div>
+
+                {selectedTransaction.subAccount && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('transactions.subAccount')}
+                    </label>
+                    <p className="text-gray-900 dark:text-gray-100">
+                      {selectedTransaction.subAccount.name} (
+                      {selectedTransaction.subAccount.type === 'cash'
+                        ? t('accounts.subAccountTypes.cash')
+                        : selectedTransaction.subAccount.type === 'investment'
+                          ? t('accounts.subAccountTypes.investment')
+                          : selectedTransaction.subAccount.type === 'savings'
+                            ? t('accounts.subAccountTypes.savings')
+                            : t('accounts.subAccountTypes.credit')}
+                      )
+                    </p>
+                  </div>
+                )}
+
+                {selectedTransaction.tags && selectedTransaction.tags.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('transactions.tags') || 'Etiquetas'}
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedTransaction.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  {editingTransaction ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="flex-1 btn-secondary"
+                      >
+                        {t('common.cancel') || 'Cancelar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveTransaction}
+                        className="flex-1 btn-primary"
+                      >
+                        {t('transactions.update') || 'Actualizar'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTransactionDetailModal(false);
+                        setSelectedTransaction(null);
+                        setEditingTransaction(false);
+                      }}
+                      className="flex-1 btn-primary"
+                    >
+                      {t('common.close') || 'Cerrar'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ── Confirm delete account ───────────────────────────────── */}
+      {confirmDeleteAccount &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+            onClick={() => setConfirmDeleteAccount(null)}
+          >
+            <div className="modal-content max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${confirmDeleteAccount.color || '#3b82f6'}20` }}
+                >
+                  <CgTrash className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    ¿Eliminar cuenta?
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {confirmDeleteAccount.name}
+                    {confirmDeleteAccount.bankName ? ` · ${confirmDeleteAccount.bankName}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-red-50 dark:bg-red-900/15 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 mb-5">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  Esta acción es irreversible. Se eliminarán también todas las subcuentas y
+                  transacciones asociadas.
                 </p>
               </div>
 
-              {selectedTransaction.subAccount && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('transactions.subAccount')}
-                  </label>
-                  <p className="text-gray-900 dark:text-gray-100">
-                    {selectedTransaction.subAccount.name} (
-                    {selectedTransaction.subAccount.type === 'cash'
-                      ? t('accounts.subAccountTypes.cash')
-                      : selectedTransaction.subAccount.type === 'investment'
-                        ? t('accounts.subAccountTypes.investment')
-                        : selectedTransaction.subAccount.type === 'savings'
-                          ? t('accounts.subAccountTypes.savings')
-                          : t('accounts.subAccountTypes.credit')}
-                    )
-                  </p>
-                </div>
-              )}
-
-              {selectedTransaction.tags && selectedTransaction.tags.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t('transactions.tags') || 'Etiquetas'}
-                  </label>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedTransaction.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                {editingTransaction ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="flex-1 btn-secondary"
-                    >
-                      {t('common.cancel') || 'Cancelar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveTransaction}
-                      className="flex-1 btn-primary"
-                    >
-                      {t('transactions.update') || 'Actualizar'}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowTransactionDetailModal(false);
-                      setSelectedTransaction(null);
-                      setEditingTransaction(false);
-                    }}
-                    className="flex-1 btn-primary"
-                  >
-                    {t('common.close') || 'Cerrar'}
-                  </button>
-                )}
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteAccount(null)}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Eliminar cuenta
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
+
+      {/* ── Confirm delete subaccount ────────────────────────────── */}
+      {confirmDeleteSubAccount &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+            onClick={() => setConfirmDeleteSubAccount(null)}
+          >
+            <div className="modal-content max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                  <CgTrash className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    ¿Eliminar subcuenta?
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {confirmDeleteSubAccount.name}
+                    {confirmDeleteSubAccount.type ? ` · ${confirmDeleteSubAccount.type}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-red-50 dark:bg-red-900/15 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 mb-5">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  Esta acción es irreversible. Las transacciones asociadas a esta subcuenta también
+                  serán eliminadas.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteSubAccount(null)}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteSubAccount}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Eliminar subcuenta
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
