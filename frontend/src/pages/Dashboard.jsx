@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CgTrending,
   CgTrendingDown,
@@ -1660,992 +1661,1003 @@ const Dashboard = () => {
       )}
 
       {/* Tooltip/Modal del Balance Total */}
-      {showBalanceTooltip && (
-        <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          style={{ zIndex: 10000 }}
-          onClick={() => setShowBalanceTooltip(false)}
-        >
+      {showBalanceTooltip &&
+        createPortal(
           <div
-            className="modal-content max-w-lg w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+            onClick={() => setShowBalanceTooltip(false)}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                {t('dashboard.totalBalance')}
-              </h2>
-              <button
-                onClick={() => setShowBalanceTooltip(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Balance Total y Capital Aportado */}
-              <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {t('dashboard.totalBalance')}
-                  </span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat('es-ES', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      maximumFractionDigits: 0,
-                    }).format(stats.totalBalance)}
-                  </span>
-                </div>
-                {performance && contributedCapital !== null && (
-                  <>
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('dashboard.contributedCapital')}
-                      </span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: 'EUR',
-                          maximumFractionDigits: 0,
-                        }).format(contributedCapital || 0)}
-                      </span>
-                    </div>
-                    {(() => {
-                      const totalReturn = stats.totalBalance - (contributedCapital || 0);
-                      const totalReturnPercent =
-                        (contributedCapital || 0) > 0
-                          ? (totalReturn / (contributedCapital || 0)) * 100
-                          : 0;
-                      return (
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {t('dashboard.totalProfitLoss')}
-                          </span>
-                          <div className="text-right">
-                            <span
-                              className={`text-sm font-semibold ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                            >
-                              {totalReturn >= 0 ? '+' : ''}
-                              {new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: 'EUR',
-                                maximumFractionDigits: 0,
-                              }).format(totalReturn)}
-                            </span>
-                            <span
-                              className={`text-xs ml-2 ${totalReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                            >
-                              ({totalReturnPercent >= 0 ? '+' : ''}
-                              {totalReturnPercent.toFixed(2)}%)
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </>
-                )}
+            <div
+              className="modal-content max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  {t('dashboard.totalBalance')}
+                </h2>
+                <button
+                  onClick={() => setShowBalanceTooltip(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Patrimonio Neto */}
-              {stats.totalDebts > 0 && (
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4 space-y-2">
-                  {stats.totalBadDebts > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-red-500 dark:text-red-400">
-                        {t('debts.badDebt')}
-                      </span>
-                      <span className="text-xs font-medium text-red-600 dark:text-red-400">
-                        -
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: 'EUR',
-                          maximumFractionDigits: 0,
-                        }).format(stats.totalBadDebts)}
-                      </span>
-                    </div>
-                  )}
-                  {stats.totalGoodDebts > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                        {t('debts.goodDebt')} ({t('debts.goodDebtNotDeducted')})
-                      </span>
-                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: 'EUR',
-                          maximumFractionDigits: 0,
-                        }).format(stats.totalGoodDebts)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Desglose de Activos */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {t('dashboard.assetBreakdown')}
-                </h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Capital Invertido
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat('es-ES', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      maximumFractionDigits: 0,
-                    }).format(stats.totalInvestments || 0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {new Intl.NumberFormat('es-ES', {
-                      style: 'currency',
-                      currency: 'EUR',
-                      maximumFractionDigits: 0,
-                    }).format(stats.totalCashSavings || 0)}
-                  </span>
-                </div>
-                {(() => {
-                  const totalAssets = (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
-                  const cashPercent =
-                    totalAssets > 0 ? ((stats.totalCashSavings || 0) / totalAssets) * 100 : 0;
-                  const investmentPercent =
-                    totalAssets > 0 ? ((stats.totalInvestments || 0) / totalAssets) * 100 : 0;
-                  const cashColor = ASSET_CLASS_COLORS['Efectivo'] || '#f59e0b';
-
-                  return (
-                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span>{t('dashboard.distribution')}</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full flex">
-                          {investmentPercent > 0 && (
-                            <div
-                              className="bg-green-500 dark:bg-green-600 transition-all duration-300"
-                              style={{ width: `${investmentPercent}%` }}
-                            />
-                          )}
-                          {cashPercent > 0 && (
-                            <div
-                              className="transition-all duration-300"
-                              style={{
-                                width: `${cashPercent}%`,
-                                backgroundColor: cashColor,
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-600"></div>
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {t('dashboard.invested')}: {investmentPercent.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: cashColor }}
-                          ></div>
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {t('dashboard.cash')}: {cashPercent.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Rendimientos */}
-              {performance && performance.annualizedReturn !== null && (
-                <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Rendimientos
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {accumulatedReturn !== null && accumulatedReturnPercent !== null && (
-                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Acumulado
-                        </div>
-                        <div
-                          className={`text-sm font-bold ${(accumulatedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                        >
-                          {(accumulatedReturnPercent || 0) >= 0 ? '+' : ''}
-                          {(accumulatedReturnPercent || 0).toFixed(2)}%
-                        </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <div className="space-y-4">
+                {/* Balance Total y Capital Aportado */}
+                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {t('dashboard.totalBalance')}
+                    </span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                      }).format(stats.totalBalance)}
+                    </span>
+                  </div>
+                  {performance && contributedCapital !== null && (
+                    <>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {t('dashboard.contributedCapital')}
+                        </span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           {new Intl.NumberFormat('es-ES', {
                             style: 'currency',
                             currency: 'EUR',
-                            notation: 'compact',
-                            maximumFractionDigits: 1,
-                          }).format(accumulatedReturn || 0)}
-                        </div>
+                            maximumFractionDigits: 0,
+                          }).format(contributedCapital || 0)}
+                        </span>
                       </div>
-                    )}
-                    {performance.annualizedReturn !== null &&
-                      performance.annualizedReturnPercent !== null && (
-                        <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Anualizado
+                      {(() => {
+                        const totalReturn = stats.totalBalance - (contributedCapital || 0);
+                        const totalReturnPercent =
+                          (contributedCapital || 0) > 0
+                            ? (totalReturn / (contributedCapital || 0)) * 100
+                            : 0;
+                        return (
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {t('dashboard.totalProfitLoss')}
+                            </span>
+                            <div className="text-right">
+                              <span
+                                className={`text-sm font-semibold ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                              >
+                                {totalReturn >= 0 ? '+' : ''}
+                                {new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: 'EUR',
+                                  maximumFractionDigits: 0,
+                                }).format(totalReturn)}
+                              </span>
+                              <span
+                                className={`text-xs ml-2 ${totalReturnPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                              >
+                                ({totalReturnPercent >= 0 ? '+' : ''}
+                                {totalReturnPercent.toFixed(2)}%)
+                              </span>
+                            </div>
                           </div>
-                          <div
-                            className={`text-sm font-bold ${(performance.annualizedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                          >
-                            {(performance.annualizedReturnPercent || 0) >= 0 ? '+' : ''}
-                            {(performance.annualizedReturnPercent || 0).toFixed(2)}%
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: 'EUR',
-                              notation: 'compact',
-                              maximumFractionDigits: 1,
-                            }).format(performance.annualizedReturn || 0)}
-                          </div>
-                        </div>
-                      )}
-                    {performance.monthlyReturn !== null &&
-                      performance.monthlyReturnPercent !== null && (
-                        <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Mensual
-                          </div>
-                          <div
-                            className={`text-sm font-bold ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                          >
-                            {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}
-                            {(performance.monthlyReturnPercent || 0).toFixed(2)}%
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: 'EUR',
-                              notation: 'compact',
-                              maximumFractionDigits: 1,
-                            }).format(performance.monthlyReturn || 0)}
-                          </div>
-                        </div>
-                      )}
-                    {performance.dailyReturn !== null &&
-                      performance.dailyReturnPercent !== null && (
-                        <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            Diario
-                          </div>
-                          <div
-                            className={`text-sm font-bold ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                          >
-                            {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}
-                            {(performance.dailyReturnPercent || 0).toFixed(2)}%
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: 'EUR',
-                              notation: 'compact',
-                              maximumFractionDigits: 1,
-                            }).format(performance.dailyReturn || 0)}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                  {performance.vsSP500 !== null && performance.vsSP500 !== undefined && (
-                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3 mt-3">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        vs S&P 500
-                      </div>
-                      <div
-                        className={`text-sm font-bold ${(performance.vsSP500 || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                      >
-                        {(performance.vsSP500 || 0) >= 0 ? '+' : ''}
-                        {(performance.vsSP500 || 0).toFixed(2)}%
-                      </div>
-                    </div>
+                        );
+                      })()}
+                    </>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal de detalle de inversión desde Treemap */}
-      {showInvestmentDetailModal && selectedTreemapInvestment && (
-        <div
-          className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
-          style={{ zIndex: 10000 }}
-          onClick={() => {
-            setShowInvestmentDetailModal(false);
-            setSelectedTreemapInvestment(null);
-            setDetailInvestmentHistory([]);
-            setDetailDailyVariations([]);
-          }}
-        >
-          <div
-            className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-4 flex-shrink-0">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {selectedTreemapInvestment.name}
-                </h2>
-                {selectedTreemapInvestment.symbol && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {selectedTreemapInvestment.symbol}
-                  </p>
-                )}
-                {selectedTreemapInvestment.isin && !selectedTreemapInvestment.symbol && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    ISIN: {selectedTreemapInvestment.isin}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowInvestmentDetailModal(false);
-                  setSelectedTreemapInvestment(null);
-                  setDetailInvestmentHistory([]);
-                  setDetailDailyVariations([]);
-                }}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
-              {/* Columna izquierda */}
-              <div className="space-y-4 overflow-y-auto pr-2 h-full">
-                {/* Información básica */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Información Básica
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
-                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                        {getTypeLabel(
-                          selectedTreemapInvestment.type,
-                          selectedTreemapInvestment.isAutomatedPortfolio
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
-                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                        {selectedTreemapInvestment.currency}
-                      </span>
-                    </div>
-                    {(selectedTreemapInvestment.account ||
-                      selectedTreemapInvestment.subAccount) && (
-                      <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
-                        <div className="mt-1">
-                          {selectedTreemapInvestment.account && (
-                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                              {selectedTreemapInvestment.account.name ||
-                                selectedTreemapInvestment.account.bankName ||
-                                'N/A'}
-                            </span>
-                          )}
-                          {selectedTreemapInvestment.subAccount && (
-                            <span className="ml-2 text-gray-600 dark:text-gray-400">
-                              → {selectedTreemapInvestment.subAccount.name}
-                            </span>
-                          )}
-                        </div>
+                {/* Patrimonio Neto */}
+                {stats.totalDebts > 0 && (
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4 space-y-2">
+                    {stats.totalBadDebts > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-red-500 dark:text-red-400">
+                          {t('debts.badDebt')}
+                        </span>
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                          -
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
+                            maximumFractionDigits: 0,
+                          }).format(stats.totalBadDebts)}
+                        </span>
                       </div>
                     )}
-                    {selectedTreemapInvestment.assetClass && (
-                      <div className="col-span-2">
-                        <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
-                        <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          {selectedTreemapInvestment.assetClass === 'fixed_income' && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                                {t('investments.assetClassLabels.fixedIncome')}
-                              </span>
-                              {getFixedIncomeSubtypeLabel(
-                                selectedTreemapInvestment.fixedIncomeSubtype
-                              ) && (
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
-                                    selectedTreemapInvestment.fixedIncomeSubtype
-                                  )}`}
-                                >
-                                  {getFixedIncomeSubtypeLabel(
-                                    selectedTreemapInvestment.fixedIncomeSubtype
-                                  )}
-                                </span>
-                              )}
-                            </>
-                          )}
-                          {selectedTreemapInvestment.assetClass === 'variable_income' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                              {t('investments.assetClassLabels.variableIncome')}
-                            </span>
-                          )}
-                          {selectedTreemapInvestment.assetClass === 'mixed' && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                                {t('investments.assetClassLabels.mixed')}
-                              </span>
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                {t('investments.assetClassLabels.fixedIncomeShort')}:{' '}
-                                {selectedTreemapInvestment.fixedIncomePercentage || 0}% |{' '}
-                                {t('investments.assetClassLabels.variableIncomeShort')}:{' '}
-                                {selectedTreemapInvestment.variableIncomePercentage || 0}%
-                              </span>
-                            </>
-                          )}
-                          {selectedTreemapInvestment.isAlternative && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-                              {t('investments.assetClassLabels.alternative')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {selectedTreemapInvestment.isAutomatedPortfolio && (
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
-                          {t('investments.investmentTypes.automatedPortfolio')}
+                    {stats.totalGoodDebts > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                          {t('debts.goodDebt')} ({t('debts.goodDebtNotDeducted')})
+                        </span>
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: 'EUR',
+                            maximumFractionDigits: 0,
+                          }).format(stats.totalGoodDebts)}
                         </span>
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Desglose de Activos */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {t('dashboard.assetBreakdown')}
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Capital Invertido
+                    </span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                      }).format(stats.totalInvestments || 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Efectivo</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                      }).format(stats.totalCashSavings || 0)}
+                    </span>
+                  </div>
+                  {(() => {
+                    const totalAssets =
+                      (stats.totalCashSavings || 0) + (stats.totalInvestments || 0);
+                    const cashPercent =
+                      totalAssets > 0 ? ((stats.totalCashSavings || 0) / totalAssets) * 100 : 0;
+                    const investmentPercent =
+                      totalAssets > 0 ? ((stats.totalInvestments || 0) / totalAssets) * 100 : 0;
+                    const cashColor = ASSET_CLASS_COLORS['Efectivo'] || '#f59e0b';
+
+                    return (
+                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                          <span>{t('dashboard.distribution')}</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-full flex">
+                            {investmentPercent > 0 && (
+                              <div
+                                className="bg-green-500 dark:bg-green-600 transition-all duration-300"
+                                style={{ width: `${investmentPercent}%` }}
+                              />
+                            )}
+                            {cashPercent > 0 && (
+                              <div
+                                className="transition-all duration-300"
+                                style={{
+                                  width: `${cashPercent}%`,
+                                  backgroundColor: cashColor,
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-600"></div>
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('dashboard.invested')}: {investmentPercent.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: cashColor }}
+                            ></div>
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {t('dashboard.cash')}: {cashPercent.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Información financiera */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Información Financiera
-                  </h3>
-                  <div className="space-y-3 text-sm">
-                    {selectedTreemapInvestment.isAutomatedPortfolio ? (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Monto invertido:</span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                {/* Rendimientos */}
+                {performance && performance.annualizedReturn !== null && (
+                  <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      Rendimientos
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {accumulatedReturn !== null && accumulatedReturnPercent !== null && (
+                        <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            Acumulado
+                          </div>
+                          <div
+                            className={`text-sm font-bold ${(accumulatedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                          >
+                            {(accumulatedReturnPercent || 0) >= 0 ? '+' : ''}
+                            {(accumulatedReturnPercent || 0).toFixed(2)}%
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                             {new Intl.NumberFormat('es-ES', {
                               style: 'currency',
-                              currency: selectedTreemapInvestment.currency,
-                            }).format(selectedTreemapInvestment.quantity)}
-                          </span>
+                              currency: 'EUR',
+                              notation: 'compact',
+                              maximumFractionDigits: 1,
+                            }).format(accumulatedReturn || 0)}
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
-                          <span className="font-bold text-gray-900 dark:text-gray-100">
-                            {formatPrice(
-                              selectedTreemapInvestment.currentPrice,
-                              selectedTreemapInvestment.currency
+                      )}
+                      {performance.annualizedReturn !== null &&
+                        performance.annualizedReturnPercent !== null && (
+                          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              Anualizado
+                            </div>
+                            <div
+                              className={`text-sm font-bold ${(performance.annualizedReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {(performance.annualizedReturnPercent || 0) >= 0 ? '+' : ''}
+                              {(performance.annualizedReturnPercent || 0).toFixed(2)}%
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: 'EUR',
+                                notation: 'compact',
+                                maximumFractionDigits: 1,
+                              }).format(performance.annualizedReturn || 0)}
+                            </div>
+                          </div>
+                        )}
+                      {performance.monthlyReturn !== null &&
+                        performance.monthlyReturnPercent !== null && (
+                          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              Mensual
+                            </div>
+                            <div
+                              className={`text-sm font-bold ${(performance.monthlyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {(performance.monthlyReturnPercent || 0) >= 0 ? '+' : ''}
+                              {(performance.monthlyReturnPercent || 0).toFixed(2)}%
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: 'EUR',
+                                notation: 'compact',
+                                maximumFractionDigits: 1,
+                              }).format(performance.monthlyReturn || 0)}
+                            </div>
+                          </div>
+                        )}
+                      {performance.dailyReturn !== null &&
+                        performance.dailyReturnPercent !== null && (
+                          <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              Diario
+                            </div>
+                            <div
+                              className={`text-sm font-bold ${(performance.dailyReturnPercent || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {(performance.dailyReturnPercent || 0) >= 0 ? '+' : ''}
+                              {(performance.dailyReturnPercent || 0).toFixed(2)}%
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: 'EUR',
+                                notation: 'compact',
+                                maximumFractionDigits: 1,
+                              }).format(performance.dailyReturn || 0)}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                    {performance.vsSP500 !== null && performance.vsSP500 !== undefined && (
+                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-3 mt-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          vs S&P 500
+                        </div>
+                        <div
+                          className={`text-sm font-bold ${(performance.vsSP500 || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                        >
+                          {(performance.vsSP500 || 0) >= 0 ? '+' : ''}
+                          {(performance.vsSP500 || 0).toFixed(2)}%
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal de detalle de inversión desde Treemap */}
+      {showInvestmentDetailModal &&
+        selectedTreemapInvestment &&
+        createPortal(
+          <div
+            className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center"
+            style={{ zIndex: 10000 }}
+            onClick={() => {
+              setShowInvestmentDetailModal(false);
+              setSelectedTreemapInvestment(null);
+              setDetailInvestmentHistory([]);
+              setDetailDailyVariations([]);
+            }}
+          >
+            <div
+              className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4 flex-shrink-0">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {selectedTreemapInvestment.name}
+                  </h2>
+                  {selectedTreemapInvestment.symbol && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {selectedTreemapInvestment.symbol}
+                    </p>
+                  )}
+                  {selectedTreemapInvestment.isin && !selectedTreemapInvestment.symbol && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      ISIN: {selectedTreemapInvestment.isin}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowInvestmentDetailModal(false);
+                    setSelectedTreemapInvestment(null);
+                    setDetailInvestmentHistory([]);
+                    setDetailDailyVariations([]);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0">
+                {/* Columna izquierda */}
+                <div className="space-y-4 overflow-y-auto pr-2 h-full">
+                  {/* Información básica */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Información Básica
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {getTypeLabel(
+                            selectedTreemapInvestment.type,
+                            selectedTreemapInvestment.isAutomatedPortfolio
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Moneda:</span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {selectedTreemapInvestment.currency}
+                        </span>
+                      </div>
+                      {(selectedTreemapInvestment.account ||
+                        selectedTreemapInvestment.subAccount) && (
+                        <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <span className="text-gray-600 dark:text-gray-400">Cuenta:</span>
+                          <div className="mt-1">
+                            {selectedTreemapInvestment.account && (
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                {selectedTreemapInvestment.account.name ||
+                                  selectedTreemapInvestment.account.bankName ||
+                                  'N/A'}
+                              </span>
                             )}
+                            {selectedTreemapInvestment.subAccount && (
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                → {selectedTreemapInvestment.subAccount.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTreemapInvestment.assetClass && (
+                        <div className="col-span-2">
+                          <span className="text-gray-600 dark:text-gray-400">Clase de Activo:</span>
+                          <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            {selectedTreemapInvestment.assetClass === 'fixed_income' && (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                  {t('investments.assetClassLabels.fixedIncome')}
+                                </span>
+                                {getFixedIncomeSubtypeLabel(
+                                  selectedTreemapInvestment.fixedIncomeSubtype
+                                ) && (
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getFixedIncomeSubtypeTone(
+                                      selectedTreemapInvestment.fixedIncomeSubtype
+                                    )}`}
+                                  >
+                                    {getFixedIncomeSubtypeLabel(
+                                      selectedTreemapInvestment.fixedIncomeSubtype
+                                    )}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {selectedTreemapInvestment.assetClass === 'variable_income' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                                {t('investments.assetClassLabels.variableIncome')}
+                              </span>
+                            )}
+                            {selectedTreemapInvestment.assetClass === 'mixed' && (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                                  {t('investments.assetClassLabels.mixed')}
+                                </span>
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  {t('investments.assetClassLabels.fixedIncomeShort')}:{' '}
+                                  {selectedTreemapInvestment.fixedIncomePercentage || 0}% |{' '}
+                                  {t('investments.assetClassLabels.variableIncomeShort')}:{' '}
+                                  {selectedTreemapInvestment.variableIncomePercentage || 0}%
+                                </span>
+                              </>
+                            )}
+                            {selectedTreemapInvestment.isAlternative && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                                {t('investments.assetClassLabels.alternative')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTreemapInvestment.isAutomatedPortfolio && (
+                        <div className="col-span-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                            {t('investments.investmentTypes.automatedPortfolio')}
                           </span>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {selectedTreemapInvestment.quantity} unidades
-                          </span>
-                        </div>
-                        {selectedTreemapInvestment.averagePurchasePrice && (
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Información financiera */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Información Financiera
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      {selectedTreemapInvestment.isAutomatedPortfolio ? (
+                        <>
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">
-                              Precio medio compra:
+                              Monto invertido:
                             </span>
                             <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: selectedTreemapInvestment.currency,
+                              }).format(selectedTreemapInvestment.quantity)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Valor actual:</span>
+                            <span className="font-bold text-gray-900 dark:text-gray-100">
                               {formatPrice(
-                                selectedTreemapInvestment.averagePurchasePrice,
+                                selectedTreemapInvestment.currentPrice,
                                 selectedTreemapInvestment.currency
                               )}
                             </span>
                           </div>
-                        )}
-                        {selectedTreemapInvestment.purchasePrice &&
-                          !selectedTreemapInvestment.averagePurchasePrice && (
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Cantidad:</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {selectedTreemapInvestment.quantity} unidades
+                            </span>
+                          </div>
+                          {selectedTreemapInvestment.averagePurchasePrice && (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">
-                                Precio de compra:
+                                Precio medio compra:
                               </span>
                               <span className="font-medium text-gray-900 dark:text-gray-100">
                                 {formatPrice(
-                                  selectedTreemapInvestment.purchasePrice,
+                                  selectedTreemapInvestment.averagePurchasePrice,
                                   selectedTreemapInvestment.currency
                                 )}
                               </span>
                             </div>
                           )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {formatPrice(
-                              selectedTreemapInvestment.currentPrice,
-                              selectedTreemapInvestment.currency
+                          {selectedTreemapInvestment.purchasePrice &&
+                            !selectedTreemapInvestment.averagePurchasePrice && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Precio de compra:
+                                </span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  {formatPrice(
+                                    selectedTreemapInvestment.purchasePrice,
+                                    selectedTreemapInvestment.currency
+                                  )}
+                                </span>
+                              </div>
                             )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
-                          <span className="font-bold text-gray-900 dark:text-gray-100">
-                            {new Intl.NumberFormat('es-ES', {
-                              style: 'currency',
-                              currency: selectedTreemapInvestment.currency,
-                            }).format(
-                              selectedTreemapInvestment.quantity *
-                                selectedTreemapInvestment.currentPrice
-                            )}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
-                      <span
-                        className={`font-bold flex items-center ${
-                          calculateProfitLoss(selectedTreemapInvestment) >= 0
-                            ? 'text-green-600'
-                            : 'text-red-600'
-                        }`}
-                      >
-                        {calculateProfitLoss(selectedTreemapInvestment) >= 0 ? (
-                          <CgTrending className="h-4 w-4 mr-1" />
-                        ) : (
-                          <CgTrendingDown className="h-4 w-4 mr-1" />
-                        )}
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: selectedTreemapInvestment.currency,
-                        }).format(calculateProfitLoss(selectedTreemapInvestment))}
-                        <span className="ml-2">
-                          ({calculateProfitLossPercentage(selectedTreemapInvestment).toFixed(2)}
-                          %)
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fechas */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
-                  <div className="space-y-2 text-sm">
-                    {selectedTreemapInvestment.purchaseDate && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(selectedTreemapInvestment.purchaseDate).toLocaleDateString(
-                            'es-ES'
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {selectedTreemapInvestment.createdAt && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Fecha de creación:</span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(selectedTreemapInvestment.createdAt).toLocaleDateString(
-                            'es-ES'
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {selectedTreemapInvestment.updatedAt && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Última actualización:
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {new Date(selectedTreemapInvestment.updatedAt).toLocaleDateString(
-                            'es-ES'
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
-                {(selectedTreemapInvestment.symbol || selectedTreemapInvestment.isin) &&
-                  !selectedTreemapInvestment.isAutomatedPortfolio && (
-                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                        Configuración
-                      </h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Actualización automática:
-                          </span>
-                          <span
-                            className={`font-medium ${
-                              selectedTreemapInvestment.autoUpdate !== false
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {selectedTreemapInvestment.autoUpdate !== false
-                              ? 'Activada'
-                              : 'Desactivada'}
-                          </span>
-                        </div>
-                        {selectedTreemapInvestment.platformUrl && (
-                          <div>
-                            <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
-                            <a
-                              href={selectedTreemapInvestment.platformUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              {selectedTreemapInvestment.platformUrl}
-                            </a>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Precio actual:</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                              {formatPrice(
+                                selectedTreemapInvestment.currentPrice,
+                                selectedTreemapInvestment.currency
+                              )}
+                            </span>
                           </div>
-                        )}
+                          <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                            <span className="text-gray-600 dark:text-gray-400">Valor total:</span>
+                            <span className="font-bold text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: selectedTreemapInvestment.currency,
+                              }).format(
+                                selectedTreemapInvestment.quantity *
+                                  selectedTreemapInvestment.currentPrice
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <span className="text-gray-600 dark:text-gray-400">Ganancia/Pérdida:</span>
+                        <span
+                          className={`font-bold flex items-center ${
+                            calculateProfitLoss(selectedTreemapInvestment) >= 0
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {calculateProfitLoss(selectedTreemapInvestment) >= 0 ? (
+                            <CgTrending className="h-4 w-4 mr-1" />
+                          ) : (
+                            <CgTrendingDown className="h-4 w-4 mr-1" />
+                          )}
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: selectedTreemapInvestment.currency,
+                          }).format(calculateProfitLoss(selectedTreemapInvestment))}
+                          <span className="ml-2">
+                            ({calculateProfitLossPercentage(selectedTreemapInvestment).toFixed(2)}
+                            %)
+                          </span>
+                        </span>
                       </div>
                     </div>
-                  )}
-
-                {/* Notas */}
-                {selectedTreemapInvestment.notes && (
-                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                      {selectedTreemapInvestment.notes}
-                    </p>
                   </div>
-                )}
-              </div>
 
-              {/* Columna derecha */}
-              <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
-                {/* Gráfica de evolución del valor */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Evolución del Valor
-                  </h3>
-                  {detailInvestmentHistory.length > 0 ? (
-                    <div style={{ height: '290px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={detailInvestmentHistory.map((h) => ({
-                            date: new Date(h.date).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: 'short',
-                            }),
-                            value: h.totalValue,
-                            dailyChange: h.dailyChangeAmount || 0,
-                          }))}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="detailValueGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.35} />
-                              <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.02} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="date"
-                            tick={{
-                              fill: isDark ? '#9ca3af' : '#6b7280',
-                              fontSize: 11,
-                            }}
-                            axisLine={{
-                              stroke: isDark ? '#404040' : '#e5e7eb',
-                            }}
-                            tickLine={false}
-                            angle={-45}
-                            textAnchor="end"
-                            height={70}
-                          />
-                          <YAxis
-                            tick={{
-                              fill: isDark ? '#9ca3af' : '#6b7280',
-                              fontSize: 11,
-                            }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(value) =>
-                              new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: selectedTreemapInvestment.currency,
-                                notation: 'compact',
-                                maximumFractionDigits: 0,
-                              }).format(value)
-                            }
-                            width={50}
-                          />
-                          <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload?.length) return null;
-                              const data = payload[0]?.payload;
-                              const totalValue = data?.value || 0;
-                              const formattedValue = new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: selectedTreemapInvestment.currency,
-                              }).format(totalValue);
-                              const bg = isDark
-                                ? 'bg-[#2c2c2e] border-[#404040]'
-                                : 'bg-white border-gray-200';
-                              return (
-                                <div className={`${bg} border rounded-xl shadow-xl px-4 py-3`}>
-                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                                    {label}
-                                  </p>
-                                  <div className="flex justify-between items-center gap-4">
-                                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                                      Valor total
-                                    </span>
-                                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                                      {formattedValue}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="value"
-                            name="Valor Total"
-                            stroke="#0ea5e9"
-                            strokeWidth={2}
-                            fill="url(#detailValueGradient)"
-                            dot={false}
-                            activeDot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                            isAnimationActive
-                            animationDuration={600}
-                            animationEasing="ease-out"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                  {/* Fechas */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Fechas</h3>
+                    <div className="space-y-2 text-sm">
+                      {selectedTreemapInvestment.purchaseDate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Fecha de compra:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(selectedTreemapInvestment.purchaseDate).toLocaleDateString(
+                              'es-ES'
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {selectedTreemapInvestment.createdAt && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Fecha de creación:
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(selectedTreemapInvestment.createdAt).toLocaleDateString(
+                              'es-ES'
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {selectedTreemapInvestment.updatedAt && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Última actualización:
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(selectedTreemapInvestment.updatedAt).toLocaleDateString(
+                              'es-ES'
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">No hay datos de historial para mostrar</p>
-                      <p className="text-xs mt-2">
-                        El historial se genera automáticamente con las operaciones
+                  </div>
+
+                  {/* Configuración - Solo mostrar si se puede activar/desactivar actualización automática */}
+                  {(selectedTreemapInvestment.symbol || selectedTreemapInvestment.isin) &&
+                    !selectedTreemapInvestment.isAutomatedPortfolio && (
+                      <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                          Configuración
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Actualización automática:
+                            </span>
+                            <span
+                              className={`font-medium ${
+                                selectedTreemapInvestment.autoUpdate !== false
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {selectedTreemapInvestment.autoUpdate !== false
+                                ? 'Activada'
+                                : 'Desactivada'}
+                            </span>
+                          </div>
+                          {selectedTreemapInvestment.platformUrl && (
+                            <div>
+                              <span className="text-gray-600 dark:text-gray-400">Plataforma:</span>
+                              <a
+                                href={selectedTreemapInvestment.platformUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                {selectedTreemapInvestment.platformUrl}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Notas */}
+                  {selectedTreemapInvestment.notes && (
+                    <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notas</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                        {selectedTreemapInvestment.notes}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Gráfica de variación diaria */}
-                <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                    Variación Diaria
-                  </h3>
-                  {detailDailyVariations.length > 0 ? (
-                    <div style={{ height: '290px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={detailDailyVariations.map((v) => {
-                            const changeAmount =
-                              v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined
-                                ? v.dailyChangeAmount
-                                : 0;
-                            return {
-                              date: new Date(v.date).toLocaleDateString('es-ES', {
+                {/* Columna derecha */}
+                <div className="flex flex-col gap-4 overflow-y-auto pl-2 h-full">
+                  {/* Gráfica de evolución del valor */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Evolución del Valor
+                    </h3>
+                    {detailInvestmentHistory.length > 0 ? (
+                      <div style={{ height: '290px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={detailInvestmentHistory.map((h) => ({
+                              date: new Date(h.date).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: 'short',
                               }),
-                              dailyChange: changeAmount,
-                              dailyChangePercent:
-                                v.dailyChangePercent !== null && v.dailyChangePercent !== undefined
-                                  ? v.dailyChangePercent
-                                  : null,
-                              dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
-                              dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
-                            };
-                          })}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                          barCategoryGap="20%"
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="date"
-                            tick={{
-                              fill: isDark ? '#9ca3af' : '#6b7280',
-                              fontSize: 11,
-                            }}
-                            axisLine={{
-                              stroke: isDark ? '#404040' : '#e5e7eb',
-                            }}
-                            tickLine={false}
-                            angle={-45}
-                            textAnchor="end"
-                            height={70}
-                          />
-                          <YAxis
-                            tick={{
-                              fill: isDark ? '#9ca3af' : '#6b7280',
-                              fontSize: 11,
-                            }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(value) =>
-                              new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: selectedTreemapInvestment.currency,
-                                notation: 'compact',
-                                maximumFractionDigits: 0,
-                              }).format(value)
-                            }
-                            width={50}
-                          />
-                          <Tooltip
-                            content={({ active, payload, label }) => {
-                              if (!active || !payload?.length) return null;
-                              const data = payload[0]?.payload;
-                              const dailyChange =
-                                data?.dailyChange !== null && data?.dailyChange !== undefined
-                                  ? data.dailyChange
-                                  : 0;
-                              const dailyChangePercent = data?.dailyChangePercent;
-                              const formattedChange = new Intl.NumberFormat('es-ES', {
-                                style: 'currency',
-                                currency: selectedTreemapInvestment.currency,
-                              }).format(Math.abs(dailyChange));
-                              const bg = isDark
-                                ? 'bg-[#2c2c2e] border-[#404040]'
-                                : 'bg-white border-gray-200';
-                              return (
-                                <div
-                                  className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[160px]`}
-                                >
-                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                                    {label}
-                                  </p>
-                                  <div className="space-y-2 text-sm">
+                              value: h.totalValue,
+                              dailyChange: h.dailyChangeAmount || 0,
+                            }))}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="detailValueGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.35} />
+                                <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+                              vertical={false}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              tick={{
+                                fill: isDark ? '#9ca3af' : '#6b7280',
+                                fontSize: 11,
+                              }}
+                              axisLine={{
+                                stroke: isDark ? '#404040' : '#e5e7eb',
+                              }}
+                              tickLine={false}
+                              angle={-45}
+                              textAnchor="end"
+                              height={70}
+                            />
+                            <YAxis
+                              tick={{
+                                fill: isDark ? '#9ca3af' : '#6b7280',
+                                fontSize: 11,
+                              }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={(value) =>
+                                new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: selectedTreemapInvestment.currency,
+                                  notation: 'compact',
+                                  maximumFractionDigits: 0,
+                                }).format(value)
+                              }
+                              width={50}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload?.length) return null;
+                                const data = payload[0]?.payload;
+                                const totalValue = data?.value || 0;
+                                const formattedValue = new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: selectedTreemapInvestment.currency,
+                                }).format(totalValue);
+                                const bg = isDark
+                                  ? 'bg-[#2c2c2e] border-[#404040]'
+                                  : 'bg-white border-gray-200';
+                                return (
+                                  <div className={`${bg} border rounded-xl shadow-xl px-4 py-3`}>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                                      {label}
+                                    </p>
                                     <div className="flex justify-between items-center gap-4">
-                                      <span className="text-gray-600 dark:text-gray-300">
-                                        Cambio diario
+                                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        Valor total
                                       </span>
-                                      <span
-                                        className={`font-semibold ${
-                                          dailyChange > 0
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : dailyChange < 0
-                                              ? 'text-red-600 dark:text-red-400'
-                                              : 'text-gray-500 dark:text-gray-400'
-                                        }`}
-                                      >
-                                        {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}
-                                        {formattedChange}
-                                        {dailyChange === 0 && ' (Sin variación)'}
+                                      <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                        {formattedValue}
                                       </span>
                                     </div>
-                                    {dailyChangePercent !== null &&
-                                    dailyChangePercent !== undefined ? (
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="value"
+                              name="Valor Total"
+                              stroke="#0ea5e9"
+                              strokeWidth={2}
+                              fill="url(#detailValueGradient)"
+                              dot={false}
+                              activeDot={{ r: 4, strokeWidth: 2, fill: 'white' }}
+                              isAnimationActive
+                              animationDuration={600}
+                              animationEasing="ease-out"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <p className="text-sm">No hay datos de historial para mostrar</p>
+                        <p className="text-xs mt-2">
+                          El historial se genera automáticamente con las operaciones
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gráfica de variación diaria */}
+                  <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-xl p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                      Variación Diaria
+                    </h3>
+                    {detailDailyVariations.length > 0 ? (
+                      <div style={{ height: '290px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={detailDailyVariations.map((v) => {
+                              const changeAmount =
+                                v.dailyChangeAmount !== null && v.dailyChangeAmount !== undefined
+                                  ? v.dailyChangeAmount
+                                  : 0;
+                              return {
+                                date: new Date(v.date).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                }),
+                                dailyChange: changeAmount,
+                                dailyChangePercent:
+                                  v.dailyChangePercent !== null &&
+                                  v.dailyChangePercent !== undefined
+                                    ? v.dailyChangePercent
+                                    : null,
+                                dailyChangePositive: changeAmount >= 0 ? changeAmount : 0,
+                                dailyChangeNegative: changeAmount < 0 ? changeAmount : 0,
+                              };
+                            })}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            barCategoryGap="20%"
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+                              vertical={false}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              tick={{
+                                fill: isDark ? '#9ca3af' : '#6b7280',
+                                fontSize: 11,
+                              }}
+                              axisLine={{
+                                stroke: isDark ? '#404040' : '#e5e7eb',
+                              }}
+                              tickLine={false}
+                              angle={-45}
+                              textAnchor="end"
+                              height={70}
+                            />
+                            <YAxis
+                              tick={{
+                                fill: isDark ? '#9ca3af' : '#6b7280',
+                                fontSize: 11,
+                              }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={(value) =>
+                                new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: selectedTreemapInvestment.currency,
+                                  notation: 'compact',
+                                  maximumFractionDigits: 0,
+                                }).format(value)
+                              }
+                              width={50}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload?.length) return null;
+                                const data = payload[0]?.payload;
+                                const dailyChange =
+                                  data?.dailyChange !== null && data?.dailyChange !== undefined
+                                    ? data.dailyChange
+                                    : 0;
+                                const dailyChangePercent = data?.dailyChangePercent;
+                                const formattedChange = new Intl.NumberFormat('es-ES', {
+                                  style: 'currency',
+                                  currency: selectedTreemapInvestment.currency,
+                                }).format(Math.abs(dailyChange));
+                                const bg = isDark
+                                  ? 'bg-[#2c2c2e] border-[#404040]'
+                                  : 'bg-white border-gray-200';
+                                return (
+                                  <div
+                                    className={`${bg} border rounded-xl shadow-xl px-4 py-3 min-w-[160px]`}
+                                  >
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                                      {label}
+                                    </p>
+                                    <div className="space-y-2 text-sm">
                                       <div className="flex justify-between items-center gap-4">
                                         <span className="text-gray-600 dark:text-gray-300">
-                                          Variación
+                                          Cambio diario
                                         </span>
                                         <span
                                           className={`font-semibold ${
-                                            dailyChangePercent > 0
+                                            dailyChange > 0
                                               ? 'text-green-600 dark:text-green-400'
-                                              : dailyChangePercent < 0
+                                              : dailyChange < 0
                                                 ? 'text-red-600 dark:text-red-400'
                                                 : 'text-gray-500 dark:text-gray-400'
                                           }`}
                                         >
-                                          {dailyChangePercent > 0 ? '+' : ''}
-                                          {dailyChangePercent.toFixed(2)}%
+                                          {dailyChange > 0 ? '+' : dailyChange < 0 ? '-' : ''}
+                                          {formattedChange}
+                                          {dailyChange === 0 && ' (Sin variación)'}
                                         </span>
                                       </div>
-                                    ) : (
-                                      <div className="flex justify-between items-center gap-4 text-gray-500 dark:text-gray-400">
-                                        <span>Variación</span>
-                                        <span className="text-xs">Sin datos previos</span>
-                                      </div>
-                                    )}
+                                      {dailyChangePercent !== null &&
+                                      dailyChangePercent !== undefined ? (
+                                        <div className="flex justify-between items-center gap-4">
+                                          <span className="text-gray-600 dark:text-gray-300">
+                                            Variación
+                                          </span>
+                                          <span
+                                            className={`font-semibold ${
+                                              dailyChangePercent > 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : dailyChangePercent < 0
+                                                  ? 'text-red-600 dark:text-red-400'
+                                                  : 'text-gray-500 dark:text-gray-400'
+                                            }`}
+                                          >
+                                            {dailyChangePercent > 0 ? '+' : ''}
+                                            {dailyChangePercent.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-between items-center gap-4 text-gray-500 dark:text-gray-400">
+                                          <span>Variación</span>
+                                          <span className="text-xs">Sin datos previos</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Bar
-                            dataKey="dailyChangePositive"
-                            fill="#10b981"
-                            name="Ganancia"
-                            radius={[6, 6, 0, 0]}
-                            isAnimationActive
-                            animationDuration={500}
-                            animationEasing="ease-out"
-                          />
-                          <Bar
-                            dataKey="dailyChangeNegative"
-                            fill="#ef4444"
-                            name="Pérdida"
-                            radius={[6, 6, 0, 0]}
-                            isAnimationActive
-                            animationDuration={500}
-                            animationEasing="ease-out"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">No hay datos de variación diaria para mostrar</p>
-                      <p className="text-xs mt-2">
-                        Las variaciones se generan automáticamente al actualizar precios
-                      </p>
-                    </div>
-                  )}
+                                );
+                              }}
+                            />
+                            <Bar
+                              dataKey="dailyChangePositive"
+                              fill="#10b981"
+                              name="Ganancia"
+                              radius={[6, 6, 0, 0]}
+                              isAnimationActive
+                              animationDuration={500}
+                              animationEasing="ease-out"
+                            />
+                            <Bar
+                              dataKey="dailyChangeNegative"
+                              fill="#ef4444"
+                              name="Pérdida"
+                              radius={[6, 6, 0, 0]}
+                              isAnimationActive
+                              animationDuration={500}
+                              animationEasing="ease-out"
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <p className="text-sm">No hay datos de variación diaria para mostrar</p>
+                        <p className="text-xs mt-2">
+                          Las variaciones se generan automáticamente al actualizar precios
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Botones de acción */}
-            <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <button
-                onClick={() => {
-                  navigate('/investments');
-                }}
-                className="flex-1 btn-secondary flex items-center justify-center"
-              >
-                <CgTime className="h-4 w-4 mr-2" />
-                Ver en Inversiones
-              </button>
-              <button
-                onClick={() => {
-                  setShowInvestmentDetailModal(false);
-                  setSelectedTreemapInvestment(null);
-                  setDetailInvestmentHistory([]);
-                  setDetailDailyVariations([]);
-                }}
-                className="flex-1 btn-primary"
-              >
-                Cerrar
-              </button>
+              {/* Botones de acción */}
+              <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    navigate('/investments');
+                  }}
+                  className="flex-1 btn-secondary flex items-center justify-center"
+                >
+                  <CgTime className="h-4 w-4 mr-2" />
+                  Ver en Inversiones
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInvestmentDetailModal(false);
+                    setSelectedTreemapInvestment(null);
+                    setDetailInvestmentHistory([]);
+                    setDetailDailyVariations([]);
+                  }}
+                  className="flex-1 btn-primary"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

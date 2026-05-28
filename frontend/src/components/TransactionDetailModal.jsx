@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Edit, Trash2, Link, Camera, Trash, ZoomIn } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Edit, Trash2, Link, Camera, Trash, ZoomIn, FileText } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from '../contexts/TranslationContext';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDelete }) => {
   const { t } = useTranslation();
@@ -14,6 +16,8 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
   const [imageLoading, setImageLoading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const [tagInput, setTagInput] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [formData, setFormData] = useState({
     subAccount: '',
     type: 'expense',
@@ -24,6 +28,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
     date: new Date().toISOString().split('T')[0],
     business: null,
     debt: null,
+    tags: [],
   });
 
   useEffect(() => {
@@ -39,10 +44,12 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
         date: new Date(transaction.date).toISOString().split('T')[0],
         business: transaction.business?._id || transaction.business || null,
         debt: transaction.debt?._id || transaction.debt || null,
+        tags: transaction.tags || [],
       });
       setImageUrl(transaction.imageUrl || null);
       setIsEditing(false);
       setLightboxOpen(false);
+      setTagInput('');
     }
   }, [isOpen, transaction]);
 
@@ -118,27 +125,24 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
   };
 
   const handleDelete = async () => {
-    if (window.confirm(t('transactions.deleteConfirm'))) {
-      setLoading(true);
-      try {
-        await api.delete(`/transactions/${transaction._id}`);
-        if (onDelete) {
-          onDelete();
-        }
-        onClose();
-      } catch (error) {
-        console.error('Error deleting transaction:', error);
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    try {
+      await api.delete(`/transactions/${transaction._id}`);
+      if (onDelete) onDelete();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+    } finally {
+      setLoading(false);
+      setConfirmDelete(false);
     }
   };
 
   if (!isOpen || !transaction) return null;
 
   // Lightbox para ver la imagen a pantalla completa
-  if (lightboxOpen && imageUrl) {
-    return (
+  if (lightboxOpen && imageUrl && !imageUrl.toLowerCase().endsWith('.pdf')) {
+    return createPortal(
       <div
         className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
         onClick={() => setLightboxOpen(false)}
@@ -155,13 +159,14 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
           className="max-w-full max-h-full object-contain rounded-lg"
           onClick={(e) => e.stopPropagation()}
         />
-      </div>
+      </div>,
+      document.body
     );
   }
 
   const availableCategories = categories.filter((cat) => cat.type === formData.type);
 
-  return (
+  const mainModal = createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
       <div className="modal-content max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
@@ -179,7 +184,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                   <Edit className="h-5 w-5" />
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setConfirmDelete(true)}
                   className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   title={t('common.delete')}
                   disabled={loading}
@@ -284,6 +289,54 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                 className="input-field"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tags <span className="text-gray-400 font-normal">{t('common.optional')}</span>
+              </label>
+              {formData.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {formData.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            tags: prev.tags.filter((t) => t !== tag),
+                          }))
+                        }
+                        className="hover:text-red-500 leading-none"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                className="input-field"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    const tag = tagInput.trim().replace(/,$/, '');
+                    if (tag && !formData.tags.includes(tag)) {
+                      setFormData((prev) => ({ ...prev, tags: [...prev.tags, tag] }));
+                    }
+                    setTagInput('');
+                  }
+                }}
+                placeholder="Añadir tag… (Enter para confirmar)"
               />
             </div>
 
@@ -425,6 +478,24 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
               </div>
             )}
 
+            {transaction.tags?.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tags
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {transaction.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -473,42 +544,75 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
               </div>
             )}
 
-            {/* Imagen adjunta */}
+            {/* Archivo adjunto */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Imagen adjunta
+                Archivo adjunto
               </label>
               {imageUrl ? (
-                <div className="relative inline-block group">
-                  <img
-                    src={imageUrl}
-                    alt="Recibo"
-                    className="h-40 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 cursor-zoom-in"
-                    onClick={() => setLightboxOpen(true)}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                    <button
-                      onClick={() => setLightboxOpen(true)}
-                      className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600"
-                      title="Ver imagen"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={handleImageDelete}
-                      disabled={imageLoading}
-                      className="p-1.5 bg-white rounded-full text-gray-700 hover:text-red-600"
-                      title="Eliminar imagen"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
-                  </div>
-                  {imageLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 dark:bg-gray-800 dark:bg-opacity-60 rounded-lg">
-                      <span className="text-sm text-gray-500">...</span>
+                imageUrl.toLowerCase().endsWith('.pdf') ? (
+                  <div className="relative inline-flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 group">
+                    <div className="h-10 w-10 flex items-center justify-center rounded bg-red-50 dark:bg-red-900/20 flex-shrink-0">
+                      <FileText className="h-6 w-6 text-red-500" />
                     </div>
-                  )}
-                </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Documento PDF</span>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      <a
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600"
+                        title="Abrir PDF"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </a>
+                      <button
+                        onClick={handleImageDelete}
+                        disabled={imageLoading}
+                        className="p-1.5 bg-white rounded-full text-gray-700 hover:text-red-600"
+                        title="Eliminar PDF"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {imageLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 dark:bg-gray-800 dark:bg-opacity-60 rounded-lg">
+                        <span className="text-sm text-gray-500">...</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative inline-block group">
+                    <img
+                      src={imageUrl}
+                      alt="Recibo"
+                      className="h-40 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 cursor-zoom-in"
+                      onClick={() => setLightboxOpen(true)}
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => setLightboxOpen(true)}
+                        className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600"
+                        title="Ver imagen"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={handleImageDelete}
+                        disabled={imageLoading}
+                        className="p-1.5 bg-white rounded-full text-gray-700 hover:text-red-600"
+                        title="Eliminar imagen"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {imageLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 dark:bg-gray-800 dark:bg-opacity-60 rounded-lg">
+                        <span className="text-sm text-gray-500">...</span>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -516,13 +620,13 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors text-sm"
                 >
                   <Camera className="h-4 w-4" />
-                  {imageLoading ? 'Subiendo...' : 'Adjuntar imagen / recibo'}
+                  {imageLoading ? 'Subiendo...' : 'Adjuntar imagen o PDF'}
                 </button>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 className="hidden"
                 onChange={handleImageUpload}
               />
@@ -539,7 +643,23 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
+  );
+
+  return (
+    <>
+      {mainModal}
+      <ConfirmDeleteModal
+        isOpen={confirmDelete}
+        title={transaction.description || transaction.category}
+        amount={transaction.amount}
+        type={transaction.type}
+        currency={transaction.currency || 'EUR'}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </>
   );
 };
 

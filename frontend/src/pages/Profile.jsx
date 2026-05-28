@@ -55,9 +55,10 @@ const Profile = () => {
   // Colores predefinidos
   const predefinedColors = [
     '#3b82f6', // Azul
+    '#C9961A', // Dorado TradeClimb
     '#ec4899', // Rosa
     '#10b981', // Verde
-    '#f59e0b', // Amarillo/Naranja
+    '#f59e0b', // Ámbar
     '#ef4444', // Rojo
     '#8b5cf6', // Púrpura
     '#06b6d4', // Cyan

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Edit, Trash2, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -348,275 +349,279 @@ const Forecasts = () => {
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="modal-content max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingForecast ? t('forecasts.editForecast') : t('forecasts.newForecast')}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.name')}
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('common.type')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  required
-                >
-                  <option value="income">{t('forecasts.types.income')}</option>
-                  <option value="expense">{t('forecasts.types.expense')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.business')} {t('common.optional')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.business || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      business: e.target.value || null,
-                    })
-                  }
-                >
-                  <option value="">{t('forecasts.personal')}</option>
-                  {businesses.map((business) => (
-                    <option key={business._id} value={business._id}>
-                      {business.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.category')} {t('common.optional')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                >
-                  <option value="">{t('forecasts.selectCategory')}</option>
-                  {categories
-                    .filter(
-                      (cat) =>
-                        cat.type === formData.type &&
-                        (!cat.business ||
-                          cat.business === formData.business ||
-                          (!formData.business && !cat.business))
-                    )
-                    .map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="modal-content max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                {editingForecast ? t('forecasts.editForecast') : t('forecasts.newForecast')}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.name')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('common.type')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    required
+                  >
+                    <option value="income">{t('forecasts.types.income')}</option>
+                    <option value="expense">{t('forecasts.types.expense')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.business')} {t('common.optional')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={formData.business || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        business: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">{t('forecasts.personal')}</option>
+                    {businesses.map((business) => (
+                      <option key={business._id} value={business._id}>
+                        {business.name}
                       </option>
                     ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('common.amount')}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input-field"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      amount: parseFloat(e.target.value),
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.frequency')}
-                </label>
-                <select
-                  className="input-field"
-                  value={formData.frequency}
-                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                  required
-                >
-                  <option value="one-time">{t('forecasts.frequencies.one-time')}</option>
-                  <option value="daily">{t('forecasts.frequencies.daily')}</option>
-                  <option value="weekly">{t('forecasts.frequencies.weekly')}</option>
-                  <option value="biweekly">{t('forecasts.frequencies.biweekly')}</option>
-                  <option value="monthly">{t('forecasts.frequencies.monthly')}</option>
-                  <option value="quarterly">{t('forecasts.frequencies.quarterly')}</option>
-                  <option value="yearly">{t('forecasts.frequencies.yearly')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.startDate')}
-                </label>
-                <input
-                  type="date"
-                  className="input-field"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.endDate')} {t('common.optional')}
-                </label>
-                <input
-                  type="date"
-                  className="input-field"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t('forecasts.description')} {t('common.optional')}
-                </label>
-                <textarea
-                  className="input-field"
-                  rows="3"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded"
-                />
-                <label
-                  htmlFor="isActive"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {t('forecasts.isActive')}
-                </label>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 btn-primary">
-                  {editingForecast ? t('common.save') : t('forecasts.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showProjections && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="modal-content max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {t('forecasts.projections')}
-              </h2>
-              <button
-                onClick={() => setShowProjections(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ✕
-              </button>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.category')} {t('common.optional')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    <option value="">{t('forecasts.selectCategory')}</option>
+                    {categories
+                      .filter(
+                        (cat) =>
+                          cat.type === formData.type &&
+                          (!cat.business ||
+                            cat.business === formData.business ||
+                            (!formData.business && !cat.business))
+                      )
+                      .map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('common.amount')}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="input-field"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        amount: parseFloat(e.target.value),
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.frequency')}
+                  </label>
+                  <select
+                    className="input-field"
+                    value={formData.frequency}
+                    onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                    required
+                  >
+                    <option value="one-time">{t('forecasts.frequencies.one-time')}</option>
+                    <option value="daily">{t('forecasts.frequencies.daily')}</option>
+                    <option value="weekly">{t('forecasts.frequencies.weekly')}</option>
+                    <option value="biweekly">{t('forecasts.frequencies.biweekly')}</option>
+                    <option value="monthly">{t('forecasts.frequencies.monthly')}</option>
+                    <option value="quarterly">{t('forecasts.frequencies.quarterly')}</option>
+                    <option value="yearly">{t('forecasts.frequencies.yearly')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.startDate')}
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.endDate')} {t('common.optional')}
+                  </label>
+                  <input
+                    type="date"
+                    className="input-field"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('forecasts.description')} {t('common.optional')}
+                  </label>
+                  <textarea
+                    className="input-field"
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="rounded"
+                  />
+                  <label
+                    htmlFor="isActive"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t('forecasts.isActive')}
+                  </label>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" className="flex-1 btn-primary">
+                    {editingForecast ? t('common.save') : t('forecasts.create')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="flex-1 btn-secondary"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </form>
             </div>
-            <div className="card">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                        {t('common.date')}
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                        {t('forecasts.name')}
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                        {t('common.type')}
-                      </th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
-                        {t('common.amount')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projections.map((projection, index) => (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <td className="py-3 px-4">
-                          {format(new Date(projection.date), 'dd MMM yyyy', {
-                            locale: es,
-                          })}
-                        </td>
-                        <td className="py-3 px-4 font-medium">{projection.forecastName}</td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              projection.type === 'income'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          </div>,
+          document.body
+        )}
+
+      {showProjections &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="modal-content max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {t('forecasts.projections')}
+                </h2>
+                <button
+                  onClick={() => setShowProjections(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="card">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                          {t('common.date')}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                          {t('forecasts.name')}
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                          {t('common.type')}
+                        </th>
+                        <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                          {t('common.amount')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projections.map((projection, index) => (
+                        <tr
+                          key={index}
+                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <td className="py-3 px-4">
+                            {format(new Date(projection.date), 'dd MMM yyyy', {
+                              locale: es,
+                            })}
+                          </td>
+                          <td className="py-3 px-4 font-medium">{projection.forecastName}</td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                projection.type === 'income'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              }`}
+                            >
+                              {projection.type === 'income'
+                                ? t('forecasts.types.income')
+                                : t('forecasts.types.expense')}
+                            </span>
+                          </td>
+                          <td
+                            className={`py-3 px-4 text-right font-semibold ${
+                              projection.type === 'income' ? 'text-green-600' : 'text-red-600'
                             }`}
                           >
-                            {projection.type === 'income'
-                              ? t('forecasts.types.income')
-                              : t('forecasts.types.expense')}
-                          </span>
-                        </td>
-                        <td
-                          className={`py-3 px-4 text-right font-semibold ${
-                            projection.type === 'income' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {projection.type === 'income' ? '+' : '-'}
-                          {new Intl.NumberFormat('es-ES', {
-                            style: 'currency',
-                            currency: projection.currency,
-                          }).format(projection.amount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {projections.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    {t('forecasts.noProjections')}
-                  </div>
-                )}
+                            {projection.type === 'income' ? '+' : '-'}
+                            {new Intl.NumberFormat('es-ES', {
+                              style: 'currency',
+                              currency: projection.currency,
+                            }).format(projection.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {projections.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      {t('forecasts.noProjections')}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

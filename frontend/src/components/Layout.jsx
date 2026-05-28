@@ -235,47 +235,66 @@ const Layout = ({ children }) => {
                 <>
                   {!collapsed ? (
                     <>
-                      <button
-                        onClick={() => {
-                          setBusinessesExpanded((v) => !v);
-                          if (!businessesExpanded) navigate('/businesses');
-                        }}
-                        className="sidebar-link w-full text-left"
+                      <div
+                        className="sidebar-link w-full"
                         style={{
-                          color:
-                            isActive('/businesses') || selectedBusiness
-                              ? S.activeText
-                              : S.inactiveText,
-                          background:
-                            isActive('/businesses') || selectedBusiness
-                              ? S.activeBg
-                              : 'transparent',
+                          color: isActive('/businesses') ? S.activeText : S.inactiveText,
+                          background: isActive('/businesses') ? S.activeBg : 'transparent',
+                          padding: 0,
                         }}
                         onMouseEnter={(e) => {
-                          if (!isActive('/businesses') && !selectedBusiness) {
+                          if (!isActive('/businesses')) {
                             e.currentTarget.style.background = S.hoverBg;
                             e.currentTarget.style.color = S.hoverText;
                           }
                         }}
                         onMouseLeave={(e) => {
-                          if (!isActive('/businesses') && !selectedBusiness) {
+                          if (!isActive('/businesses')) {
                             e.currentTarget.style.background = 'transparent';
                             e.currentTarget.style.color = S.inactiveText;
                           }
                         }}
                       >
-                        <Briefcase
-                          className="mr-2.5 h-4 w-4 flex-shrink-0"
-                          strokeWidth={1.75}
-                          style={{ color: 'inherit' }}
-                        />
-                        <span className="flex-1 text-[0.8125rem]">{t('sidebar.businesses')}</span>
-                        {businessesExpanded ? (
-                          <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
-                        ) : (
-                          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
-                        )}
-                      </button>
+                        {/* Zona izquierda: navega al dashboard de negocios */}
+                        <button
+                          onClick={() => {
+                            selectBusiness(null);
+                            navigate('/businesses');
+                            setBusinessesExpanded(true);
+                            onClose?.();
+                          }}
+                          className="flex flex-1 items-center min-w-0 h-full px-3 py-2 text-left"
+                          style={{ color: 'inherit', background: 'none', border: 'none' }}
+                        >
+                          <Briefcase
+                            className="mr-2.5 h-4 w-4 flex-shrink-0"
+                            strokeWidth={1.75}
+                            style={{ color: 'inherit' }}
+                          />
+                          <span className="flex-1 text-[0.8125rem] truncate">
+                            {t('sidebar.businesses')}
+                          </span>
+                        </button>
+                        {/* Zona derecha: solo toggle del desplegable */}
+                        <button
+                          onClick={() => setBusinessesExpanded((v) => !v)}
+                          className="flex items-center justify-center px-2 py-2 rounded"
+                          style={{
+                            color: 'inherit',
+                            background: 'none',
+                            border: 'none',
+                            opacity: 0.5,
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}
+                        >
+                          {businessesExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+                          )}
+                        </button>
+                      </div>
 
                       {businessesExpanded && (
                         <div
@@ -294,7 +313,7 @@ const Layout = ({ children }) => {
                                     style={{ background: b.color }}
                                   />
                                 }
-                                active={selectedBusiness === b._id}
+                                active={selectedBusiness === b._id && isActive('/businesses')}
                                 color={b.color}
                                 onClick={() => {
                                   selectBusiness(b._id);
@@ -545,7 +564,7 @@ const Layout = ({ children }) => {
 
       {/* ── Main content ─────────────────────────────────────────── */}
       <div
-        className={`transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        className={`transition-[padding-left] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           sidebarCollapsed ? 'lg:pl-[64px]' : 'lg:pl-56'
         }`}
       >
