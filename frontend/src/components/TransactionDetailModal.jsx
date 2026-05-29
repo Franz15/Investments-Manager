@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit, Trash2, Link, Camera, Trash, ZoomIn, FileText } from 'lucide-react';
+import { X, Edit, Trash2, Link, Camera, Trash, ZoomIn, FileText, ChevronDown } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from '../contexts/TranslationContext';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
@@ -393,29 +393,56 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('transactions.subAccount')}
               </label>
-              <select
-                className="input-field"
-                value={formData.subAccount}
-                onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
-                required
-              >
-                {Object.entries(
+              {(() => {
+                const selectedSA = subAccounts.find((sa) => sa._id === formData.subAccount);
+                const saDisplayNode = selectedSA ? (
+                  selectedSA.account?.name ? (
+                    <>
+                      <span className="font-semibold">{selectedSA.account.name}</span>
+                      {' – '}
+                      {selectedSA.name}
+                    </>
+                  ) : (
+                    selectedSA.name
+                  )
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">{t('common.select')}…</span>
+                );
+                const grouped = Object.entries(
                   subAccounts.reduce((groups, sa) => {
                     const bank = sa.account?.name || '—';
                     if (!groups[bank]) groups[bank] = [];
                     groups[bank].push(sa);
                     return groups;
                   }, {})
-                ).map(([bank, accounts]) => (
-                  <optgroup key={bank} label={bank}>
-                    {accounts.map((sa) => (
-                      <option key={sa._id} value={sa._id}>
-                        {sa.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                );
+                return (
+                  <div className="relative">
+                    <div className="input-field flex items-center justify-between pointer-events-none">
+                      <span className={selectedSA ? 'text-gray-900 dark:text-gray-100' : ''}>
+                        {saDisplayNode}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    </div>
+                    <select
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      value={formData.subAccount}
+                      onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
+                      required
+                    >
+                      {grouped.map(([bank, accounts]) => (
+                        <optgroup key={bank} label={bank}>
+                          {accounts.map((sa) => (
+                            <option key={sa._id} value={sa._id}>
+                              {sa.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex gap-3 pt-4">

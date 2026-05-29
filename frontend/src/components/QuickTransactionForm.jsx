@@ -174,11 +174,19 @@ const QuickTransactionForm = ({
   );
 
   const selectedSA = subAccounts.find((sa) => sa._id === formData.subAccount);
-  const saDisplayText = selectedSA
-    ? selectedSA.account?.name
-      ? `${selectedSA.account.name} - ${selectedSA.name}`
-      : selectedSA.name
-    : '';
+  const saDisplayNode = selectedSA ? (
+    selectedSA.account?.name ? (
+      <>
+        <span className="font-semibold">{selectedSA.account.name}</span>
+        {' – '}
+        {selectedSA.name}
+      </>
+    ) : (
+      selectedSA.name
+    )
+  ) : (
+    ''
+  );
 
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
@@ -431,7 +439,7 @@ const QuickTransactionForm = ({
                         : 'text-gray-400 dark:text-gray-500'
                     }
                   >
-                    {saDisplayText || '—'}
+                    {saDisplayNode || '—'}
                   </span>
                   <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 </div>
