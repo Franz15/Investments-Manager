@@ -15,6 +15,10 @@ import {
   ChevronUp,
   TrendingUp,
   ShieldCheck,
+  Gem,
+  Package,
+  Building2,
+  RefreshCw,
 } from 'lucide-react';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -47,6 +51,7 @@ const Debts = () => {
     isGoodDebt: false,
     collateral: [],
     amortizationType: 'french',
+    assetValue: '',
   });
   const [paymentData, setPaymentData] = useState({
     amount: 0,
@@ -57,24 +62,90 @@ const Debts = () => {
   const [expandedDebt, setExpandedDebt] = useState(null);
   const [debtTransactions, setDebtTransactions] = useState({});
 
+  const [manualAssets, setManualAssets] = useState([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState(null);
+  const [assetForm, setAssetForm] = useState({
+    name: '',
+    type: 'real_estate',
+    currentValue: '',
+    purchasePrice: '',
+    purchaseDate: '',
+    currency: 'EUR',
+    description: '',
+    linkedDebt: '',
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [debtsRes, subAccountsRes, investmentsRes] = await Promise.all([
+      const [debtsRes, subAccountsRes, investmentsRes, assetsRes] = await Promise.all([
         api.get('/debts'),
         api.get('/subaccounts'),
         api.get('/investments', { params: { status: 'active' } }),
+        api.get('/manual-assets'),
       ]);
       setDebts(debtsRes.data);
       setSubAccounts(subAccountsRes.data);
       setInvestments(investmentsRes.data || []);
+      setManualAssets(assetsRes.data || []);
       setLoading(false);
     } catch (error) {
       setLoading(false);
     }
+  };
+
+  const resetAssetForm = () =>
+    setAssetForm({
+      name: '',
+      type: 'real_estate',
+      currentValue: '',
+      purchasePrice: '',
+      purchaseDate: '',
+      currency: 'EUR',
+      description: '',
+      linkedDebt: '',
+    });
+
+  const handleAssetSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...assetForm,
+        currentValue: parseFloat(assetForm.currentValue),
+        purchasePrice: assetForm.purchasePrice ? parseFloat(assetForm.purchasePrice) : undefined,
+        linkedDebt: assetForm.linkedDebt || undefined,
+      };
+      if (editingAsset) {
+        await api.put(`/manual-assets/${editingAsset._id}`, payload);
+      } else {
+        await api.post('/manual-assets', payload);
+      }
+      fetchData();
+      setShowAssetModal(false);
+      setEditingAsset(null);
+      resetAssetForm();
+    } catch (error) {}
+  };
+
+  const handleAssetEdit = (asset) => {
+    setEditingAsset(asset);
+    setAssetForm({
+      name: asset.name,
+      type: asset.type,
+      currentValue: asset.currentValue,
+      purchasePrice: asset.purchasePrice || '',
+      purchaseDate: asset.purchaseDate
+        ? new Date(asset.purchaseDate).toISOString().split('T')[0]
+        : '',
+      currency: asset.currency,
+      description: asset.description || '',
+      linkedDebt: asset.linkedDebt?._id || asset.linkedDebt || '',
+    });
+    setShowAssetModal(true);
   };
 
   const handleSubmit = async (e) => {
@@ -89,15 +160,39 @@ const Debts = () => {
             formData.endDate
           )
         : null;
+      const { assetValue, ...debtFields } = formData;
       const payload = {
-        ...formData,
+        ...debtFields,
         monthlyPayment: calc ? calc.monthly : formData.monthlyPayment,
       };
+      let savedDebt;
       if (editingDebt) {
-        await api.put(`/debts/${editingDebt._id}`, payload);
+        const res = await api.put(`/debts/${editingDebt._id}`, payload);
+        savedDebt = res.data;
       } else {
-        await api.post('/debts', payload);
+        const res = await api.post('/debts', payload);
+        savedDebt = res.data;
       }
+
+      // Auto-gestionar activo vinculado para hipotecas
+      if (formData.type === 'mortgage' && parseFloat(assetValue) > 0) {
+        const existingAsset = manualAssets.find(
+          (a) => a.linkedDebt?._id === editingDebt?._id || a.linkedDebt === editingDebt?._id
+        );
+        const assetPayload = {
+          name: formData.name,
+          type: 'real_estate',
+          currentValue: parseFloat(assetValue),
+          currency: formData.currency,
+          linkedDebt: savedDebt._id,
+        };
+        if (existingAsset) {
+          await api.put(`/manual-assets/${existingAsset._id}`, assetPayload);
+        } else {
+          await api.post('/manual-assets', assetPayload);
+        }
+      }
+
       fetchData();
       setShowModal(false);
       resetForm();
@@ -120,6 +215,9 @@ const Debts = () => {
 
   const handleEdit = (debt) => {
     setEditingDebt(debt);
+    const linkedAsset = manualAssets.find(
+      (a) => a.linkedDebt?._id === debt._id || a.linkedDebt === debt._id
+    );
     setFormData({
       name: debt.name,
       type: debt.type,
@@ -137,6 +235,7 @@ const Debts = () => {
       isGoodDebt: goodDebtByDefault(debt.type),
       collateral: debt.collateral?.map((c) => c._id || c) || [],
       amortizationType: debt.amortizationType || 'french',
+      assetValue: linkedAsset ? linkedAsset.currentValue : '',
     });
     setShowModal(true);
   };
@@ -168,6 +267,7 @@ const Debts = () => {
       isGoodDebt: false,
       collateral: [],
       amortizationType: 'french',
+      assetValue: '',
     });
     setEditingDebt(null);
   };
@@ -176,8 +276,9 @@ const Debts = () => {
 
   const calcFrenchPayment = (principal, annualRate, start, end) => {
     if (!principal || !start || !end) return null;
-    const msPerMonth = 1000 * 60 * 60 * 24 * 30.44;
-    const n = Math.round((new Date(end) - new Date(start)) / msPerMonth);
+    const s = new Date(start);
+    const e = new Date(end);
+    const n = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
     if (n <= 0) return null;
     const r = annualRate / 100 / 12;
     const monthly =
@@ -487,6 +588,61 @@ const Debts = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Equity e inmueble — solo para hipotecas con activo vinculado */}
+              {debt.type === 'mortgage' &&
+                (() => {
+                  const asset = manualAssets.find(
+                    (a) => a.linkedDebt?._id === debt._id || a.linkedDebt === debt._id
+                  );
+                  if (!asset) return null;
+                  const equity = asset.currentValue - debt.remainingAmount;
+                  const ltv = (debt.remainingAmount / asset.currentValue) * 100;
+                  return (
+                    <div className="border border-gray-100 dark:border-gray-700 rounded-lg p-3 mb-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <Home className="h-3.5 w-3.5" /> Valor inmueble
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {fmt(asset.currentValue, asset.currency)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm font-semibold">
+                        <span className="text-gray-700 dark:text-gray-300">Equity neto</span>
+                        <span
+                          className={
+                            equity >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'
+                          }
+                        >
+                          {fmt(equity, asset.currency)}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span>LTV</span>
+                          <span
+                            className={
+                              ltv > 80
+                                ? 'text-red-500'
+                                : ltv > 60
+                                  ? 'text-amber-500'
+                                  : 'text-emerald-600'
+                            }
+                          >
+                            {ltv.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${ltv > 80 ? 'bg-red-500' : ltv > 60 ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                            style={{ width: `${Math.min(ltv, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
               {debt.subAccount && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
@@ -838,31 +994,65 @@ const Debts = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {t('transactions.subAccount')}
                   </label>
-                  <select
-                    className="input-field"
-                    value={formData.subAccount}
-                    onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
-                  >
-                    <option value="">{t('debts.modals.unlinked')}</option>
-                    {Object.entries(
-                      subAccounts
-                        .filter((sa) => sa.type === 'cash' || sa.type === 'savings')
-                        .reduce((groups, sa) => {
-                          const bank = sa.account?.name || '—';
-                          if (!groups[bank]) groups[bank] = [];
-                          groups[bank].push(sa);
-                          return groups;
-                        }, {})
-                    ).map(([bank, accounts]) => (
-                      <optgroup key={bank} label={bank}>
-                        {accounts.map((sa) => (
-                          <option key={sa._id} value={sa._id}>
-                            {sa.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  {(() => {
+                    const filteredSAs = subAccounts.filter(
+                      (sa) => sa.type === 'cash' || sa.type === 'savings'
+                    );
+                    const selectedSA = filteredSAs.find((sa) => sa._id === formData.subAccount);
+                    const saDisplayNode = selectedSA ? (
+                      selectedSA.account?.name ? (
+                        <>
+                          <span className="font-semibold">{selectedSA.account.name}</span>
+                          {' – '}
+                          {selectedSA.name}
+                        </>
+                      ) : (
+                        selectedSA.name
+                      )
+                    ) : (
+                      t('debts.modals.unlinked')
+                    );
+                    const grouped = Object.entries(
+                      filteredSAs.reduce((groups, sa) => {
+                        const bank = sa.account?.name || '—';
+                        if (!groups[bank]) groups[bank] = [];
+                        groups[bank].push(sa);
+                        return groups;
+                      }, {})
+                    );
+                    return (
+                      <div className="relative">
+                        <div className="input-field flex items-center justify-between pointer-events-none">
+                          <span
+                            className={
+                              selectedSA
+                                ? 'text-gray-900 dark:text-gray-100'
+                                : 'text-gray-400 dark:text-gray-500'
+                            }
+                          >
+                            {saDisplayNode}
+                          </span>
+                          <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        </div>
+                        <select
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          value={formData.subAccount}
+                          onChange={(e) => setFormData({ ...formData, subAccount: e.target.value })}
+                        >
+                          <option value="">{t('debts.modals.unlinked')}</option>
+                          {grouped.map(([bank, accounts]) => (
+                            <optgroup key={bank} label={bank}>
+                              {accounts.map((sa) => (
+                                <option key={sa._id} value={sa._id}>
+                                  {sa.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -900,6 +1090,56 @@ const Debts = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Valor del inmueble — solo para hipotecas */}
+                {formData.type === 'mortgage' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
+                      <Home className="h-4 w-4" />
+                      Valor del inmueble (tasación)
+                      <span className="text-gray-400 font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input-field"
+                      placeholder="Ej. 220000"
+                      value={formData.assetValue}
+                      onChange={(e) => setFormData({ ...formData, assetValue: e.target.value })}
+                    />
+                    {formData.assetValue &&
+                      parseFloat(formData.assetValue) > 0 &&
+                      formData.remainingAmount > 0 && (
+                        <div className="mt-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                          <span>
+                            Equity:{' '}
+                            <span
+                              className={
+                                parseFloat(formData.assetValue) >= formData.remainingAmount
+                                  ? 'text-emerald-600 font-medium'
+                                  : 'text-red-500 font-medium'
+                              }
+                            >
+                              {fmt(
+                                parseFloat(formData.assetValue) - formData.remainingAmount,
+                                formData.currency
+                              )}
+                            </span>
+                          </span>
+                          <span>
+                            LTV:{' '}
+                            <span className="font-medium">
+                              {(
+                                (formData.remainingAmount / parseFloat(formData.assetValue)) *
+                                100
+                              ).toFixed(1)}
+                              %
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                )}
 
                 {/* Garantías para pignoración */}
                 {formData.type === 'pledge' && (

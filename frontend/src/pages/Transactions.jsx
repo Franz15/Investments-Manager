@@ -13,12 +13,14 @@ import {
   TrendingDown,
   DollarSign,
   Camera,
+  RefreshCw,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import RecurringTransactionsModal from '../components/RecurringTransactionsModal';
 import { useTranslation } from '../contexts/TranslationContext';
 
 const Transactions = () => {
@@ -32,6 +34,7 @@ const Transactions = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showRecurring, setShowRecurring] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [selectedContext, setSelectedContext] = useState('all'); // "all", "personal", or businessId
 
@@ -438,6 +441,13 @@ const Transactions = () => {
           >
             <Filter className="h-5 w-5 mr-2" />
             {t('transactions.filters')}
+          </button>
+          <button
+            onClick={() => setShowRecurring(true)}
+            className="btn-secondary flex items-center"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            {t('recurring.title')}
           </button>
           <button
             onClick={() => {
@@ -1345,6 +1355,7 @@ const Transactions = () => {
         onConfirm={handleDelete}
         onCancel={() => setDeletingTransaction(null)}
       />
+      <RecurringTransactionsModal isOpen={showRecurring} onClose={() => setShowRecurring(false)} />
     </div>
   );
 };

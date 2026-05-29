@@ -928,6 +928,32 @@
     "personal": "Personal",
     "business": "Negocio"
   },
+  "recurring": {
+    "title": "Transacciones Recurrentes",
+    "subtitle": "Ingresos y gastos que se generan automáticamente",
+    "new": "Nueva Recurrente",
+    "edit": "Editar Recurrente",
+    "noRecurring": "No tienes transacciones recurrentes",
+    "name": "Nombre",
+    "nextDate": "Próxima generación",
+    "lastGenerated": "Última generación",
+    "never": "Nunca",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "triggerNow": "Generar ahora",
+    "triggered": "Transacción generada correctamente",
+    "endDate": "Fecha de fin (opcional)",
+    "startDate": "Fecha de inicio",
+    "frequencies": {
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "biweekly": "Quincenal",
+      "monthly": "Mensual",
+      "bimonthly": "Bimensual",
+      "quarterly": "Trimestral",
+      "yearly": "Anual"
+    }
+  },
   "errors": {
     "generic": "Ha ocurrido un error",
     "network": "Error de conexión",

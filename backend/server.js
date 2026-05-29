@@ -21,6 +21,9 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import budgetRoutes from './routes/budgetRoutes.js';
 import forecastRoutes from './routes/forecastRoutes.js';
 import businessRoutes from './routes/businessRoutes.js';
+import recurringTransactionRoutes from './routes/recurringTransactionRoutes.js';
+import manualAssetRoutes from './routes/manualAssetRoutes.js';
+import { startScheduler } from './scheduler/recurringScheduler.js';
 
 dotenv.config();
 // .env.local overrides .env — used for local dev (e.g. bypass mongodb+srv DNS)
@@ -85,6 +88,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/forecasts', forecastRoutes);
 app.use('/api/businesses', businessRoutes);
+app.use('/api/recurring-transactions', recurringTransactionRoutes);
+app.use('/api/manual-assets', manualAssetRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -118,6 +123,7 @@ mongoose
     console.log(`MongoDB URI: ${MONGODB_URI.substring(0, 60)}...`);
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
+      startScheduler();
     });
   })
   .catch((error) => {

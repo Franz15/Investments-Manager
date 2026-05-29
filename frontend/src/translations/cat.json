@@ -931,6 +931,32 @@
     "personal": "Personal",
     "business": "Negoci"
   },
+  "recurring": {
+    "title": "Transaccions Recurrents",
+    "subtitle": "Ingressos i despeses que es generen automàticament",
+    "new": "Nova Recurrent",
+    "edit": "Editar Recurrent",
+    "noRecurring": "No tens transaccions recurrents",
+    "name": "Nom",
+    "nextDate": "Propera generació",
+    "lastGenerated": "Última generació",
+    "never": "Mai",
+    "active": "Activa",
+    "inactive": "Inactiva",
+    "triggerNow": "Generar ara",
+    "triggered": "Transacció generada correctament",
+    "endDate": "Data de fi (opcional)",
+    "startDate": "Data d'inici",
+    "frequencies": {
+      "daily": "Diària",
+      "weekly": "Setmanal",
+      "biweekly": "Quinzanal",
+      "monthly": "Mensual",
+      "bimonthly": "Bimensual",
+      "quarterly": "Trimestral",
+      "yearly": "Anual"
+    }
+  },
   "errors": {
     "generic": "S'ha produït un error",
     "network": "Error de connexió",
