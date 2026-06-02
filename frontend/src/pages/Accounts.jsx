@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  CgAdd,
-  CgCreditCard,
-  CgEditMarkup,
-  CgTrash,
-  CgChevronDown,
-  CgChevronRight,
-  CgTrending,
-  CgChart,
-  CgTrendingDown,
-  CgTime,
-  CgBot,
-} from 'react-icons/cg';
+  Plus,
+  CreditCard,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  TrendingUp,
+  BarChart2,
+  TrendingDown,
+  Clock,
+  Bot,
+} from 'lucide-react';
 import { SiBitcoin } from 'react-icons/si';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -756,15 +756,15 @@ const Accounts = () => {
   const getSubAccountTypeIcon = (type) => {
     switch (type) {
       case 'cash':
-        return <CgCreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
+        return <CreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
       case 'investment':
-        return <CgTrending className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
+        return <TrendingUp className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
       case 'savings':
-        return <CgChart className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
+        return <BarChart2 className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
       case 'credit':
-        return <CgCreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
+        return <CreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
       default:
-        return <CgCreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
+        return <CreditCard className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />;
     }
   };
 
@@ -868,7 +868,7 @@ const Accounts = () => {
           }}
           className="btn-primary flex items-center"
         >
-          <CgAdd className="h-5 w-5 mr-2" />
+          <Plus className="h-5 w-5 mr-2" />
           {t('accounts.newAccount')}
         </button>
       </div>
@@ -888,21 +888,18 @@ const Accounts = () => {
                     className="mr-3 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   >
                     {isExpanded ? (
-                      <CgChevronDown className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
+                      <ChevronDown className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
                     ) : (
-                      <CgChevronRight className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
+                      <ChevronRight className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
                     )}
                   </button>
                   <div
-                    className="p-2 rounded-lg"
+                    className="p-2 rounded-full"
                     style={{
-                      backgroundColor: `${account.color || '#3b82f6'}20`,
+                      backgroundColor: `${account.color || '#3b82f6'}18`,
                     }}
                   >
-                    <CgCreditCard
-                      className="h-5 w-5"
-                      style={{ color: account.color || '#3b82f6' }}
-                    />
+                    <CreditCard className="h-5 w-5" style={{ color: account.color || '#3b82f6' }} />
                   </div>
                   <div className="ml-3 flex-1">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">
@@ -955,20 +952,20 @@ const Accounts = () => {
                     }}
                     className="btn-secondary text-sm flex items-center"
                   >
-                    <CgAdd className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" />
                     {t('accounts.newSubAccount')}
                   </button>
                   <button
                     onClick={() => handleEditAccount(account)}
                     className="px-3 py-2 btn-secondary"
                   >
-                    <CgEditMarkup className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setConfirmDeleteAccount(account)}
                     className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                   >
-                    <CgTrash className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -1010,16 +1007,14 @@ const Accounts = () => {
                                       className="mr-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                                     >
                                       {isSubAccountExpanded ? (
-                                        <CgChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                        <ChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                       ) : (
-                                        <CgChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                        <ChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                       )}
                                     </button>
                                   )}
-                                <div className="p-2 bg-gray-100 dark:bg-[#404040] rounded-lg mr-3">
-                                  <div className="text-gray-800 dark:text-[#e5e5e5]">
-                                    {getSubAccountTypeIcon(subAccount.type)}
-                                  </div>
+                                <div className="mr-3 shrink-0 text-gray-500 dark:text-gray-400">
+                                  {getSubAccountTypeIcon(subAccount.type)}
                                 </div>
                                 <div className="flex-1">
                                   <h4 className="font-medium text-gray-900 dark:text-gray-100">
@@ -1091,13 +1086,13 @@ const Accounts = () => {
                                   onClick={() => handleEditSubAccount(subAccount)}
                                   className="px-3 py-2 btn-secondary"
                                 >
-                                  <CgEditMarkup className="h-4 w-4" />
+                                  <Pencil className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() => setConfirmDeleteSubAccount(subAccount)}
                                   className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                                 >
-                                  <CgTrash className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             </div>
@@ -1164,13 +1159,13 @@ const Accounts = () => {
                                                   className="mr-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                                                 >
                                                   {isInvestmentExpanded ? (
-                                                    <CgChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                                    <ChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                                   ) : (
-                                                    <CgChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                                    <ChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                                   )}
                                                 </button>
                                                 <div
-                                                  className="p-2 rounded-lg mr-3"
+                                                  className="p-2 rounded-full mr-3"
                                                   style={{
                                                     backgroundColor: 'var(--user-color-100)',
                                                     color: 'var(--user-color-600)',
@@ -1178,7 +1173,7 @@ const Accounts = () => {
                                                 >
                                                   {investment.isAutomatedPortfolio ||
                                                   investment.type === 'automated_portfolio' ? (
-                                                    <CgBot
+                                                    <Bot
                                                       className="h-4 w-4"
                                                       style={{
                                                         color: 'var(--user-color-600)',
@@ -1192,7 +1187,7 @@ const Accounts = () => {
                                                       }}
                                                     />
                                                   ) : (
-                                                    <CgTrending
+                                                    <TrendingUp
                                                       className="h-4 w-4"
                                                       style={{
                                                         color: 'var(--user-color-600)',
@@ -1397,9 +1392,9 @@ const Accounts = () => {
                                       {t('transactions.title').toLowerCase()}
                                     </span>
                                     {isTransactionsExpanded ? (
-                                      <CgChevronDown className="h-3 w-3 text-gray-300 dark:text-gray-600" />
+                                      <ChevronDown className="h-3 w-3 text-gray-300 dark:text-gray-600" />
                                     ) : (
-                                      <CgChevronRight className="h-3 w-3 text-gray-300 dark:text-gray-600" />
+                                      <ChevronRight className="h-3 w-3 text-gray-300 dark:text-gray-600" />
                                     )}
                                   </button>
 
@@ -1531,9 +1526,9 @@ const Accounts = () => {
                                   className="mr-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                                 >
                                   {isInvestmentExpanded ? (
-                                    <CgChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                    <ChevronDown className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                   ) : (
-                                    <CgChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
+                                    <ChevronRight className="h-4 w-4 text-gray-800 dark:text-[#e5e5e5]" />
                                   )}
                                 </button>
                                 <div
@@ -1545,7 +1540,7 @@ const Accounts = () => {
                                 >
                                   {investment.isAutomatedPortfolio ||
                                   investment.type === 'automated_portfolio' ? (
-                                    <CgBot
+                                    <Bot
                                       className="h-4 w-4"
                                       style={{
                                         color: 'var(--user-color-600)',
@@ -1559,7 +1554,7 @@ const Accounts = () => {
                                       }}
                                     />
                                   ) : (
-                                    <CgTrending
+                                    <TrendingUp
                                       className="h-4 w-4"
                                       style={{
                                         color: 'var(--user-color-600)',
@@ -2362,9 +2357,9 @@ const Accounts = () => {
                           }`}
                         >
                           {calculateProfitLoss(detailInvestment) >= 0 ? (
-                            <CgTrending className="h-4 w-4 mr-1" />
+                            <TrendingUp className="h-4 w-4 mr-1" />
                           ) : (
-                            <CgTrendingDown className="h-4 w-4 mr-1" />
+                            <TrendingDown className="h-4 w-4 mr-1" />
                           )}
                           {new Intl.NumberFormat('es-ES', {
                             style: 'currency',
@@ -2736,7 +2731,7 @@ const Accounts = () => {
                   }}
                   className="flex-1 btn-secondary flex items-center justify-center"
                 >
-                  <CgTime className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2" />
                   Ver en Inversiones
                 </button>
                 <button
@@ -2783,7 +2778,7 @@ const Accounts = () => {
                     className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     title={t('transactions.editTransaction') || 'Editar'}
                   >
-                    <CgEditMarkup className="h-5 w-5" />
+                    <Pencil className="h-5 w-5" />
                   </button>
                 )}
               </div>
@@ -3096,7 +3091,7 @@ const Accounts = () => {
                   className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: `${confirmDeleteAccount.color || '#3b82f6'}20` }}
                 >
-                  <CgTrash className="h-5 w-5 text-red-500" />
+                  <Trash2 className="h-5 w-5 text-red-500" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -3149,7 +3144,7 @@ const Accounts = () => {
               {/* Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                  <CgTrash className="h-5 w-5 text-red-500" />
+                  <Trash2 className="h-5 w-5 text-red-500" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
