@@ -269,9 +269,7 @@ const AdminAccess = () => {
     <div className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
+          <ShieldCheck className="w-6 h-6 shrink-0 text-amber-600 dark:text-amber-400" />
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               {t('adminAccess.title') || 'Gestión de accesos'}
