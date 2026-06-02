@@ -1305,9 +1305,7 @@ const PortfolioBuilder = () => {
                 <ChevronRight className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
               )}
             </button>
-            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--user-color-600)' }}>
-              <Calculator className="h-6 w-6 text-white" />
-            </div>
+            <Calculator className="h-6 w-6 shrink-0" style={{ color: 'var(--user-color-600)' }} />
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 {t('portfolioBuilder.calculator.title')}
@@ -1888,12 +1886,7 @@ const PortfolioBuilder = () => {
                       <ChevronRight className="h-5 w-5 text-gray-800 dark:text-[#e5e5e5]" />
                     )}
                   </button>
-                  <div
-                    className="p-3 rounded-lg flex-shrink-0"
-                    style={{ backgroundColor: 'var(--user-color-600)' }}
-                  >
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
+                  <Icon className="h-6 w-6 shrink-0" style={{ color: 'var(--user-color-600)' }} />
                   <div className="flex-1">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       {displayTitle}

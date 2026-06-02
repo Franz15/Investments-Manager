@@ -308,17 +308,17 @@ const Debts = () => {
   const getTypeIcon = (type) => {
     switch (type) {
       case 'mortgage':
-        return <Home className="h-5 w-5" />;
+        return <Home className="h-5 w-5 text-slate-500 dark:text-slate-400" />;
       case 'car_loan':
-        return <Car className="h-5 w-5" />;
+        return <Car className="h-5 w-5 text-blue-500 dark:text-blue-400" />;
       case 'student_loan':
-        return <GraduationCap className="h-5 w-5" />;
+        return <GraduationCap className="h-5 w-5 text-violet-500 dark:text-violet-400" />;
       case 'credit_card':
-        return <CreditCard className="h-5 w-5" />;
+        return <CreditCard className="h-5 w-5 text-rose-500 dark:text-rose-400" />;
       case 'pledge':
-        return <TrendingUp className="h-5 w-5" />;
+        return <TrendingUp className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />;
       default:
-        return <FileText className="h-5 w-5" />;
+        return <FileText className="h-5 w-5 text-gray-400 dark:text-gray-500" />;
     }
   };
 
@@ -388,54 +388,40 @@ const Debts = () => {
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.totalDebt')}</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: 'EUR',
-                }).format(totalDebt)}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-              <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-          </div>
+        <div className="card" style={{ borderLeft: '3px solid #dc2626' }}>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+            {t('debts.totalDebt')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums leading-none text-red-600 dark:text-red-400">
+            {new Intl.NumberFormat('es-ES', {
+              style: 'currency',
+              currency: 'EUR',
+            }).format(totalDebt)}
+          </p>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('debts.monthlyPayments')}
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: 'EUR',
-                }).format(totalMonthlyPayments)}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
+        <div className="card" style={{ borderLeft: '3px solid #6366f1' }}>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+            <CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+            {t('debts.monthlyPayments')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100">
+            {new Intl.NumberFormat('es-ES', {
+              style: 'currency',
+              currency: 'EUR',
+            }).format(totalMonthlyPayments)}
+          </p>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('debts.activeDebts')}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                {activeDebts.length}
-              </p>
-            </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-              <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
+        <div className="card" style={{ borderLeft: '3px solid #8b5cf6' }}>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+            <FileText className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+            {t('debts.activeDebts')}
+          </p>
+          <p className="text-2xl font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100">
+            {activeDebts.length}
+          </p>
         </div>
       </div>
 
@@ -451,9 +437,7 @@ const Debts = () => {
             <div key={debt._id} className="card">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
-                  <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    {getTypeIcon(debt.type)}
-                  </div>
+                  <div className="shrink-0">{getTypeIcon(debt.type)}</div>
                   <div className="ml-3">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100">{debt.name}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
