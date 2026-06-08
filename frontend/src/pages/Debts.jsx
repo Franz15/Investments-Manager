@@ -367,7 +367,7 @@ const Debts = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {t('debts.title')}
@@ -379,7 +379,7 @@ const Debts = () => {
             resetForm();
             setShowModal(true);
           }}
-          className="btn-primary flex items-center"
+          className="btn-primary flex items-center justify-center w-full sm:w-auto flex-shrink-0"
         >
           <Plus className="h-5 w-5 mr-2" />
           {t('debts.newDebt')}

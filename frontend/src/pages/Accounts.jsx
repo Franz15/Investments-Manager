@@ -854,7 +854,7 @@ const Accounts = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {t('accounts.title')}
@@ -866,7 +866,7 @@ const Accounts = () => {
             resetAccountForm();
             setShowAccountModal(true);
           }}
-          className="btn-primary flex items-center"
+          className="btn-primary flex items-center justify-center w-full sm:w-auto flex-shrink-0"
         >
           <Plus className="h-5 w-5 mr-2" />
           {t('accounts.newAccount')}
@@ -881,8 +881,8 @@ const Accounts = () => {
 
           return (
             <div key={account._id} className="card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center flex-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center flex-1 min-w-0">
                   <button
                     onClick={() => toggleAccount(account._id)}
                     className="mr-3 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
@@ -901,13 +901,15 @@ const Accounts = () => {
                   >
                     <CreditCard className="h-5 w-5" style={{ color: account.color || '#3b82f6' }} />
                   </div>
-                  <div className="ml-3 flex-1">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="ml-3 flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {account.name}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{account.bankName}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {account.bankName}
+                    </p>
                   </div>
-                  <div className="text-right mr-4">
+                  <div className="text-right ml-3 sm:mr-4 flex-shrink-0">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {t('accounts.totalBalance')}
                     </p>
@@ -943,14 +945,14 @@ const Accounts = () => {
                     })()}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <button
                     onClick={() => {
                       setSelectedAccountId(account._id);
                       resetSubAccountForm();
                       setShowSubAccountModal(true);
                     }}
-                    className="btn-secondary text-sm flex items-center"
+                    className="btn-secondary text-sm flex items-center justify-center flex-1 sm:flex-none whitespace-nowrap"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     {t('accounts.newSubAccount')}

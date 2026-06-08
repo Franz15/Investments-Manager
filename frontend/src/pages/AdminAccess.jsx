@@ -41,23 +41,19 @@ function formatTimeAgo(dateStr, t) {
   return template.replace('{time}', time);
 }
 
-/** Toggle switch reutilizable para esta página */
+/** Checkbox de acento (mismo control que el ToggleChip del resto de la app).
+ *  En esta página va en una rejilla de permisos con cabeceras de columna, así
+ *  que se usa el checkbox suelto (sin pill/label) para que encaje. */
 const Toggle = ({ on, disabled, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
+  <input
+    type="checkbox"
+    checked={!!on}
     disabled={disabled}
-    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
-      on ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
-    }`}
+    onChange={onClick}
+    className="h-5 w-5 flex-shrink-0 rounded cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+    style={{ accentColor: 'var(--user-color-600)' }}
     aria-pressed={on}
-  >
-    <span
-      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-        on ? 'translate-x-5' : 'translate-x-0'
-      }`}
-    />
-  </button>
+  />
 );
 
 const AdminAccess = () => {
