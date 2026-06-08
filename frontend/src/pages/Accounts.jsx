@@ -2110,7 +2110,7 @@ const Accounts = () => {
             }}
           >
             <div
-              className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
+              className="modal-content max-w-5xl w-full p-4 h-[90dvh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-start mb-4 flex-shrink-0">

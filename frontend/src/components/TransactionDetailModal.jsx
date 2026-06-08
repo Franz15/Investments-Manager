@@ -168,7 +168,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
 
   const mainModal = createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <div className="modal-content max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="modal-content max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isEditing ? t('transactions.editTransaction') : t('transactions.transactionDetails')}
