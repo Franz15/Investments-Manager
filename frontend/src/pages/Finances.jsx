@@ -732,10 +732,10 @@ const ReportsTab = memo(() => {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm w-full sm:w-auto">
             <input
               type="date"
-              className="input-field py-1.5 text-sm"
+              className="input-field py-1.5 text-sm flex-1 min-w-0 sm:flex-none"
               value={customFrom}
               onChange={(e) => {
                 setCustomFrom(e.target.value);
@@ -746,7 +746,7 @@ const ReportsTab = memo(() => {
             <span className="text-gray-400">→</span>
             <input
               type="date"
-              className="input-field py-1.5 text-sm"
+              className="input-field py-1.5 text-sm flex-1 min-w-0 sm:flex-none"
               value={customTo}
               onChange={(e) => {
                 setCustomTo(e.target.value);
@@ -1138,7 +1138,7 @@ const ForecastBudgetView = ({ month, triggerAdd, onAddDone }) => {
           </p>
           {f.type === 'expense' && <p className="text-xs text-gray-400">{Math.round(pct)}%</p>}
         </div>
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => setModal({ open: true, forecast: f })}
             className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
@@ -1974,7 +1974,7 @@ const CategoriesTab = memo(() => {
         </div>
       ) : (
         <div
-          className={`flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 group${depth > 0 ? ' border-l-2 border-gray-200 dark:border-gray-700 pl-4' : ''}`}
+          className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
           style={{ marginLeft: depth * 24 + 'px' }}
         >
           <div
@@ -1985,11 +1985,11 @@ const CategoriesTab = memo(() => {
             {cat.name}
           </span>
           {depth > 0 && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">
+            <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 mr-2">
               {depthLabel[depth]}
             </span>
           )}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
               onClick={() =>
                 setForm({
@@ -2059,10 +2059,10 @@ const CategoriesTab = memo(() => {
     <div className="space-y-5">
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => setForm({ ...EMPTY_CAT_FORM })}
-            className="btn-primary flex items-center gap-1.5 text-sm"
+            className="btn-primary flex flex-1 sm:flex-none justify-center items-center gap-1.5 text-sm"
           >
             <Plus className="h-4 w-4" />
             Nueva categoría
@@ -2070,18 +2070,32 @@ const CategoriesTab = memo(() => {
           <button
             onClick={handleLoadDefaults}
             disabled={loadingDef}
-            className="btn-secondary text-sm flex items-center gap-1.5"
+            className="btn-secondary text-sm flex flex-shrink-0 items-center gap-1.5"
             title="Carga un set estándar de categorías de finanzas personales"
           >
-            {loadingDef ? '...' : '⚡ Categorías por defecto'}
+            {loadingDef ? (
+              '...'
+            ) : (
+              <>
+                <span>⚡</span>
+                <span className="hidden sm:inline">Categorías por defecto</span>
+              </>
+            )}
           </button>
           <button
             onClick={handleImport}
             disabled={importing}
-            className="btn-secondary text-sm flex items-center gap-1.5"
+            className="btn-secondary text-sm flex flex-shrink-0 items-center gap-1.5"
             title="Crea categorías a partir de las que ya usas en tus transacciones"
           >
-            {importing ? '...' : '↓ Importar de transacciones'}
+            {importing ? (
+              '...'
+            ) : (
+              <>
+                <span>↓</span>
+                <span className="hidden sm:inline">Importar de transacciones</span>
+              </>
+            )}
           </button>
         </div>
         <p className="text-xs text-gray-400">{categories.length} categorías en total</p>
@@ -2134,12 +2148,12 @@ export const FinancesTabsView = ({ businessId = null }) => {
         {/* Top bar: tabs + controls */}
         <div className="flex flex-wrap items-center gap-3 justify-between">
           {/* Primary tabs */}
-          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded p-1">
+          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded p-1 w-full sm:w-auto">
             {TABS.map(({ key, labelKey, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all ${tab === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                className={`flex flex-1 sm:flex-none justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded text-sm font-medium transition-all ${tab === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
               >
                 <Icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{label ?? t(labelKey)}</span>

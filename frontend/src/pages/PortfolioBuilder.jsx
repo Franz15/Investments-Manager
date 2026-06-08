@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ToggleChip from '../components/ToggleChip';
 import api from '../services/api';
 import {
   ExternalLink,
@@ -18,6 +19,9 @@ import {
   ChevronRight,
   Layers,
   RefreshCw,
+  RotateCcw,
+  Save,
+  Plus,
 } from 'lucide-react';
 import {
   DEFAULT_PORTFOLIO_ALLOCATION,
@@ -35,6 +39,15 @@ const PortfolioBuilder = () => {
   const [portfolioData, setPortfolioData] = useState(null);
   const [expandedSections, setExpandedSections] = useState(new Set(['calculator']));
   const [expandedVideos, setExpandedVideos] = useState(new Set());
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 640
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Estado para la tabla de cálculos interactiva
   const [calculatorData, setCalculatorData] = useState({
@@ -459,13 +472,14 @@ const PortfolioBuilder = () => {
             ? { ...f, showInSection: true }
             : f
         );
-        // For RV extras, update section.funds directly to preserve _seq on existing items
+        // En RV el fondo nuevo entra en la DISTRIBUCIÓN (con peso), no como extra suelto,
+        // para que muestre %. Recibe el % más bajo actual y se resta ese total a partes
+        // iguales del resto (mantiene la suma en 100%).
         if (catKey === 'Renta Variable') {
           const foundFund = prev.fundsList.find(
             (f) => (f.isin || '').trim() === isinNorm && f.category === catKey
           );
           if (foundFund) {
-            const newFundEntry = { ...mapFundToSection({ ...foundFund, _seq: newSeq }) };
             return {
               ...prev,
               fundsList: updatedFundsList,
@@ -475,9 +489,30 @@ const PortfolioBuilder = () => {
                 excludedFundIsinsByCategory ?? prev.excludedFundIsinsByCategory ?? {},
               sections: prev.sections.map((s) => {
                 if (s.number !== 3) return s;
-                const alreadyIn = (s.funds || []).some((f) => (f.isin || '').trim() === isinNorm);
-                if (alreadyIn) return s;
-                return { ...s, funds: [...(s.funds || []), newFundEntry] };
+                const dist = s.distribution || [];
+                // si ya está en la distribución, no duplicar
+                if (dist.some((d) => (d.isin || '').trim() === isinNorm)) return s;
+                const currentPcts = dist.map((d) => parsePct(d.percentage));
+                const n = currentPcts.length;
+                // El nuevo entra empatando con el menor y el resto cede de forma
+                // PROPORCIONAL (el grande cede más): x = 100·min/(100+min); los
+                // existentes se escalan por (100-x)/100. Se guardan con decimales
+                // para que añadir/retirar sea reversible (display redondea aparte).
+                const minExisting = n > 0 ? Math.min(...currentPcts) : 0;
+                const newPct = n > 0 ? (100 * minExisting) / (100 + minExisting) : 100;
+                const scale = (100 - newPct) / 100;
+                const newItem = {
+                  ...mapFundToSection({ ...foundFund, _seq: newSeq }),
+                  amount: null,
+                  calculatedAmount: null,
+                  percentage: `${newPct.toFixed(4)}%`,
+                };
+                const newDist = dist.map((d, i) => ({
+                  ...d,
+                  percentage: `${(currentPcts[i] * scale).toFixed(4)}%`,
+                }));
+                newDist.push(newItem);
+                return { ...s, distribution: newDist };
               }),
             };
           }
@@ -799,7 +834,9 @@ const PortfolioBuilder = () => {
     });
   };
 
-  // Eliminar un fondo de la distribución RV; se reparten su % entre el resto manteniendo proporción
+  // Eliminar un fondo de la distribución RV; el resto se escala de forma PROPORCIONAL
+  // hasta sumar 100 (inverso exacto del añadir proporcional → añadir y quitar restaura
+  // los % originales). Se guarda con decimales para evitar drift por redondeo.
   const removeRvFundFromDistribution = (idx) => {
     setPortfolioData((prev) => {
       if (!prev?.sections) return prev;
@@ -809,11 +846,12 @@ const PortfolioBuilder = () => {
           if (s.number !== 3 || !s.distribution) return s;
           const dist = s.distribution.filter((_, i) => i !== idx);
           if (dist.length === 0) return { ...s, distribution: [] };
-          const currentPcts = dist.map((d) => parsePct(d.percentage));
-          const newPcts = redistributePercentages(currentPcts);
+          const pcts = dist.map((d) => parsePct(d.percentage));
+          const sum = pcts.reduce((a, b) => a + b, 0);
+          const scale = sum > 0 ? 100 / sum : 1;
           const nextDist = dist.map((d, i) => ({
             ...d,
-            percentage: `${newPcts[i]}%`,
+            percentage: `${(pcts[i] * scale).toFixed(4)}%`,
           }));
           return { ...s, distribution: nextDist };
         }),
@@ -1156,6 +1194,21 @@ const PortfolioBuilder = () => {
     return totalAmount * (weight / 100);
   };
 
+  // Ajusta el peso de una categoría limitándolo a lo que queda hasta 100%.
+  // Compartido por la tabla (desktop) y las tarjetas (móvil).
+  const handleWeightChange = (index, rawValue) => {
+    const newValue = parseFloat(rawValue) || 0;
+    const sumOfOthers = calculatorData.categories.reduce((sum, cat, idx) => {
+      if (idx === index) return sum;
+      return sum + (parseFloat(cat.weight) || 0);
+    }, 0);
+    const maxAllowed = 100 - sumOfOthers;
+    const limitedValue = Math.min(Math.max(0, newValue), maxAllowed);
+    const newCategories = [...calculatorData.categories];
+    newCategories[index].weight = limitedValue;
+    setCalculatorData({ ...calculatorData, categories: newCategories });
+  };
+
   // Función para calcular el monto de un fondo basado en la categoría
   const calculateFundAmount = (section, subsection = null) => {
     if (!portfolioData || !calculatorData) return null;
@@ -1271,23 +1324,13 @@ const PortfolioBuilder = () => {
               {t('portfolioBuilder.subtitle')}
             </p>
           </div>
-          <label className="flex items-center gap-3 cursor-pointer select-none mt-1">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Solo fondos responsables
-            </span>
-            <div
-              onClick={() => handleEsgOnlyChange(!esgOnly)}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                esgOnly ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                  esgOnly ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </div>
-          </label>
+          <div className="mt-1">
+            <ToggleChip
+              checked={esgOnly}
+              onChange={handleEsgOnlyChange}
+              label="Solo fondos responsables"
+            />
+          </div>
         </div>
       </div>
 
@@ -1420,79 +1463,90 @@ const PortfolioBuilder = () => {
 
               {/* Etiquetas de escala — posicionadas absolutamente para alinearse con el track */}
               <div className="relative h-8 mt-1 text-xs text-gray-500 dark:text-gray-400 select-none">
-                {[
-                  ...calculatorData.categories.map((cat) => ({
-                    value: cat.expectedReturn,
-                    label: `${cat.expectedReturn.toFixed(1)}%`,
-                    title: `${getCategoryDisplayName(cat.name)}: ${cat.expectedReturn}%`,
-                  })),
-                  // Marca Cartera1 (equilibrado de referencia)
-                  {
-                    value: cartera1Return,
-                    label: `${cartera1Return.toFixed(1)}%`,
-                    title: 'Cartera1 — equilibrado',
-                    isCartera1: true,
-                  },
-                  // Marca extra de referencia
-                  { value: 7, label: '7.0%', title: 'Referencia: 7%' },
-                ]
-                  .sort((a, b) => a.value - b.value)
-                  .map((mark) => {
-                    const pct =
-                      ((mark.value - minExpectedReturn) / (maxExpectedReturn - minExpectedReturn)) *
-                      100;
-                    const isActive = Math.abs(currentTotalReturnNum - mark.value) < 0.3;
-                    const isC1 = mark.isCartera1;
-                    return (
-                      <button
-                        key={mark.value}
-                        type="button"
-                        onClick={() => applyTargetReturn(mark.value)}
-                        className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5 hover:opacity-90 transition-opacity"
-                        style={{ left: `${pct}%` }}
-                        title={mark.title}
-                      >
-                        {/* Línea indicadora — más larga y coloreada para Cartera1 */}
-                        <span
-                          className={`rounded-full ${isC1 ? 'w-0.5 h-3' : 'w-px h-2'}`}
-                          style={{
-                            backgroundColor:
-                              isC1 && !isActive
-                                ? isDark
-                                  ? 'var(--user-color-500)'
-                                  : 'var(--user-color-500)'
-                                : isActive
-                                  ? isDark
-                                    ? 'var(--user-color-400)'
-                                    : 'var(--user-color-600)'
-                                  : 'currentColor',
-                          }}
-                        />
-                        {/* Valor */}
-                        <span
-                          style={
-                            isActive
-                              ? isDark
-                                ? { color: 'var(--user-color-300)', fontWeight: 700 }
-                                : { color: 'var(--user-color-700)', fontWeight: 700 }
-                              : isC1
-                                ? isDark
-                                  ? { color: 'var(--user-color-400)', fontWeight: 600 }
-                                  : { color: 'var(--user-color-600)', fontWeight: 600 }
-                                : {}
-                          }
+                {(() => {
+                  let lastShownPct = -Infinity;
+                  return [
+                    ...calculatorData.categories.map((cat) => ({
+                      value: cat.expectedReturn,
+                      label: `${cat.expectedReturn.toFixed(1)}%`,
+                      title: `${getCategoryDisplayName(cat.name)}: ${cat.expectedReturn}%`,
+                    })),
+                    // Marca Cartera1 (equilibrado de referencia)
+                    {
+                      value: cartera1Return,
+                      label: `${cartera1Return.toFixed(1)}%`,
+                      title: 'Cartera1 — equilibrado',
+                      isCartera1: true,
+                    },
+                    // Marca extra de referencia
+                    { value: 7, label: '7.0%', title: 'Referencia: 7%' },
+                  ]
+                    .sort((a, b) => a.value - b.value)
+                    .map((mark) => {
+                      const pct =
+                        ((mark.value - minExpectedReturn) /
+                          (maxExpectedReturn - minExpectedReturn)) *
+                        100;
+                      const isActive = Math.abs(currentTotalReturnNum - mark.value) < 0.3;
+                      const isC1 = mark.isCartera1;
+                      // Anti-colisión en móvil: oculta el TEXTO (no la marca) si queda
+                      // demasiado pegado a la última etiqueta mostrada. El valor activo
+                      // ya se ve grande en la cabecera, así que no se fuerza aquí.
+                      const showLabel = !isMobile || pct - lastShownPct >= 11;
+                      if (showLabel) lastShownPct = pct;
+                      return (
+                        <button
+                          key={mark.value}
+                          type="button"
+                          onClick={() => applyTargetReturn(mark.value)}
+                          className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5 hover:opacity-90 transition-opacity"
+                          style={{ left: `${pct}%` }}
+                          title={mark.title}
                         >
-                          {mark.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                          {/* Línea indicadora — más larga y coloreada para Cartera1 */}
+                          <span
+                            className={`rounded-full ${isC1 ? 'w-0.5 h-3' : 'w-px h-2'}`}
+                            style={{
+                              backgroundColor:
+                                isC1 && !isActive
+                                  ? isDark
+                                    ? 'var(--user-color-500)'
+                                    : 'var(--user-color-500)'
+                                  : isActive
+                                    ? isDark
+                                      ? 'var(--user-color-400)'
+                                      : 'var(--user-color-600)'
+                                    : 'currentColor',
+                            }}
+                          />
+                          {/* Valor */}
+                          {showLabel && (
+                            <span
+                              style={
+                                isActive
+                                  ? isDark
+                                    ? { color: 'var(--user-color-300)', fontWeight: 700 }
+                                    : { color: 'var(--user-color-700)', fontWeight: 700 }
+                                  : isC1
+                                    ? isDark
+                                      ? { color: 'var(--user-color-400)', fontWeight: 600 }
+                                      : { color: 'var(--user-color-600)', fontWeight: 600 }
+                                    : {}
+                              }
+                            >
+                              {mark.label}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    });
+                })()}
               </div>
             </div>
 
-            {/* Tabla de asignación */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse">
+            {/* Tabla de asignación — desktop */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full min-w-[600px] border-collapse">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-[#1d1d1f]">
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
@@ -1530,31 +1584,7 @@ const PortfolioBuilder = () => {
                           min="0"
                           max="100"
                           value={category.weight}
-                          onChange={(e) => {
-                            const newValue = parseFloat(e.target.value) || 0;
-
-                            // Calcular la suma de los otros pesos (excluyendo el actual)
-                            const sumOfOthers = calculatorData.categories.reduce(
-                              (sum, cat, idx) => {
-                                if (idx === index) return sum;
-                                return sum + (parseFloat(cat.weight) || 0);
-                              },
-                              0
-                            );
-
-                            // Calcular el máximo permitido para este peso
-                            const maxAllowed = 100 - sumOfOthers;
-
-                            // Limitar el valor al máximo permitido
-                            const limitedValue = Math.min(Math.max(0, newValue), maxAllowed);
-
-                            const newCategories = [...calculatorData.categories];
-                            newCategories[index].weight = limitedValue;
-                            setCalculatorData({
-                              ...calculatorData,
-                              categories: newCategories,
-                            });
-                          }}
+                          onChange={(e) => handleWeightChange(index, e.target.value)}
                           className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1d1d1f] text-gray-900 dark:text-gray-100 text-center text-sm font-semibold"
                         />
                         <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">%</span>
@@ -1659,20 +1689,205 @@ const PortfolioBuilder = () => {
                 </tbody>
               </table>
             </div>
-            {/* Guardar configuración en BBDD */}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={savePortfolioConfig}
-                disabled={saving || !portfolioData}
-                className="px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--user-color-600)' }}
+
+            {/* Asignación — móvil: tarjetas apiladas (sin scroll lateral) */}
+            <div className="sm:hidden space-y-3">
+              {allocationValues.categories.map((category, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {getCategoryDisplayName(category.name)}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 italic mt-0.5">
+                        {translateCategoryDescription(category.name) || category.description}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {formatCurrency(category.amount)}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 items-end">
+                    <div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        {t('portfolioBuilder.calculator.expectedReturn')}
+                      </p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {category.expectedReturn.toFixed(2)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        {t('portfolioBuilder.calculator.portfolioReturn')}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {(category.portfolioReturn * 100).toFixed(2)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        {t('portfolioBuilder.calculator.weight')}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={category.weight}
+                          onChange={(e) => handleWeightChange(index, e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-[#1d1d1f] text-gray-900 dark:text-gray-100 text-center text-sm font-semibold"
+                        />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Resumen total */}
+              <div
+                className={`rounded-lg border border-gray-200 dark:border-gray-700 p-4 ${
+                  totalWeightSum > 100 ? 'bg-red-50 dark:bg-red-900/20' : ''
+                }`}
+                style={
+                  totalWeightSum <= 100
+                    ? isDark
+                      ? { backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.1)` }
+                      : { backgroundColor: 'var(--user-color-50)' }
+                    : {}
+                }
               >
-                {saving ? 'Guardando…' : 'Guardar cambios'}
-              </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {t('portfolioBuilder.calculator.total')}
+                    {totalWeightSum !== 100 && (
+                      <span
+                        className={`ml-2 text-xs font-normal ${
+                          totalWeightSum > 100
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-yellow-600 dark:text-yellow-400'
+                        }`}
+                      >
+                        ({totalWeightSum.toFixed(1)}%)
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className="text-sm font-semibold"
+                    style={
+                      isDark
+                        ? { color: 'var(--user-color-400)' }
+                        : { color: 'var(--user-color-900)' }
+                    }
+                  >
+                    {allocationValues.totalReturn}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {t('portfolioBuilder.calculator.riskProfile')}
+                  </span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      riskProfile.color === 'green'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                        : riskProfile.color === 'yellow'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                          : riskProfile.color === 'orange'
+                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                            : riskProfile.color === 'red'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                    }`}
+                    style={
+                      riskProfile.color === 'blue'
+                        ? isDark
+                          ? {
+                              backgroundColor: `rgba(var(--user-color-600-rgb, 2, 132, 199), 0.2)`,
+                              color: 'var(--user-color-300)',
+                            }
+                          : {
+                              backgroundColor: 'var(--user-color-100)',
+                              color: 'var(--user-color-800)',
+                            }
+                        : {}
+                    }
+                  >
+                    {riskProfile.profile}
+                  </span>
+                </div>
+                {totalWeightSum > 100 && (
+                  <span className="block mt-2 text-xs text-red-600 dark:text-red-400 font-medium">
+                    {t('portfolioBuilder.calculator.weightSumWarning')}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Guardar configuración en BBDD */}
+            <div className="mt-4 space-y-2">
+              {showResetConfirm ? (
+                <>
+                  <span className="block text-sm text-red-600 dark:text-red-400">
+                    ¿Seguro? Se borrará toda la configuración personalizada.
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={resetPortfolioConfig}
+                      disabled={resetting}
+                      className="flex flex-1 sm:flex-none justify-center items-center px-3 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50"
+                    >
+                      {resetting ? 'Reseteando…' : 'Sí, resetear'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowResetConfirm(false)}
+                      className="flex flex-1 sm:flex-none justify-center items-center px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={savePortfolioConfig}
+                    disabled={saving || !portfolioData}
+                    className="btn-primary flex flex-1 sm:flex-none justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={refreshFundMetrics}
+                    disabled={refreshingMetrics}
+                    className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 flex flex-shrink-0 items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Actualizar rentabilidad y volatilidad 12M desde Morningstar"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshingMetrics ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">
+                      {refreshingMetrics ? 'Actualizando…' : 'Actualizar métricas'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    className="px-3 py-2 text-sm rounded-lg border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex flex-shrink-0 items-center justify-center gap-1.5"
+                    title="Resetear configuración"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span className="hidden sm:inline">Resetear configuración</span>
+                  </button>
+                </div>
+              )}
               {saveMessage && (
                 <span
-                  className={`text-sm ${
+                  className={`block text-sm ${
                     saveMessage.type === 'success'
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-red-600 dark:text-red-400'
@@ -1681,57 +1896,15 @@ const PortfolioBuilder = () => {
                   {saveMessage.text}
                 </span>
               )}
-              <div className="ml-auto flex items-center gap-2">
-                {refreshResult && (
-                  <span
-                    className={`text-sm ${refreshResult.error ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}
-                  >
-                    {refreshResult.error
-                      ? `Error: ${refreshResult.error}`
-                      : `✓ ${refreshResult.updated} fondos actualizados${refreshResult.failed ? `, ${refreshResult.failed} sin datos` : ''}`}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={refreshFundMetrics}
-                  disabled={refreshingMetrics}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Actualizar rentabilidad y volatilidad 12M desde Morningstar"
+              {refreshResult && (
+                <span
+                  className={`block text-sm ${refreshResult.error ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${refreshingMetrics ? 'animate-spin' : ''}`} />
-                  {refreshingMetrics ? 'Actualizando…' : 'Actualizar métricas'}
-                </button>
-                {showResetConfirm ? (
-                  <>
-                    <span className="text-sm text-red-600 dark:text-red-400">
-                      ¿Seguro? Se borrará toda la configuración personalizada.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={resetPortfolioConfig}
-                      disabled={resetting}
-                      className="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50"
-                    >
-                      {resetting ? 'Reseteando…' : 'Sí, resetear'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowResetConfirm(false)}
-                      className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                    >
-                      Cancelar
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirm(true)}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    Resetear configuración
-                  </button>
-                )}
-              </div>
+                  {refreshResult.error
+                    ? `Error: ${refreshResult.error}`
+                    : `✓ ${refreshResult.updated} fondos actualizados${refreshResult.failed ? `, ${refreshResult.failed} sin datos` : ''}`}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -1952,7 +2125,7 @@ const PortfolioBuilder = () => {
                         {t('portfolioBuilder.sections.ratios.title')}
                       </h3>
                       <div className="overflow-x-auto">
-                        <table className="min-w-full">
+                        <table className="w-full min-w-[600px]">
                           <thead className="bg-gray-100 dark:bg-[#1d1d1f]">
                             <tr>
                               <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -2052,6 +2225,12 @@ const PortfolioBuilder = () => {
                       return aSeq - bSeq;
                     });
 
+                    // % de display: enteros que suman 100 (largest-remainder) a partir
+                    // de los valores precisos almacenados (que pueden tener decimales).
+                    const distDisplay = redistributePercentages(
+                      (section.distribution || []).map((d) => parsePct(d.percentage))
+                    );
+
                     return (
                       <div className="mb-6">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -2070,7 +2249,7 @@ const PortfolioBuilder = () => {
                             if (mergedItem._type === 'dist') {
                               const item = mergedItem;
                               const idx = item._realIdx;
-                              const percentage = parseFloat(item.percentage?.replace('%', '') || 0);
+                              const percentage = distDisplay[idx] ?? 0;
                               const dynamicAmount = dynamicTotal * (percentage / 100);
 
                               if (item.name) {
@@ -2119,7 +2298,7 @@ const PortfolioBuilder = () => {
                                       </div>
                                       <div className="text-right">
                                         <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                          {item.percentage}
+                                          {percentage}%
                                         </p>
                                         {dynamicAmount > 0 && (
                                           <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -2179,7 +2358,7 @@ const PortfolioBuilder = () => {
                                       </div>
                                       <div className="text-right">
                                         <p className="font-bold text-gray-900 dark:text-gray-100">
-                                          {item.percentage}
+                                          {percentage}%
                                         </p>
                                         {dynamicAmount > 0 && (
                                           <p
@@ -2615,22 +2794,24 @@ const PortfolioBuilder = () => {
                     })()}
 
                   {/* Botones de acción — siempre al final */}
-                  <div className="flex flex-wrap gap-2 mt-3 mb-4">
+                  <div className="flex gap-2 mt-3 mb-4">
                     {section.number === 3 ? (
                       <button
                         type="button"
                         onClick={addRvFundToDistribution}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
                       >
-                        + Añadir fondo
+                        <Plus className="h-4 w-4 flex-shrink-0" />
+                        Añadir fondo
                       </button>
                     ) : currentCategoryKey ? (
                       <button
                         type="button"
                         onClick={() => addManualFundToSection(currentCategoryKey)}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
                       >
-                        + Añadir fondo
+                        <Plus className="h-4 w-4 flex-shrink-0" />
+                        Añadir fondo
                       </button>
                     ) : null}
                     {portfolioData?.fundsList &&
@@ -2646,9 +2827,20 @@ const PortfolioBuilder = () => {
                             type="button"
                             onClick={() => addExtraFund(currentCategoryKey)}
                             disabled={isAdding}
-                            className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+                            className="btn-primary flex flex-1 sm:flex-none justify-center items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Añadir el siguiente fondo de la lista"
                           >
-                            {isAdding ? 'Añadiendo…' : '+ Añadir más (siguiente de la lista)'}
+                            <Plus className="h-4 w-4 flex-shrink-0" />
+                            {isAdding ? (
+                              'Añadiendo…'
+                            ) : (
+                              <>
+                                <span className="sm:hidden">Siguiente</span>
+                                <span className="hidden sm:inline">
+                                  Añadir más (siguiente de la lista)
+                                </span>
+                              </>
+                            )}
                           </button>
                         );
                       })()}

@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ToggleChip from '../components/ToggleChip';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -120,6 +121,15 @@ const Dashboard = () => {
   const [includeBusinessAccounts, setIncludeBusinessAccounts] = useState(false);
   const navigate = useNavigate();
   const resizeTimeoutRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 640
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const getTypeLabel = (type, isAutomatedPortfolio = false) => {
     if (isAutomatedPortfolio) {
@@ -535,7 +545,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      <div className="mb-2 flex justify-between items-start">
+      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
             {t('dashboard.title')}
@@ -545,17 +555,11 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeBusinessAccounts}
-              onChange={(e) => setIncludeBusinessAccounts(e.target.checked)}
-              className="rounded"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t('dashboard.includeBusinessAccounts')}
-            </span>
-          </label>
+          <ToggleChip
+            checked={includeBusinessAccounts}
+            onChange={setIncludeBusinessAccounts}
+            label={t('dashboard.includeBusinessAccounts')}
+          />
         </div>
       </div>
 
@@ -1131,25 +1135,27 @@ const Dashboard = () => {
           <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
             {t('dashboard.byAssetClass')}
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
             <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
               <Pie
                 data={distributionByAssetClass}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={95}
+                innerRadius={isMobile ? 50 : 60}
+                outerRadius={isMobile ? 80 : 95}
                 paddingAngle={2}
                 dataKey="value"
                 stroke={isDark ? '#2c2c2e' : '#fff'}
                 strokeWidth={2}
-                label={({ name, percent }) =>
-                  percent >= 0.08 ? `${name} ${(percent * 100).toFixed(0)}%` : ''
+                label={
+                  isMobile
+                    ? false
+                    : ({ name, percent }) =>
+                        percent >= 0.08 ? `${name} ${(percent * 100).toFixed(0)}%` : ''
                 }
-                labelLine={{
-                  stroke: isDark ? '#525252' : '#d1d5db',
-                  strokeWidth: 1,
-                }}
+                labelLine={
+                  isMobile ? false : { stroke: isDark ? '#525252' : '#d1d5db', strokeWidth: 1 }
+                }
                 isAnimationActive
                 animationDuration={600}
                 animationEasing="ease-out"
@@ -1194,6 +1200,28 @@ const Dashboard = () => {
               />
             </PieChart>
           </ResponsiveContainer>
+          {isMobile && (
+            <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+              {distributionByAssetClass.map((entry, index) => {
+                const color = ASSET_CLASS_COLORS[entry.name] || COLORS[index % COLORS.length];
+                const total = distributionByAssetClass.reduce((s, d) => s + d.value, 0);
+                const pct = total > 0 ? (entry.value / total) * 100 : 0;
+                return (
+                  <span
+                    key={`legend-class-${index}`}
+                    className="inline-flex items-center gap-1.5 text-xs"
+                    style={{ color: 'var(--tc-text-2)' }}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    {entry.name} {pct.toFixed(0)}%
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {distributionByAssetType.length > 0 && (
@@ -1201,28 +1229,30 @@ const Dashboard = () => {
             <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
               {t('dashboard.byAssetType')}
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
               <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                 <Pie
                   data={distributionByAssetType}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={95}
+                  innerRadius={isMobile ? 50 : 60}
+                  outerRadius={isMobile ? 80 : 95}
                   paddingAngle={2}
                   dataKey="value"
                   stroke={isDark ? '#2c2c2e' : '#fff'}
                   strokeWidth={2}
                   nameKey="id"
-                  label={({ id, percent }) =>
-                    percent >= 0.08
-                      ? `${t(`dashboard.assetType.${id}`)} ${(percent * 100).toFixed(0)}%`
-                      : ''
+                  label={
+                    isMobile
+                      ? false
+                      : ({ id, percent }) =>
+                          percent >= 0.08
+                            ? `${t(`dashboard.assetType.${id}`)} ${(percent * 100).toFixed(0)}%`
+                            : ''
                   }
-                  labelLine={{
-                    stroke: isDark ? '#525252' : '#d1d5db',
-                    strokeWidth: 1,
-                  }}
+                  labelLine={
+                    isMobile ? false : { stroke: isDark ? '#525252' : '#d1d5db', strokeWidth: 1 }
+                  }
                   isAnimationActive
                   animationDuration={600}
                   animationEasing="ease-out"
@@ -1269,6 +1299,28 @@ const Dashboard = () => {
                 />
               </PieChart>
             </ResponsiveContainer>
+            {isMobile && (
+              <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+                {distributionByAssetType.map((entry, index) => {
+                  const color = ASSET_TYPE_COLORS[entry.id] || COLORS[index % COLORS.length];
+                  const total = distributionByAssetType.reduce((s, d) => s + d.value, 0);
+                  const pct = total > 0 ? (entry.value / total) * 100 : 0;
+                  return (
+                    <span
+                      key={`legend-type-${entry.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs"
+                      style={{ color: 'var(--tc-text-2)' }}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      {t(`dashboard.assetType.${entry.id}`)} {pct.toFixed(0)}%
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1307,13 +1359,17 @@ const Dashboard = () => {
               <YAxis
                 type="category"
                 dataKey="bankName"
-                width={140}
-                tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }}
+                width={isMobile ? 72 : 140}
+                tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: isMobile ? 11 : 12 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => (v && v.length > 18 ? v.slice(0, 17) + '…' : v)}
+                tickFormatter={(v) => {
+                  const max = isMobile ? 10 : 18;
+                  return v && v.length > max ? v.slice(0, max - 1) + '…' : v;
+                }}
               />
               <Tooltip
+                trigger={isMobile ? 'click' : 'hover'}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const entry = payload[0].payload;
