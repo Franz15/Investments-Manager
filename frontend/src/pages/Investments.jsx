@@ -1194,28 +1194,40 @@ const Investments = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {t('investments.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">{t('investments.subtitle')}</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="btn-primary flex flex-1 sm:flex-none justify-center items-center"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            {t('investments.newInvestment')}
+          </button>
           <button
             onClick={() => handleUpdateAllPrices(false)}
             disabled={updatingPrices}
-            className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-secondary flex flex-shrink-0 items-center justify-center px-3 sm:px-6 disabled:opacity-50 disabled:cursor-not-allowed"
             title={t('investments.updatePricesTooltip')}
           >
-            <DollarSign className={`h-5 w-5 mr-2 ${updatingPrices ? 'animate-spin' : ''}`} />
-            {updatingPrices ? t('investments.updatingPrices') : t('investments.updatePrices')}
+            <DollarSign className={`h-5 w-5 sm:mr-2 ${updatingPrices ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">
+              {updatingPrices ? t('investments.updatingPrices') : t('investments.updatePrices')}
+            </span>
           </button>
           {investmentsWithAutoUpdateSupport.length > 0 && (
             <button
               onClick={handleToggleAllAutoUpdate}
               disabled={updatingAutoUpdateAll}
-              className={`btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`btn-secondary flex flex-shrink-0 items-center justify-center px-3 sm:px-6 disabled:opacity-50 disabled:cursor-not-allowed ${
                 allAutoUpdateOn
                   ? 'text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   : 'text-user-accent hover:text-user-accent border-user-accent hover:border-user-accent'
@@ -1227,25 +1239,17 @@ const Investments = () => {
               }
             >
               <RefreshCw
-                className={`h-5 w-5 mr-2 shrink-0 ${updatingAutoUpdateAll ? 'animate-spin' : ''}`}
+                className={`h-5 w-5 sm:mr-2 shrink-0 ${updatingAutoUpdateAll ? 'animate-spin' : ''}`}
               />
-              {updatingAutoUpdateAll
-                ? t('investments.updatingPrices')
-                : allAutoUpdateOn
-                  ? t('investments.automaticUpdateDeactivateAll')
-                  : t('investments.automaticUpdateActivateAll')}
+              <span className="hidden sm:inline">
+                {updatingAutoUpdateAll
+                  ? t('investments.updatingPrices')
+                  : allAutoUpdateOn
+                    ? t('investments.automaticUpdateDeactivateAll')
+                    : t('investments.automaticUpdateActivateAll')}
+              </span>
             </button>
           )}
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            className="btn-primary flex items-center"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            {t('investments.newInvestment')}
-          </button>
         </div>
       </div>
 
@@ -3398,8 +3402,8 @@ const Investments = () => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full min-w-[640px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700">
                           <th className="text-left py-2 text-gray-700 dark:text-gray-300">Fecha</th>
@@ -3498,6 +3502,92 @@ const Investments = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Historial — móvil: tarjetas (sin scroll lateral) */}
+                  <div className="sm:hidden space-y-2">
+                    {investmentHistory.map((entry) => (
+                      <div
+                        key={entry._id}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              entry.operation === 'creation'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : entry.operation === 'add'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : entry.operation === 'withdraw'
+                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {getOperationLabel(entry.operation)}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(entry.date).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          {!selectedInvestment.isAutomatedPortfolio && (
+                            <div className="flex justify-between gap-3">
+                              <span className="text-gray-500 dark:text-gray-400">Cantidad</span>
+                              <span className="text-gray-700 dark:text-gray-300">
+                                {entry.quantity}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-3">
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {selectedInvestment.isAutomatedPortfolio
+                                ? 'Valor Total'
+                                : 'Precio Unitario'}
+                            </span>
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {formatPrice(entry.currentPrice, selectedInvestment.currency)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <span className="text-gray-500 dark:text-gray-400">Valor Total</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {new Intl.NumberFormat('es-ES', {
+                                style: 'currency',
+                                currency: selectedInvestment.currency,
+                              }).format(entry.totalValue)}
+                            </span>
+                          </div>
+                          {entry.notes && (
+                            <div className="flex justify-between gap-3">
+                              <span className="text-gray-500 dark:text-gray-400">Notas</span>
+                              <span className="text-gray-600 dark:text-gray-400 text-right">
+                                {entry.notes}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                          <button
+                            onClick={() => handleEditHistoryEntry(entry)}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            title={t('investments.actions.edit')}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteHistoryEntry(entry._id)}
+                            className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            title={t('investments.actions.delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </>
               ) : (
@@ -5517,7 +5607,7 @@ const Investments = () => {
               </div>
 
               {/* Botones de acción */}
-              <div className="flex gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <button
                   onClick={() => {
                     handleViewHistory(detailInvestment);
