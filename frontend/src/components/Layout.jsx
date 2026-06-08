@@ -97,27 +97,6 @@ const Layout = ({ children }) => {
       : []),
   ];
 
-  /* Flat list for current-page detection */
-  const allSectionItems = [
-    ...investmentsSection,
-    ...(hasFinancesAccess
-      ? [{ name: t('sidebar.finances'), href: '/finances', icon: PiggyBank }]
-      : []),
-    ...(hasBusinessesAccess
-      ? [{ name: t('sidebar.businesses'), href: '/businesses', icon: Briefcase }]
-      : []),
-    ...(isAdmin
-      ? [
-          {
-            name: t('sidebar.adminAccess') || 'Gestión de accesos',
-            href: '/admin/access',
-            icon: ShieldCheck,
-          },
-        ]
-      : []),
-    { name: currentUser?.name || t('sidebar.profile'), href: '/profile', icon: User },
-  ];
-
   /* Bottom nav (mobile) — 5 primary routes */
   const bottomNavItems = [
     { name: t('sidebar.dashboard'), href: '/', icon: LayoutDashboard },
@@ -128,13 +107,6 @@ const Layout = ({ children }) => {
       : []),
     { name: t('sidebar.debts'), href: '/debts', icon: AlertCircle },
   ];
-
-  /* Current page label for mobile header */
-  const currentPage = allSectionItems.find((item) =>
-    item.href === '/'
-      ? location.pathname === '/'
-      : location.pathname === item.href || location.pathname.startsWith(item.href + '/')
-  );
 
   /* ── Helpers ────────────────────────────────────────────────── */
   const isActive = (href) =>
@@ -458,7 +430,11 @@ const Layout = ({ children }) => {
           {/* Mobile sidebar header */}
           <div
             className="flex h-14 items-center justify-between px-4 flex-shrink-0"
-            style={{ borderBottom: `1px solid ${S.border}` }}
+            style={{
+              borderBottom: `1px solid ${S.border}`,
+              paddingTop: 'env(safe-area-inset-top)',
+              height: 'calc(3.5rem + env(safe-area-inset-top))',
+            }}
           >
             <div className="flex items-center gap-2.5">
               <TradeClimbLogo
@@ -568,12 +544,13 @@ const Layout = ({ children }) => {
           sidebarCollapsed ? 'lg:pl-[64px]' : 'lg:pl-56'
         }`}
       >
-        {/* Mobile top header */}
+        {/* Mobile top header — sin barra blanca ni título (ya está en la página) */}
         <div
-          className="sticky top-0 z-30 flex h-14 items-center gap-3 px-4 lg:hidden"
+          className="sticky top-0 z-30 flex h-14 items-center justify-between px-4 lg:hidden"
           style={{
-            background: 'var(--tc-surface)',
-            borderBottom: '1px solid var(--tc-border)',
+            background: 'var(--tc-bg)',
+            paddingTop: 'env(safe-area-inset-top)',
+            height: 'calc(3.5rem + env(safe-area-inset-top))',
           }}
         >
           <button
@@ -583,16 +560,7 @@ const Layout = ({ children }) => {
           >
             <Menu size={20} strokeWidth={2} />
           </button>
-
-          <div className="flex-1 flex items-center justify-between">
-            <span
-              className="font-semibold tracking-tight"
-              style={{ fontSize: '0.9375rem', color: 'var(--tc-text-1)' }}
-            >
-              {currentPage?.name || t('sidebar.appName')}
-            </span>
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
 
         {/* Page content */}

@@ -363,39 +363,45 @@ svg.lucide {
 
   /* ─── Buttons ────────────────────────────────────────────────── */
 
-  /* Primary: user-color background, white text (high contrast on any hue) */
+  /* Primary (tinted): fondo acento translúcido + texto/icono en acento */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: var(--user-color-600, var(--tc-gold));
-    color: #ffffff;
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.16);
+    color: var(--user-color-700, #b58717);
     padding: 0.625rem 1.5rem;
     border-radius: 10px;
     font-weight: 600;
     font-size: 0.875rem;
     letter-spacing: -0.01em;
-    border: none;
+    border: 1px solid rgba(var(--user-color-600-rgb, 201, 150, 26), 0.22);
     cursor: pointer;
-    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow:
-      0 1px 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.2),
-      0 2px 8px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
   }
 
   .btn-primary:hover {
-    background: var(--user-color-700, #b58717);
-    box-shadow:
-      0 4px 12px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.35),
-      0 1px 3px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.23);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.35);
+    color: var(--user-color-800, #92690f);
   }
 
   .btn-primary:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.2);
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.3);
+  }
+
+  .dark .btn-primary {
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.16);
+    color: var(--user-color-300, #e0b65a);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.28);
+  }
+
+  .dark .btn-primary:hover {
+    background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.24);
+    border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.45);
+    color: var(--user-color-200, #eccf8a);
   }
 
   .btn-primary:disabled {
@@ -427,12 +433,9 @@ svg.lucide {
   .btn-secondary:hover {
     background: var(--tc-gold-dim);
     border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.55);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(var(--user-color-600-rgb, 201, 150, 26), 0.12);
   }
 
   .btn-secondary:active {
-    transform: translateY(0);
     box-shadow: none;
   }
 
@@ -443,7 +446,6 @@ svg.lucide {
   .dark .btn-secondary:hover {
     background: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.1);
     border-color: rgba(var(--user-color-600-rgb, 201, 150, 26), 0.5);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   }
 
   /* Ghost: no background */
@@ -894,4 +896,47 @@ input[type='range'].appearance-none::-moz-range-thumb:hover {
 .dark input[type='range'].appearance-none::-moz-range-thumb {
   background: #1d1d1f;
   border-color: var(--user-color-400, #38bdf8);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE TUNING (≤640px) — unlayered so it overrides @layer components
+   without !important. Tightens density, fits tables, shrinks chart text.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Denser cards: 24px padding wastes width on small screens */
+  .card,
+  .stat-card {
+    padding: 1rem;
+  }
+
+  /* Tables: smaller type + momentum scroll so wide tables fit/scroll well */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .card table {
+    font-size: 0.8125rem;
+  }
+
+  /* Scroll hint: faint right-edge fade telling user the table scrolls */
+  .overflow-x-auto {
+    background:
+      linear-gradient(to right, var(--tc-surface) 30%, transparent),
+      linear-gradient(to left, var(--tc-surface) 30%, transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-size:
+      24px 100%,
+      24px 100%;
+    background-attachment: local, local;
+  }
+
+  /* Charts: shrink axis ticks/legend so labels don't collide on narrow width */
+  .recharts-text {
+    font-size: 0.6875rem;
+  }
+
+  .recharts-legend-item-text {
+    font-size: 0.75rem !important;
+  }
 }
