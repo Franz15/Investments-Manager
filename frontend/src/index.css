@@ -299,6 +299,7 @@
   inset: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important; /* descuenta barra del navegador en móvil */
   margin: 0 !important;
   z-index: 9999;
   display: flex;
@@ -586,6 +587,7 @@ svg.lucide {
     border-radius: 20px;
     padding: 1.75rem;
     max-height: 90vh;
+    max-height: 90dvh;
     overflow-y: auto;
     width: calc(100% - 2rem);
     max-width: 560px;

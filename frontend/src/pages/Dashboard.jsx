@@ -1724,7 +1724,7 @@ const Dashboard = () => {
             onClick={() => setShowBalanceTooltip(false)}
           >
             <div
-              className="modal-content max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              className="modal-content max-w-lg w-full max-h-[90dvh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
@@ -2052,7 +2052,7 @@ const Dashboard = () => {
             }}
           >
             <div
-              className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
+              className="modal-content max-w-5xl w-full p-4 h-[90dvh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-start mb-4 flex-shrink-0">

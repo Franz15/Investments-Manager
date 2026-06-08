@@ -1933,619 +1933,650 @@ const Investments = () => {
         createPortal(
           <div className="modal-overlay bg-black/50 dark:bg-black/70 flex items-center justify-center">
             <div
-              className="modal-content max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="modal-content max-w-2xl w-full max-h-[90dvh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex-shrink-0">
                 {editingInvestment
                   ? t('investments.editInvestment')
                   : t('investments.newInvestment')}
               </h2>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Sección: Ubicación */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    {t('investments.form.location')}
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {t('investments.form.allocationsTitle')}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('investments.form.allocationsHelp')}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddAllocation}
-                        className="btn-secondary text-xs"
-                      >
-                        {t('investments.form.addAllocation')}
-                      </button>
-                    </div>
-
-                    {(formData.allocations || []).map((allocation, index) => {
-                      const accountSubAccounts = subAccounts.filter(
-                        (sa) =>
-                          sa.account?._id === allocation.account ||
-                          sa.account === allocation.account
-                      );
-
-                      return (
-                        <div
-                          key={`allocation-${index}`}
-                          className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg space-y-3"
+              <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="flex-1 overflow-y-auto space-y-6 -mr-3 pr-3">
+                  {/* Sección: Ubicación */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      {t('investments.form.location')}
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('investments.form.allocationsTitle')}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t('investments.form.allocationsHelp')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddAllocation}
+                          className="btn-secondary text-xs"
                         >
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('investments.form.allocationAccount')}{' '}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <select
-                                className="input-field"
-                                value={allocation.account}
-                                onChange={(e) => {
-                                  const newAccount = e.target.value;
-                                  updateAllocation(index, {
-                                    account: newAccount,
-                                    subAccount: '',
-                                  });
-                                  if (index === 0) {
-                                    const newCurrency = newAccount
-                                      ? accounts.find((a) => a._id === newAccount)?.currency ||
-                                        'EUR'
-                                      : formData.currency;
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      currency: newCurrency,
-                                    }));
-                                  }
-                                }}
-                                required
-                              >
-                                <option value="">
-                                  {t('investments.form.allocationSelectAccount')}
-                                </option>
-                                {accounts.map((account) => (
-                                  <option key={account._id} value={account._id}>
-                                    {account.bankName} - {account.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                          {t('investments.form.addAllocation')}
+                        </button>
+                      </div>
 
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('investments.form.allocationSubAccount')}
-                              </label>
-                              {!allocation.account ? (
-                                <div className="p-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
-                                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                                    {t('investments.form.selectAccountFirst')}
-                                  </p>
-                                </div>
-                              ) : accountSubAccounts.length === 0 ? (
-                                <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                                    {t('investments.form.noInvestmentSubAccounts')}
-                                  </p>
-                                </div>
-                              ) : (
+                      {(formData.allocations || []).map((allocation, index) => {
+                        const accountSubAccounts = subAccounts.filter(
+                          (sa) =>
+                            sa.account?._id === allocation.account ||
+                            sa.account === allocation.account
+                        );
+
+                        return (
+                          <div
+                            key={`allocation-${index}`}
+                            className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg space-y-3"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  {t('investments.form.allocationAccount')}{' '}
+                                  <span className="text-red-500">*</span>
+                                </label>
                                 <select
                                   className="input-field"
-                                  value={allocation.subAccount}
+                                  value={allocation.account}
                                   onChange={(e) => {
-                                    const newSubAccount = e.target.value;
+                                    const newAccount = e.target.value;
                                     updateAllocation(index, {
-                                      subAccount: newSubAccount,
+                                      account: newAccount,
+                                      subAccount: '',
                                     });
-                                    if (index === 0 && newSubAccount) {
-                                      const newCurrency =
-                                        subAccounts.find((sa) => sa._id === newSubAccount)
-                                          ?.currency || formData.currency;
+                                    if (index === 0) {
+                                      const newCurrency = newAccount
+                                        ? accounts.find((a) => a._id === newAccount)?.currency ||
+                                          'EUR'
+                                        : formData.currency;
                                       setFormData((prev) => ({
                                         ...prev,
                                         currency: newCurrency,
                                       }));
                                     }
                                   }}
+                                  required
                                 >
                                   <option value="">
-                                    {t('investments.form.allocationSelectSubAccount')}
+                                    {t('investments.form.allocationSelectAccount')}
                                   </option>
-                                  {accountSubAccounts.map((subAccount) => (
-                                    <option key={subAccount._id} value={subAccount._id}>
-                                      {subAccount.name}
+                                  {accounts.map((account) => (
+                                    <option key={account._id} value={account._id}>
+                                      {account.bankName} - {account.name}
                                     </option>
                                   ))}
                                 </select>
-                              )}
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  {t('investments.form.allocationSubAccount')}
+                                </label>
+                                {!allocation.account ? (
+                                  <div className="p-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                                      {t('investments.form.selectAccountFirst')}
+                                    </p>
+                                  </div>
+                                ) : accountSubAccounts.length === 0 ? (
+                                  <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                    <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                                      {t('investments.form.noInvestmentSubAccounts')}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <select
+                                    className="input-field"
+                                    value={allocation.subAccount}
+                                    onChange={(e) => {
+                                      const newSubAccount = e.target.value;
+                                      updateAllocation(index, {
+                                        subAccount: newSubAccount,
+                                      });
+                                      if (index === 0 && newSubAccount) {
+                                        const newCurrency =
+                                          subAccounts.find((sa) => sa._id === newSubAccount)
+                                            ?.currency || formData.currency;
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          currency: newCurrency,
+                                        }));
+                                      }
+                                    }}
+                                  >
+                                    <option value="">
+                                      {t('investments.form.allocationSelectSubAccount')}
+                                    </option>
+                                    {accountSubAccounts.map((subAccount) => (
+                                      <option key={subAccount._id} value={subAccount._id}>
+                                        {subAccount.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  {t('investments.form.allocationAmount')}{' '}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  className="input-field"
+                                  value={allocation.amount}
+                                  onChange={(e) =>
+                                    updateAllocation(index, {
+                                      amount: Number(e.target.value),
+                                    })
+                                  }
+                                  required
+                                />
+                              </div>
                             </div>
 
+                            {(formData.allocations || []).length > 1 && (
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAllocation(index)}
+                                  className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                                >
+                                  {t('investments.form.removeAllocation')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          {t('investments.form.allocationsTotal')}:{' '}
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: formData.currency || 'EUR',
+                          }).format(totalAllocatedAmount || 0)}
+                        </span>
+                        <span>
+                          {t('investments.form.summary.investedAmount')}{' '}
+                          {new Intl.NumberFormat('es-ES', {
+                            style: 'currency',
+                            currency: formData.currency || 'EUR',
+                          }).format(investmentAmount || 0)}
+                        </span>
+                        {allocationsMismatch && (
+                          <span className="text-red-600 dark:text-red-400">
+                            {t('investments.form.allocationsMismatch')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección: Información Básica */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      {t('investments.form.basicInfo')}
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('investments.form.investmentNameRequired')}{' '}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t('investments.form.investmentTypeRequired')}{' '}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        className="input-field"
+                        value={
+                          formData.isAutomatedPortfolio ? 'automated_portfolio' : formData.type
+                        }
+                        onChange={(e) => {
+                          const selectedValue = e.target.value;
+                          const isAutomated = selectedValue === 'automated_portfolio';
+                          // Si cambiamos a índice, reseteamos preset seleccionado
+                          const nextType = isAutomated ? 'fund' : selectedValue;
+                          setFormData({
+                            ...formData,
+                            type: nextType,
+                            isAutomatedPortfolio: isAutomated,
+                            purchasePrice: isAutomated ? 0 : formData.purchasePrice,
+                          });
+                          if (nextType !== 'index') {
+                            setSelectedIndexPreset('');
+                          }
+                        }}
+                        required
+                      >
+                        <option value="stock">{t('investments.investmentTypes.stock')}</option>
+                        <option value="index">{t('investments.investmentTypes.index')}</option>
+                        <option value="bond">{t('investments.investmentTypes.bond')}</option>
+                        <option value="crypto">{t('investments.investmentTypes.crypto')}</option>
+                        <option value="fund">{t('investments.investmentTypes.fund')}</option>
+                        <option value="etf">{t('investments.investmentTypes.etf')}</option>
+                        <option value="automated_portfolio">
+                          {t('investments.investmentTypes.automatedPortfolio')}
+                        </option>
+                        <option value="other">{t('investments.investmentTypes.other')}</option>
+                      </select>
+                    </div>
+                    {formData.type === 'index' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.indexPresets.label')}
+                        </label>
+                        <select
+                          className="input-field"
+                          value={selectedIndexPreset}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            setSelectedIndexPreset(id);
+                            const preset = indexPresets.find((p) => p.id === id);
+                            if (preset) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                type: 'index',
+                                name: prev.name || preset.label,
+                                symbol: preset.symbol,
+                                currency: preset.currency || prev.currency,
+                              }));
+                            }
+                          }}
+                        >
+                          <option value="">{t('investments.indexPresets.none')}</option>
+                          {indexPresets.map((preset) => (
+                            <option key={preset.id} value={preset.id}>
+                              {preset.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t('investments.indexPresets.help')}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Símbolo <span className="text-gray-400">(opcional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={formData.symbol}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            symbol: e.target.value.toUpperCase(),
+                          })
+                        }
+                        placeholder={t('investments.form.symbolPlaceholder')}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Ticker o símbolo de la inversión (Ej: AAPL, BTC, NXT.MC)
+                      </p>
+                    </div>
+                    {(formData.type === 'fund' || formData.type === 'bond') &&
+                      !formData.isAutomatedPortfolio && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            ISIN <span className="text-gray-400">(opcional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            value={formData.isin}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                isin: e.target.value.toUpperCase().replace(/\s/g, ''),
+                              })
+                            }
+                            placeholder={t('investments.form.isinPlaceholder')}
+                            maxLength={12}
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Código ISIN para fondos de inversión y bonos (12 caracteres). Si no
+                            tienes símbolo, el sistema intentará buscar por ISIN o nombre.
+                            <br />
+                            <span className="text-amber-600 dark:text-amber-400">
+                              Nota: Las carteras automatizadas no tienen ISIN.
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    {!formData.isAutomatedPortfolio && (
+                      <div className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <input
+                          type="checkbox"
+                          id="isAutomatedPortfolio"
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          checked={formData.isAutomatedPortfolio}
+                          onChange={(e) => {
+                            const isAutomated = e.target.checked;
+                            setFormData({
+                              ...formData,
+                              isAutomatedPortfolio: isAutomated,
+                              purchasePrice: isAutomated ? 0 : formData.purchasePrice,
+                            });
+                          }}
+                        />
+                        <label
+                          htmlFor="isAutomatedPortfolio"
+                          className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {t('investments.form.noUnitPurchasePrice')}
+                        </label>
+                      </div>
+                    )}
+                    {formData.isAutomatedPortfolio && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('investments.form.platformUrl')}{' '}
+                          <span className="text-gray-400">{t('common.optional')}</span>
+                        </label>
+                        <input
+                          type="url"
+                          className="input-field"
+                          value={formData.platformUrl}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              platformUrl: e.target.value,
+                            })
+                          }
+                          placeholder={t('investments.form.platformUrlPlaceholder')}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t('investments.form.platformUrlDescription')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección: Datos Financieros */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      {t('investments.form.financialData')}
+                    </h3>
+                    {formData.isAutomatedPortfolio ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.form.investedAmount')}{' '}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="input-field col-span-3"
+                              value={formData.quantity}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  quantity: parseFloat(e.target.value),
+                                })
+                              }
+                              required
+                              placeholder="0.00"
+                            />
+                            <select
+                              className="input-field"
+                              value={formData.currency}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  currency: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {t('investments.form.investedAmountDescriptionAutomated')}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {t('investments.form.currentAmountRequired')}{' '}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="input-field col-span-3"
+                              value={formData.currentPrice}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  currentPrice: parseFloat(e.target.value),
+                                })
+                              }
+                              required
+                              placeholder="0.00"
+                            />
+                            <select
+                              className="input-field"
+                              value={formData.currency}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  currency: e.target.value,
+                                })
+                              }
+                              disabled
+                            >
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {t('investments.form.currentAmountDescriptionAutomated')}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Modo de entrada: por participaciones+precio o por importe total */}
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('investments.form.howToEnterAmount')}
+                          </span>
+                          <div className="flex flex-wrap gap-4">
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="entryMode"
+                                checked={formData.entryMode === 'by_units'}
+                                onChange={() =>
+                                  setFormData({
+                                    ...formData,
+                                    entryMode: 'by_units',
+                                    totalInvested: formData.quantity * formData.purchasePrice || 0,
+                                  })
+                                }
+                                className="w-4 h-4 text-blue-600"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t('investments.form.entryByUnits')}
+                              </span>
+                            </label>
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="entryMode"
+                                checked={formData.entryMode === 'by_total'}
+                                onChange={() =>
+                                  setFormData({
+                                    ...formData,
+                                    entryMode: 'by_total',
+                                    totalInvested: formData.quantity * formData.purchasePrice || 0,
+                                  })
+                                }
+                                className="w-4 h-4 text-blue-600"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t('investments.form.entryByTotal')}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {formData.entryMode === 'by_units' ? (
+                          <>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('investments.form.allocationAmount')}{' '}
+                                {t('investments.form.unitsOrShares')}{' '}
                                 <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="number"
+                                step="0.0001"
                                 min="0"
-                                step="0.01"
                                 className="input-field"
-                                value={allocation.amount}
-                                onChange={(e) =>
-                                  updateAllocation(index, {
-                                    amount: Number(e.target.value),
-                                  })
-                                }
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          {(formData.allocations || []).length > 1 && (
-                            <div className="flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAllocation(index)}
-                                className="text-xs text-red-600 dark:text-red-400 hover:underline"
-                              >
-                                {t('investments.form.removeAllocation')}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span>
-                        {t('investments.form.allocationsTotal')}:{' '}
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: formData.currency || 'EUR',
-                        }).format(totalAllocatedAmount || 0)}
-                      </span>
-                      <span>
-                        {t('investments.form.summary.investedAmount')}{' '}
-                        {new Intl.NumberFormat('es-ES', {
-                          style: 'currency',
-                          currency: formData.currency || 'EUR',
-                        }).format(investmentAmount || 0)}
-                      </span>
-                      {allocationsMismatch && (
-                        <span className="text-red-600 dark:text-red-400">
-                          {t('investments.form.allocationsMismatch')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sección: Información Básica */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    {t('investments.form.basicInfo')}
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('investments.form.investmentNameRequired')}{' '}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t('investments.form.investmentTypeRequired')}{' '}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="input-field"
-                      value={formData.isAutomatedPortfolio ? 'automated_portfolio' : formData.type}
-                      onChange={(e) => {
-                        const selectedValue = e.target.value;
-                        const isAutomated = selectedValue === 'automated_portfolio';
-                        // Si cambiamos a índice, reseteamos preset seleccionado
-                        const nextType = isAutomated ? 'fund' : selectedValue;
-                        setFormData({
-                          ...formData,
-                          type: nextType,
-                          isAutomatedPortfolio: isAutomated,
-                          purchasePrice: isAutomated ? 0 : formData.purchasePrice,
-                        });
-                        if (nextType !== 'index') {
-                          setSelectedIndexPreset('');
-                        }
-                      }}
-                      required
-                    >
-                      <option value="stock">{t('investments.investmentTypes.stock')}</option>
-                      <option value="index">{t('investments.investmentTypes.index')}</option>
-                      <option value="bond">{t('investments.investmentTypes.bond')}</option>
-                      <option value="crypto">{t('investments.investmentTypes.crypto')}</option>
-                      <option value="fund">{t('investments.investmentTypes.fund')}</option>
-                      <option value="etf">{t('investments.investmentTypes.etf')}</option>
-                      <option value="automated_portfolio">
-                        {t('investments.investmentTypes.automatedPortfolio')}
-                      </option>
-                      <option value="other">{t('investments.investmentTypes.other')}</option>
-                    </select>
-                  </div>
-                  {formData.type === 'index' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('investments.indexPresets.label')}
-                      </label>
-                      <select
-                        className="input-field"
-                        value={selectedIndexPreset}
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          setSelectedIndexPreset(id);
-                          const preset = indexPresets.find((p) => p.id === id);
-                          if (preset) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              type: 'index',
-                              name: prev.name || preset.label,
-                              symbol: preset.symbol,
-                              currency: preset.currency || prev.currency,
-                            }));
-                          }
-                        }}
-                      >
-                        <option value="">{t('investments.indexPresets.none')}</option>
-                        {indexPresets.map((preset) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t('investments.indexPresets.help')}
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Símbolo <span className="text-gray-400">(opcional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      value={formData.symbol}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          symbol: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder={t('investments.form.symbolPlaceholder')}
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Ticker o símbolo de la inversión (Ej: AAPL, BTC, NXT.MC)
-                    </p>
-                  </div>
-                  {(formData.type === 'fund' || formData.type === 'bond') &&
-                    !formData.isAutomatedPortfolio && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          ISIN <span className="text-gray-400">(opcional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="input-field"
-                          value={formData.isin}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              isin: e.target.value.toUpperCase().replace(/\s/g, ''),
-                            })
-                          }
-                          placeholder={t('investments.form.isinPlaceholder')}
-                          maxLength={12}
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Código ISIN para fondos de inversión y bonos (12 caracteres). Si no tienes
-                          símbolo, el sistema intentará buscar por ISIN o nombre.
-                          <br />
-                          <span className="text-amber-600 dark:text-amber-400">
-                            Nota: Las carteras automatizadas no tienen ISIN.
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                  {!formData.isAutomatedPortfolio && (
-                    <div className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <input
-                        type="checkbox"
-                        id="isAutomatedPortfolio"
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        checked={formData.isAutomatedPortfolio}
-                        onChange={(e) => {
-                          const isAutomated = e.target.checked;
-                          setFormData({
-                            ...formData,
-                            isAutomatedPortfolio: isAutomated,
-                            purchasePrice: isAutomated ? 0 : formData.purchasePrice,
-                          });
-                        }}
-                      />
-                      <label
-                        htmlFor="isAutomatedPortfolio"
-                        className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {t('investments.form.noUnitPurchasePrice')}
-                      </label>
-                    </div>
-                  )}
-                  {formData.isAutomatedPortfolio && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('investments.form.platformUrl')}{' '}
-                        <span className="text-gray-400">{t('common.optional')}</span>
-                      </label>
-                      <input
-                        type="url"
-                        className="input-field"
-                        value={formData.platformUrl}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            platformUrl: e.target.value,
-                          })
-                        }
-                        placeholder={t('investments.form.platformUrlPlaceholder')}
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t('investments.form.platformUrlDescription')}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sección: Datos Financieros */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    {t('investments.form.financialData')}
-                  </h3>
-                  {formData.isAutomatedPortfolio ? (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t('investments.form.investedAmount')}{' '}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <div className="grid grid-cols-4 gap-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input-field col-span-3"
-                            value={formData.quantity}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                quantity: parseFloat(e.target.value),
-                              })
-                            }
-                            required
-                            placeholder="0.00"
-                          />
-                          <select
-                            className="input-field"
-                            value={formData.currency}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currency: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                            <option value="GBP">GBP</option>
-                          </select>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {t('investments.form.investedAmountDescriptionAutomated')}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {t('investments.form.currentAmountRequired')}{' '}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <div className="grid grid-cols-4 gap-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input-field col-span-3"
-                            value={formData.currentPrice}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currentPrice: parseFloat(e.target.value),
-                              })
-                            }
-                            required
-                            placeholder="0.00"
-                          />
-                          <select
-                            className="input-field"
-                            value={formData.currency}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currency: e.target.value,
-                              })
-                            }
-                            disabled
-                          >
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                            <option value="GBP">GBP</option>
-                          </select>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {t('investments.form.currentAmountDescriptionAutomated')}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Modo de entrada: por participaciones+precio o por importe total */}
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {t('investments.form.howToEnterAmount')}
-                        </span>
-                        <div className="flex flex-wrap gap-4">
-                          <label className="inline-flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="entryMode"
-                              checked={formData.entryMode === 'by_units'}
-                              onChange={() =>
-                                setFormData({
-                                  ...formData,
-                                  entryMode: 'by_units',
-                                  totalInvested: formData.quantity * formData.purchasePrice || 0,
-                                })
-                              }
-                              className="w-4 h-4 text-blue-600"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {t('investments.form.entryByUnits')}
-                            </span>
-                          </label>
-                          <label className="inline-flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="entryMode"
-                              checked={formData.entryMode === 'by_total'}
-                              onChange={() =>
-                                setFormData({
-                                  ...formData,
-                                  entryMode: 'by_total',
-                                  totalInvested: formData.quantity * formData.purchasePrice || 0,
-                                })
-                              }
-                              className="w-4 h-4 text-blue-600"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {t('investments.form.entryByTotal')}
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {formData.entryMode === 'by_units' ? (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.form.unitsOrShares')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              className="input-field"
-                              value={formData.quantity === 0 ? '' : formData.quantity}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  quantity: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              required={formData.entryMode === 'by_units'}
-                              placeholder={t('investments.form.unitsOrSharesPlaceholder')}
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {t('investments.form.unitsOrSharesDescription')}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.form.purchasePricePerUnit')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              className="input-field"
-                              value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  purchasePrice: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              required={formData.entryMode === 'by_units'}
-                              placeholder="0.0000"
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {t('investments.form.purchasePricePerUnitDescription')}
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.form.totalAmountInvested')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <div className="grid grid-cols-4 gap-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                className="input-field col-span-3"
-                                value={formData.totalInvested === 0 ? '' : formData.totalInvested}
+                                value={formData.quantity === 0 ? '' : formData.quantity}
                                 onChange={(e) =>
                                   setFormData({
                                     ...formData,
-                                    totalInvested: parseFloat(e.target.value) || 0,
+                                    quantity: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                required={formData.entryMode === 'by_units'}
+                                placeholder={t('investments.form.unitsOrSharesPlaceholder')}
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {t('investments.form.unitsOrSharesDescription')}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.form.purchasePricePerUnit')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.0001"
+                                min="0"
+                                className="input-field"
+                                value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    purchasePrice: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                required={formData.entryMode === 'by_units'}
+                                placeholder="0.0000"
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {t('investments.form.purchasePricePerUnitDescription')}
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.form.totalAmountInvested')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <div className="grid grid-cols-4 gap-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  className="input-field col-span-3"
+                                  value={formData.totalInvested === 0 ? '' : formData.totalInvested}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      totalInvested: parseFloat(e.target.value) || 0,
+                                    })
+                                  }
+                                  required={formData.entryMode === 'by_total'}
+                                  placeholder="0.00"
+                                />
+                                <select
+                                  className="input-field"
+                                  value={formData.currency}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      currency: e.target.value,
+                                    })
+                                  }
+                                >
+                                  <option value="EUR">EUR</option>
+                                  <option value="USD">USD</option>
+                                  <option value="GBP">GBP</option>
+                                </select>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {t('investments.form.totalAmountInvestedDescription')}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.form.purchasePricePerUnit')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.0001"
+                                min="0"
+                                className="input-field"
+                                value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    purchasePrice: parseFloat(e.target.value) || 0,
                                   })
                                 }
                                 required={formData.entryMode === 'by_total'}
-                                placeholder="0.00"
+                                placeholder="0.0000"
                               />
-                              <select
-                                className="input-field"
-                                value={formData.currency}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    currency: e.target.value,
-                                  })
-                                }
-                              >
-                                <option value="EUR">EUR</option>
-                                <option value="USD">USD</option>
-                                <option value="GBP">GBP</option>
-                              </select>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {t('investments.form.purchasePricePerUnitForTotal')}
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {t('investments.form.totalAmountInvestedDescription')}
-                            </p>
-                          </div>
+                          </>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.form.purchasePricePerUnit')}{' '}
+                              {t('investments.form.currentPriceRequired')}{' '}
                               <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -2553,543 +2584,520 @@ const Investments = () => {
                               step="0.0001"
                               min="0"
                               className="input-field"
-                              value={formData.purchasePrice === 0 ? '' : formData.purchasePrice}
+                              value={formData.currentPrice === 0 ? '' : formData.currentPrice}
                               onChange={(e) =>
                                 setFormData({
                                   ...formData,
-                                  purchasePrice: parseFloat(e.target.value) || 0,
+                                  currentPrice: parseFloat(e.target.value) || 0,
                                 })
                               }
-                              required={formData.entryMode === 'by_total'}
+                              required
                               placeholder="0.0000"
                             />
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {t('investments.form.purchasePricePerUnitForTotal')}
+                              {t('investments.form.currentPriceDescription')}
                             </p>
                           </div>
-                        </>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t('investments.form.currentPriceRequired')}{' '}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.0001"
-                            min="0"
-                            className="input-field"
-                            value={formData.currentPrice === 0 ? '' : formData.currentPrice}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currentPrice: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            required
-                            placeholder="0.0000"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t('investments.form.currentPriceDescription')}
-                          </p>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {t('investments.form.currencyRequired')}{' '}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              className="input-field"
+                              value={formData.currency}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  currency: e.target.value,
+                                })
+                              }
+                            >
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {t('investments.form.currencyDescription')}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {t('investments.form.currencyRequired')}{' '}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            className="input-field"
-                            value={formData.currency}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                currency: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                            <option value="GBP">GBP</option>
-                          </select>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t('investments.form.currencyDescription')}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Resumen financiero */}
-                      {(() => {
-                        const isAutomated = formData.isAutomatedPortfolio;
-                        const effectiveQuantity =
-                          formData.entryMode === 'by_total' &&
-                          formData.totalInvested > 0 &&
-                          formData.purchasePrice > 0
-                            ? formData.totalInvested / formData.purchasePrice
-                            : formData.quantity;
-                        const hasValidData = isAutomated
-                          ? formData.purchasePrice > 0 && formData.currentPrice > 0
-                          : formData.currentPrice > 0 &&
-                            (formData.entryMode === 'by_total'
-                              ? formData.totalInvested > 0 && formData.purchasePrice > 0
-                              : formData.quantity > 0);
-
-                        if (!hasValidData) return null;
-
-                        if (isAutomated) {
-                          // Resumen para carteras automatizadas
-                          const profitLoss = formData.currentPrice - formData.purchasePrice;
-                          const profitLossPercent =
+                        {/* Resumen financiero */}
+                        {(() => {
+                          const isAutomated = formData.isAutomatedPortfolio;
+                          const effectiveQuantity =
+                            formData.entryMode === 'by_total' &&
+                            formData.totalInvested > 0 &&
                             formData.purchasePrice > 0
-                              ? ((formData.currentPrice - formData.purchasePrice) /
-                                  formData.purchasePrice) *
-                                100
-                              : 0;
-                          return (
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {t('investments.form.summary.currentAmount')}:
-                                </span>
-                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                  {new Intl.NumberFormat('es-ES', {
-                                    style: 'currency',
-                                    currency: formData.currency || 'EUR',
-                                  }).format(formData.currentPrice)}
-                                </span>
-                              </div>
-                              <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    {t('investments.form.summary.investedAmount')}:
+                              ? formData.totalInvested / formData.purchasePrice
+                              : formData.quantity;
+                          const hasValidData = isAutomated
+                            ? formData.purchasePrice > 0 && formData.currentPrice > 0
+                            : formData.currentPrice > 0 &&
+                              (formData.entryMode === 'by_total'
+                                ? formData.totalInvested > 0 && formData.purchasePrice > 0
+                                : formData.quantity > 0);
+
+                          if (!hasValidData) return null;
+
+                          if (isAutomated) {
+                            // Resumen para carteras automatizadas
+                            const profitLoss = formData.currentPrice - formData.purchasePrice;
+                            const profitLossPercent =
+                              formData.purchasePrice > 0
+                                ? ((formData.currentPrice - formData.purchasePrice) /
+                                    formData.purchasePrice) *
+                                  100
+                                : 0;
+                            return (
+                              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {t('investments.form.summary.currentAmount')}:
                                   </span>
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                                     {new Intl.NumberFormat('es-ES', {
                                       style: 'currency',
                                       currency: formData.currency || 'EUR',
-                                    }).format(formData.purchasePrice)}
+                                    }).format(formData.currentPrice)}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between text-xs mt-1">
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    {t('investments.detail.profitLoss')}:
-                                  </span>
-                                  <span
-                                    className={`font-semibold ${profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                                  >
-                                    {profitLoss >= 0 ? '+' : ''}
-                                    {new Intl.NumberFormat('es-ES', {
-                                      style: 'currency',
-                                      currency: formData.currency || 'EUR',
-                                    }).format(profitLoss)}{' '}
-                                    ({profitLossPercent >= 0 ? '+' : ''}
-                                    {profitLossPercent.toFixed(2)}%)
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          // Resumen para inversiones normales
-                          const investedCapital =
-                            formData.entryMode === 'by_total' && formData.totalInvested > 0
-                              ? formData.totalInvested
-                              : effectiveQuantity * formData.purchasePrice;
-                          return (
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {t('investments.form.summary.calculatedTotal')}
-                                </span>
-                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                  {new Intl.NumberFormat('es-ES', {
-                                    style: 'currency',
-                                    currency: formData.currency || 'EUR',
-                                  }).format(effectiveQuantity * formData.currentPrice)}
-                                </span>
-                              </div>
-                              {formData.purchasePrice > 0 && (
                                 <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
                                   <div className="flex items-center justify-between text-xs">
                                     <span className="text-gray-600 dark:text-gray-400">
-                                      {t('investments.form.summary.investedCapital')}
+                                      {t('investments.form.summary.investedAmount')}:
                                     </span>
                                     <span className="font-medium text-gray-700 dark:text-gray-300">
                                       {new Intl.NumberFormat('es-ES', {
                                         style: 'currency',
                                         currency: formData.currency || 'EUR',
-                                      }).format(investedCapital)}
+                                      }).format(formData.purchasePrice)}
                                     </span>
                                   </div>
-                                  {formData.entryMode === 'by_total' && effectiveQuantity > 0 && (
-                                    <div className="flex items-center justify-between text-xs mt-0.5">
+                                  <div className="flex items-center justify-between text-xs mt-1">
+                                    <span className="text-gray-600 dark:text-gray-400">
+                                      {t('investments.detail.profitLoss')}:
+                                    </span>
+                                    <span
+                                      className={`font-semibold ${profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                    >
+                                      {profitLoss >= 0 ? '+' : ''}
+                                      {new Intl.NumberFormat('es-ES', {
+                                        style: 'currency',
+                                        currency: formData.currency || 'EUR',
+                                      }).format(profitLoss)}{' '}
+                                      ({profitLossPercent >= 0 ? '+' : ''}
+                                      {profitLossPercent.toFixed(2)}%)
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            // Resumen para inversiones normales
+                            const investedCapital =
+                              formData.entryMode === 'by_total' && formData.totalInvested > 0
+                                ? formData.totalInvested
+                                : effectiveQuantity * formData.purchasePrice;
+                            return (
+                              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {t('investments.form.summary.calculatedTotal')}
+                                  </span>
+                                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                    {new Intl.NumberFormat('es-ES', {
+                                      style: 'currency',
+                                      currency: formData.currency || 'EUR',
+                                    }).format(effectiveQuantity * formData.currentPrice)}
+                                  </span>
+                                </div>
+                                {formData.purchasePrice > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+                                    <div className="flex items-center justify-between text-xs">
                                       <span className="text-gray-600 dark:text-gray-400">
-                                        {t('investments.form.summary.unitsCalculated')}
+                                        {t('investments.form.summary.investedCapital')}
                                       </span>
                                       <span className="font-medium text-gray-700 dark:text-gray-300">
-                                        {effectiveQuantity.toLocaleString('es-ES', {
-                                          maximumFractionDigits: 4,
-                                        })}{' '}
-                                        {t('investments.form.summary.units')}
+                                        {new Intl.NumberFormat('es-ES', {
+                                          style: 'currency',
+                                          currency: formData.currency || 'EUR',
+                                        }).format(investedCapital)}
                                       </span>
                                     </div>
-                                  )}
-                                  {(() => {
-                                    const profitLoss =
-                                      (formData.currentPrice - formData.purchasePrice) *
-                                      effectiveQuantity;
-                                    const profitLossPercent =
-                                      formData.purchasePrice > 0
-                                        ? ((formData.currentPrice - formData.purchasePrice) /
-                                            formData.purchasePrice) *
-                                          100
-                                        : 0;
-                                    return (
-                                      <div className="flex items-center justify-between text-xs mt-1">
+                                    {formData.entryMode === 'by_total' && effectiveQuantity > 0 && (
+                                      <div className="flex items-center justify-between text-xs mt-0.5">
                                         <span className="text-gray-600 dark:text-gray-400">
-                                          {t('investments.detail.profitLoss')}:
+                                          {t('investments.form.summary.unitsCalculated')}
                                         </span>
-                                        <span
-                                          className={`font-semibold ${profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                                        >
-                                          {profitLoss >= 0 ? '+' : ''}
-                                          {new Intl.NumberFormat('es-ES', {
-                                            style: 'currency',
-                                            currency: formData.currency || 'EUR',
-                                          }).format(profitLoss)}{' '}
-                                          ({profitLossPercent >= 0 ? '+' : ''}
-                                          {profitLossPercent.toFixed(2)}%)
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                                          {effectiveQuantity.toLocaleString('es-ES', {
+                                            maximumFractionDigits: 4,
+                                          })}{' '}
+                                          {t('investments.form.summary.units')}
                                         </span>
                                       </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-                      })()}
-                    </>
-                  )}
-                </div>
+                                    )}
+                                    {(() => {
+                                      const profitLoss =
+                                        (formData.currentPrice - formData.purchasePrice) *
+                                        effectiveQuantity;
+                                      const profitLossPercent =
+                                        formData.purchasePrice > 0
+                                          ? ((formData.currentPrice - formData.purchasePrice) /
+                                              formData.purchasePrice) *
+                                            100
+                                          : 0;
+                                      return (
+                                        <div className="flex items-center justify-between text-xs mt-1">
+                                          <span className="text-gray-600 dark:text-gray-400">
+                                            {t('investments.detail.profitLoss')}:
+                                          </span>
+                                          <span
+                                            className={`font-semibold ${profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                          >
+                                            {profitLoss >= 0 ? '+' : ''}
+                                            {new Intl.NumberFormat('es-ES', {
+                                              style: 'currency',
+                                              currency: formData.currency || 'EUR',
+                                            }).format(profitLoss)}{' '}
+                                            ({profitLossPercent >= 0 ? '+' : ''}
+                                            {profitLossPercent.toFixed(2)}%)
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                        })()}
+                      </>
+                    )}
+                  </div>
 
-                {/* Sección: Fechas y Clasificación */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Fechas y Clasificación
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Fecha de Compra <span className="text-red-500">*</span>
-                    </label>
-                    <DatePicker
-                      selected={formData.purchaseDate ? new Date(formData.purchaseDate) : null}
-                      onChange={(date) => {
-                        if (date) {
-                          const year = date.getFullYear();
-                          const month = String(date.getMonth() + 1).padStart(2, '0');
-                          const day = String(date.getDate()).padStart(2, '0');
-                          setFormData({
-                            ...formData,
-                            purchaseDate: `${year}-${month}-${day}`,
-                          });
-                        } else {
-                          setFormData({ ...formData, purchaseDate: '' });
-                        }
-                      }}
-                      dateFormat="dd/MM/yyyy"
-                      locale={es}
-                      className="input-field w-full"
-                      placeholderText="Selecciona una fecha"
-                      maxDate={new Date()}
-                      required
-                      showYearDropdown
-                      showMonthDropdown
-                      dropdownMode="select"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Clase de Activo <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="input-field"
-                      value={formData.assetClass}
-                      onChange={(e) => {
-                        const newAssetClass = e.target.value;
-                        if (newAssetClass === 'fixed_income') {
-                          setFormData({
-                            ...formData,
-                            assetClass: newAssetClass,
-                            fixedIncomePercentage: 100,
-                            variableIncomePercentage: 0,
-                            fixedIncomeSubtype: formData.fixedIncomeSubtype || '',
-                          });
-                        } else if (newAssetClass === 'variable_income') {
-                          setFormData({
-                            ...formData,
-                            assetClass: newAssetClass,
-                            fixedIncomePercentage: 0,
-                            variableIncomePercentage: 100,
-                          });
-                        } else {
-                          setFormData({ ...formData, assetClass: newAssetClass });
-                        }
-                      }}
-                      required
-                    >
-                      <option value="fixed_income">
-                        {t('investments.form.assetClasses.fixedIncome')}
-                      </option>
-                      <option value="variable_income">
-                        {t('investments.form.assetClasses.variableIncome')}
-                      </option>
-                      <option value="mixed">{t('investments.form.assetClasses.mixed')}</option>
-                    </select>
-                  </div>
-                  {formData.assetClass === 'fixed_income' && (
+                  {/* Sección: Fechas y Clasificación */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Fechas y Clasificación
+                    </h3>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t('investments.form.fixedIncomeSubtype')}
+                        Fecha de Compra <span className="text-red-500">*</span>
+                      </label>
+                      <DatePicker
+                        selected={formData.purchaseDate ? new Date(formData.purchaseDate) : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            setFormData({
+                              ...formData,
+                              purchaseDate: `${year}-${month}-${day}`,
+                            });
+                          } else {
+                            setFormData({ ...formData, purchaseDate: '' });
+                          }
+                        }}
+                        dateFormat="dd/MM/yyyy"
+                        locale={es}
+                        className="input-field w-full"
+                        placeholderText="Selecciona una fecha"
+                        maxDate={new Date()}
+                        required
+                        showYearDropdown
+                        showMonthDropdown
+                        dropdownMode="select"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Clase de Activo <span className="text-red-500">*</span>
                       </label>
                       <select
                         className="input-field"
-                        value={formData.fixedIncomeSubtype}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            fixedIncomeSubtype: e.target.value,
-                          })
-                        }
+                        value={formData.assetClass}
+                        onChange={(e) => {
+                          const newAssetClass = e.target.value;
+                          if (newAssetClass === 'fixed_income') {
+                            setFormData({
+                              ...formData,
+                              assetClass: newAssetClass,
+                              fixedIncomePercentage: 100,
+                              variableIncomePercentage: 0,
+                              fixedIncomeSubtype: formData.fixedIncomeSubtype || '',
+                            });
+                          } else if (newAssetClass === 'variable_income') {
+                            setFormData({
+                              ...formData,
+                              assetClass: newAssetClass,
+                              fixedIncomePercentage: 0,
+                              variableIncomePercentage: 100,
+                            });
+                          } else {
+                            setFormData({ ...formData, assetClass: newAssetClass });
+                          }
+                        }}
+                        required
                       >
-                        <option value="">{t('investments.form.fixedIncomeSubtypeOptional')}</option>
-                        <option value="short">
-                          {t('investments.form.fixedIncomeSubtypes.short')}
+                        <option value="fixed_income">
+                          {t('investments.form.assetClasses.fixedIncome')}
                         </option>
-                        <option value="medium">
-                          {t('investments.form.fixedIncomeSubtypes.medium')}
+                        <option value="variable_income">
+                          {t('investments.form.assetClasses.variableIncome')}
                         </option>
+                        <option value="mixed">{t('investments.form.assetClasses.mixed')}</option>
                       </select>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isAlternative"
-                      checked={formData.isAlternative}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          isAlternative: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                    <label
-                      htmlFor="isAlternative"
-                      className="text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      {t('investments.form.alternative')}
-                    </label>
-                  </div>
-                  {formData.assetClass === 'mixed' && (
-                    <div className="grid grid-cols-2 gap-4">
+                    {formData.assetClass === 'fixed_income' && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          % {t('investments.assetClassLabels.fixedIncome')}
+                          {t('investments.form.fixedIncomeSubtype')}
                         </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
+                        <select
                           className="input-field"
-                          value={formData.fixedIncomePercentage}
-                          onChange={(e) => {
-                            const fixed = parseFloat(e.target.value) || 0;
-                            const variable = 100 - fixed;
+                          value={formData.fixedIncomeSubtype}
+                          onChange={(e) =>
                             setFormData({
                               ...formData,
-                              fixedIncomePercentage: fixed,
-                              variableIncomePercentage: variable,
-                            });
-                          }}
-                          required
-                        />
+                              fixedIncomeSubtype: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="">
+                            {t('investments.form.fixedIncomeSubtypeOptional')}
+                          </option>
+                          <option value="short">
+                            {t('investments.form.fixedIncomeSubtypes.short')}
+                          </option>
+                          <option value="medium">
+                            {t('investments.form.fixedIncomeSubtypes.medium')}
+                          </option>
+                        </select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          % {t('investments.assetClassLabels.variableIncome')}
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          className="input-field"
-                          value={formData.variableIncomePercentage}
-                          onChange={(e) => {
-                            const variable = parseFloat(e.target.value) || 0;
-                            const fixed = 100 - variable;
-                            setFormData({
-                              ...formData,
-                              variableIncomePercentage: variable,
-                              fixedIncomePercentage: fixed,
-                            });
-                          }}
-                          required
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sección: Información Adicional */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Información Adicional
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Notas <span className="text-gray-400">(opcional)</span>
-                    </label>
-                    <textarea
-                      className="input-field"
-                      rows="3"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder={t('investments.form.notesPlaceholder')}
-                    />
-                  </div>
-
-                  {/* DCA (Dollar Cost Averaging) */}
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-2 mb-3">
+                    )}
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        id="dcaEnabled"
-                        checked={formData.dcaEnabled}
+                        id="isAlternative"
+                        checked={formData.isAlternative}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            dcaEnabled: e.target.checked,
+                            isAlternative: e.target.checked,
                           })
                         }
                         className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                       />
                       <label
-                        htmlFor="dcaEnabled"
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+                        htmlFor="isAlternative"
+                        className="text-sm text-gray-700 dark:text-gray-300"
                       >
-                        {t('investments.dca.enable')}
+                        {t('investments.form.alternative')}
                       </label>
                     </div>
-                    {formData.dcaEnabled && (
-                      <div className="space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.dca.amountPerPeriod')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input-field"
-                              value={formData.dcaAmount}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  dcaAmount: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              required={formData.dcaEnabled}
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.dca.frequency')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              className="input-field"
-                              value={formData.dcaFrequency}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  dcaFrequency: e.target.value,
-                                })
-                              }
-                              required={formData.dcaEnabled}
-                            >
-                              <option value="daily">
-                                {t('investments.dca.frequencies.daily')}
-                              </option>
-                              <option value="weekly">
-                                {t('investments.dca.frequencies.weekly')}
-                              </option>
-                              <option value="biweekly">
-                                {t('investments.dca.frequencies.biweekly')}
-                              </option>
-                              <option value="monthly">
-                                {t('investments.dca.frequencies.monthly')}
-                              </option>
-                              <option value="quarterly">
-                                {t('investments.dca.frequencies.quarterly')}
-                              </option>
-                            </select>
-                          </div>
+                    {formData.assetClass === 'mixed' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            % {t('investments.assetClassLabels.fixedIncome')}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            className="input-field"
+                            value={formData.fixedIncomePercentage}
+                            onChange={(e) => {
+                              const fixed = parseFloat(e.target.value) || 0;
+                              const variable = 100 - fixed;
+                              setFormData({
+                                ...formData,
+                                fixedIncomePercentage: fixed,
+                                variableIncomePercentage: variable,
+                              });
+                            }}
+                            required
+                          />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.dca.startDate')}{' '}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="date"
-                              className="input-field"
-                              value={formData.dcaStartDate}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  dcaStartDate: e.target.value,
-                                })
-                              }
-                              required={formData.dcaEnabled}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {t('investments.dca.endDate')}{' '}
-                              <span className="text-gray-400">{t('investments.dca.optional')}</span>
-                            </label>
-                            <input
-                              type="date"
-                              className="input-field"
-                              value={formData.dcaEndDate}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  dcaEndDate: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            % {t('investments.assetClassLabels.variableIncome')}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            className="input-field"
+                            value={formData.variableIncomePercentage}
+                            onChange={(e) => {
+                              const variable = parseFloat(e.target.value) || 0;
+                              const fixed = 100 - variable;
+                              setFormData({
+                                ...formData,
+                                variableIncomePercentage: variable,
+                                fixedIncomePercentage: fixed,
+                              });
+                            }}
+                            required
+                          />
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {t('investments.dca.description')}
-                        </p>
                       </div>
                     )}
                   </div>
+
+                  {/* Sección: Información Adicional */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Información Adicional
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Notas <span className="text-gray-400">(opcional)</span>
+                      </label>
+                      <textarea
+                        className="input-field"
+                        rows="3"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder={t('investments.form.notesPlaceholder')}
+                      />
+                    </div>
+
+                    {/* DCA (Dollar Cost Averaging) */}
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id="dcaEnabled"
+                          checked={formData.dcaEnabled}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              dcaEnabled: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                        />
+                        <label
+                          htmlFor="dcaEnabled"
+                          className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+                        >
+                          {t('investments.dca.enable')}
+                        </label>
+                      </div>
+                      {formData.dcaEnabled && (
+                        <div className="space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.dca.amountPerPeriod')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="input-field"
+                                value={formData.dcaAmount}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    dcaAmount: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                required={formData.dcaEnabled}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.dca.frequency')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <select
+                                className="input-field"
+                                value={formData.dcaFrequency}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    dcaFrequency: e.target.value,
+                                  })
+                                }
+                                required={formData.dcaEnabled}
+                              >
+                                <option value="daily">
+                                  {t('investments.dca.frequencies.daily')}
+                                </option>
+                                <option value="weekly">
+                                  {t('investments.dca.frequencies.weekly')}
+                                </option>
+                                <option value="biweekly">
+                                  {t('investments.dca.frequencies.biweekly')}
+                                </option>
+                                <option value="monthly">
+                                  {t('investments.dca.frequencies.monthly')}
+                                </option>
+                                <option value="quarterly">
+                                  {t('investments.dca.frequencies.quarterly')}
+                                </option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.dca.startDate')}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="date"
+                                className="input-field"
+                                value={formData.dcaStartDate}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    dcaStartDate: e.target.value,
+                                  })
+                                }
+                                required={formData.dcaEnabled}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {t('investments.dca.endDate')}{' '}
+                                <span className="text-gray-400">
+                                  {t('investments.dca.optional')}
+                                </span>
+                              </label>
+                              <input
+                                type="date"
+                                className="input-field"
+                                value={formData.dcaEndDate}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    dcaEndDate: e.target.value,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t('investments.dca.description')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                   <button type="submit" className="flex-1 btn-primary">
                     {editingInvestment ? 'Actualizar' : 'Crear'}
                   </button>
@@ -4646,7 +4654,7 @@ const Investments = () => {
             }}
           >
             <div
-              className="modal-content max-w-5xl w-full p-4 h-[90vh] flex flex-col"
+              className="modal-content max-w-5xl w-full p-4 h-[90dvh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-start mb-4 flex-shrink-0">
