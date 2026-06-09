@@ -167,7 +167,7 @@ const Login = () => {
               className="font-bold tracking-[0.16em] uppercase"
               style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)' }}
             >
-              TradeClimb
+              Investments Manager
             </span>
           </div>
 
