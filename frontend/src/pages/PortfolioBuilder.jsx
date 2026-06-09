@@ -96,6 +96,8 @@ const PortfolioBuilder = () => {
   const [resetting, setResetting] = useState(false);
   const [refreshingMetrics, setRefreshingMetrics] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
+  // Inversiones reales agregadas por ISIN (valor actual) para comparar con el objetivo del builder
+  const [investedByIsin, setInvestedByIsin] = useState({});
 
   const handleEsgOnlyChange = async (value) => {
     setEsgOnly(value);
@@ -448,6 +450,33 @@ const PortfolioBuilder = () => {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  // Cargar inversiones reales y agregarlas por ISIN (valor actual = totalValue virtual).
+  // Varias inversiones con el mismo ISIN se suman. Solo activas.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/investments')
+      .then((res) => {
+        if (cancelled) return;
+        const map = {};
+        for (const inv of res.data || []) {
+          if (inv.status === 'closed') continue;
+          const isin = (inv.isin || '').trim().toUpperCase();
+          if (!isin) continue;
+          const value = Number(inv.totalValue) || 0;
+          if (!map[isin]) map[isin] = { value: 0 };
+          map[isin].value += value;
+        }
+        setInvestedByIsin(map);
+      })
+      .catch((err) => {
+        console.error('Error cargando inversiones para comparación:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addExtraFund = async (category, isin = null) => {
     if (!category) return;
@@ -867,6 +896,44 @@ const PortfolioBuilder = () => {
       currency: 'EUR',
       maximumFractionDigits: 0,
     }).format(value);
+  };
+
+  // Comparar lo invertido REAL (por ISIN) con el objetivo de la calculadora.
+  // Muestra invertido + diferencia (€ y %) bajo cada fondo del builder.
+  const renderInvestedComparison = (isin, targetAmount) => {
+    const key = (isin || '').trim().toUpperCase();
+    if (!key) return null;
+    const invested = investedByIsin[key]?.value ?? 0;
+    const hasTarget = typeof targetAmount === 'number' && targetAmount > 0;
+    if (invested <= 0 && !hasTarget) return null;
+    const diff = hasTarget ? invested - targetAmount : null;
+    const diffPct = hasTarget && targetAmount > 0 ? (diff / targetAmount) * 100 : null;
+    const near = diffPct != null && Math.abs(diffPct) <= 5;
+    const badgeCls = near
+      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
+      : diff < 0
+        ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'
+        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700';
+    return (
+      <div
+        className="mt-0.5 mb-2 pt-1.5 flex items-center justify-between gap-2"
+        style={{ borderTop: '1px dashed var(--tc-border)' }}
+      >
+        <span className="text-sm" style={{ color: 'var(--tc-text-3)' }}>
+          Invertido{' '}
+          <span className="font-semibold" style={{ color: 'var(--tc-text-1)' }}>
+            {formatCurrency(invested)}
+          </span>
+        </span>
+        {diff != null && (
+          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeCls}`}>
+            {diff >= 0 ? '+' : '−'}
+            {formatCurrency(Math.abs(diff))}
+            {diffPct != null && ` (${diff >= 0 ? '+' : '−'}${Math.abs(diffPct).toFixed(0)}%)`}
+          </span>
+        )}
+      </div>
+    );
   };
 
   // Calcular valores de la tabla de asignación
@@ -2307,6 +2374,7 @@ const PortfolioBuilder = () => {
                                         )}
                                       </div>
                                     </div>
+                                    {renderInvestedComparison(item.isin, dynamicAmount)}
                                     {renderFundMetrics(item)}
                                     <div className="flex items-center gap-2 flex-wrap">
                                       {item.link && (
@@ -2429,6 +2497,7 @@ const PortfolioBuilder = () => {
                                       )}
                                     </div>
                                   </div>
+                                  {renderInvestedComparison(fund.isin, null)}
                                   {renderFundMetrics(fund)}
                                   <div className="flex items-center gap-3 flex-wrap">
                                     {fund.link && (
@@ -2603,6 +2672,7 @@ const PortfolioBuilder = () => {
                                       </div>
                                     )}
                                   </div>
+                                  {!isManual && renderInvestedComparison(fund.isin, fundAmount)}
                                   {!isManual && renderFundMetrics(fund)}
                                   <div className="flex items-center gap-3 flex-wrap">
                                     {fund.link && (
@@ -2746,6 +2816,7 @@ const PortfolioBuilder = () => {
                                     </div>
                                   )}
                                 </div>
+                                {!isManual && renderInvestedComparison(fund.isin, fundAmount)}
                                 {!isManual && renderFundMetrics(fund)}
                                 <div className="flex items-center gap-3 flex-wrap">
                                   {fund.link && (
