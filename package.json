@@ -1,6 +1,6 @@
 {
   "name": "investments-manager",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "private": true,
   "scripts": {
     "prepare": "husky",
