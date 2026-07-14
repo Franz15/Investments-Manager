@@ -1,17 +1,17 @@
-import express from "express";
-import Investment from "../models/Investment.js";
-import SubAccount from "../models/SubAccount.js";
-import Account from "../models/Account.js";
-import InvestmentHistory from "../models/InvestmentHistory.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
-import { updateMultipleQuotes, getQuote } from "../services/quoteService.js";
+import express from 'express';
+import Investment from '../models/Investment.js';
+import SubAccount from '../models/SubAccount.js';
+import Account from '../models/Account.js';
+import InvestmentHistory from '../models/InvestmentHistory.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+import { updateMultipleQuotes, getQuote } from '../services/quoteService.js';
 import {
   saveDailyVariation,
   recalculateDailyVariationsForInvestmentFromDate,
   calculateDailyChangeFromHistory,
-} from "../services/dailyVariationService.js";
-import { calculateHistoricalVariations } from "../services/historicalVariationService.js";
-import { resolveOperationAmount } from "../services/variationEngine.js";
+} from '../services/dailyVariationService.js';
+import { calculateHistoricalVariations } from '../services/historicalVariationService.js';
+import { resolveOperationAmount } from '../services/variationEngine.js';
 
 const router = express.Router();
 
@@ -19,30 +19,25 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Función helper para calcular diferencias respecto al día anterior
-async function calculateDailyChanges(
-  investmentId,
-  userId,
-  currentTotalValue,
-  date,
-) {
+async function calculateDailyChanges(investmentId, userId, currentTotalValue, date) {
   return await calculateDailyChangeFromHistory(
     investmentId,
     userId,
     currentTotalValue,
-    date || new Date(),
+    date || new Date()
   );
 }
 
 const normalizeInvestmentClassification = (payload) => {
-  if (!payload || typeof payload !== "object") return;
-  if (Object.prototype.hasOwnProperty.call(payload, "assetClass")) {
-    if (payload.assetClass === "alternative") {
-      payload.assetClass = "variable_income";
+  if (!payload || typeof payload !== 'object') return;
+  if (Object.prototype.hasOwnProperty.call(payload, 'assetClass')) {
+    if (payload.assetClass === 'alternative') {
+      payload.assetClass = 'variable_income';
       payload.isAlternative = true;
     }
-    if (payload.assetClass !== "fixed_income") {
+    if (payload.assetClass !== 'fixed_income') {
       delete payload.fixedIncomeSubtype;
-    } else if (payload.fixedIncomeSubtype === "") {
+    } else if (payload.fixedIncomeSubtype === '') {
       payload.fixedIncomeSubtype = null;
     }
   }
@@ -59,42 +54,41 @@ const getInvestmentAmountFromPayload = (payload) => {
 };
 
 const validateAllocationEntry = async (entry, userId) => {
-  if (!entry || typeof entry !== "object") {
-    return { error: "Asignación inválida" };
+  if (!entry || typeof entry !== 'object') {
+    return { error: 'Asignación inválida' };
   }
   const accountId = entry.account;
   if (!accountId) {
-    return { error: "Debe especificar una cuenta en cada asignación" };
+    return { error: 'Debe especificar una cuenta en cada asignación' };
   }
   const account = await Account.findOne({ _id: accountId, user: userId });
   if (!account) {
-    return { error: "Cuenta no encontrada para una asignación" };
+    return { error: 'Cuenta no encontrada para una asignación' };
   }
 
-  let subAccount = null;
   if (entry.subAccount) {
-    subAccount = await SubAccount.findOne({
+    const subAccount = await SubAccount.findOne({
       _id: entry.subAccount,
       user: userId,
     });
     if (!subAccount) {
-      return { error: "Subcuenta no encontrada para una asignación" };
+      return { error: 'Subcuenta no encontrada para una asignación' };
     }
-    if (subAccount.type !== "investment") {
-      return { error: "La subcuenta debe ser de tipo inversión" };
+    if (subAccount.type !== 'investment') {
+      return { error: 'La subcuenta debe ser de tipo inversión' };
     }
     const subAccountAccountId =
       subAccount.account?._id?.toString() || subAccount.account?.toString();
     if (subAccountAccountId !== accountId.toString()) {
       return {
-        error: "La subcuenta no pertenece a la cuenta seleccionada",
+        error: 'La subcuenta no pertenece a la cuenta seleccionada',
       };
     }
   }
 
   const amount = Number(entry.amount);
   if (!Number.isFinite(amount) || amount < 0) {
-    return { error: "La cantidad de la asignación debe ser válida" };
+    return { error: 'La cantidad de la asignación debe ser válida' };
   }
 
   return {
@@ -116,7 +110,7 @@ const normalizeAllocations = async (allocations, userId) => {
     if (error) {
       return { error };
     }
-    const key = `${allocation.account.toString()}-${allocation.subAccount || "none"}`;
+    const key = `${allocation.account.toString()}-${allocation.subAccount || 'none'}`;
     const existing = merged.get(key);
     if (existing) {
       existing.amount += allocation.amount;
@@ -128,14 +122,14 @@ const normalizeAllocations = async (allocations, userId) => {
 };
 
 const getAllocationKey = (allocation) =>
-  `${allocation.account?.toString?.() || allocation.account}-${allocation.subAccount?.toString?.() || allocation.subAccount || "none"}`;
+  `${allocation.account?.toString?.() || allocation.account}-${allocation.subAccount?.toString?.() || allocation.subAccount || 'none'}`;
 
 const resolveHistoryOperationAmount = (entry) => {
   let amount = entry?.operationAmount;
   if (!amount || amount === 0) {
     if (entry?.operationPrice && entry?.quantity) {
       amount = entry.operationPrice * entry.quantity;
-    } else if (entry?.operation === "creation" && entry?.totalValue) {
+    } else if (entry?.operation === 'creation' && entry?.totalValue) {
       amount = entry.totalValue;
     }
   }
@@ -146,7 +140,7 @@ const buildAllocationsFromHistory = async (investment, userId) => {
   const historyEntries = await InvestmentHistory.find({
     investment: investment._id,
     user: userId,
-    operation: { $in: ["creation", "add", "withdraw"] },
+    operation: { $in: ['creation', 'add', 'withdraw'] },
     account: { $exists: true, $ne: null },
   }).sort({ date: 1 });
 
@@ -159,17 +153,17 @@ const buildAllocationsFromHistory = async (investment, userId) => {
     const amount = resolveHistoryOperationAmount(entry);
     if (!amount) continue;
     const key = getAllocationKey(entry);
-    const signed = entry.operation === "withdraw" ? -Math.abs(amount) : amount;
+    const signed = entry.operation === 'withdraw' ? -Math.abs(amount) : amount;
     totals.set(key, (totals.get(key) || 0) + signed);
   }
 
   const allocations = [];
   for (const [key, amount] of totals.entries()) {
     if (amount <= 0) continue;
-    const [accountId, subAccountId] = key.split("-");
+    const [accountId, subAccountId] = key.split('-');
     allocations.push({
       account: accountId,
-      subAccount: subAccountId === "none" ? null : subAccountId,
+      subAccount: subAccountId === 'none' ? null : subAccountId,
       amount,
     });
   }
@@ -221,19 +215,19 @@ const getCashSubAccountForAccount = async (accountId, userId) => {
   let cashSubAccount = await SubAccount.findOne({
     account: accountId,
     user: userId,
-    type: "cash",
-    name: "Efectivo",
+    type: 'cash',
+    name: 'Efectivo',
   });
 
   if (!cashSubAccount) {
     const fallbackCashSubAccount = await SubAccount.findOne({
       account: accountId,
       user: userId,
-      type: "cash",
+      type: 'cash',
     }).sort({ createdAt: 1 });
 
     if (fallbackCashSubAccount) {
-      fallbackCashSubAccount.name = "Efectivo";
+      fallbackCashSubAccount.name = 'Efectivo';
       await fallbackCashSubAccount.save();
       return fallbackCashSubAccount;
     }
@@ -242,11 +236,11 @@ const getCashSubAccountForAccount = async (accountId, userId) => {
     cashSubAccount = new SubAccount({
       user: userId,
       account: accountId,
-      name: "Efectivo",
-      type: "cash",
+      name: 'Efectivo',
+      type: 'cash',
       balance: 0,
-      currency: account?.currency || "EUR",
-      description: "Efectivo creado automáticamente para devoluciones",
+      currency: account?.currency || 'EUR',
+      description: 'Efectivo creado automáticamente para devoluciones',
     });
     await cashSubAccount.save();
   }
@@ -255,9 +249,7 @@ const getCashSubAccountForAccount = async (accountId, userId) => {
 };
 
 const getInvestmentCashTargets = (investment) => {
-  const allocations = Array.isArray(investment.allocations)
-    ? investment.allocations
-    : [];
+  const allocations = Array.isArray(investment.allocations) ? investment.allocations : [];
   if (allocations.length > 0) {
     return allocations
       .map((allocation) => ({
@@ -281,13 +273,9 @@ const applyCashDeltaForInvestment = async (investment, userId, amount) => {
   const updatedSubAccounts = [];
 
   for (const target of targets) {
-    const cashSubAccount = await getCashSubAccountForAccount(
-      target.accountId,
-      userId,
-    );
+    const cashSubAccount = await getCashSubAccountForAccount(target.accountId, userId);
     if (!cashSubAccount) return null;
-    const delta =
-      totalWeight > 0 ? (amount * target.weight) / totalWeight : fallbackAmount;
+    const delta = totalWeight > 0 ? (amount * target.weight) / totalWeight : fallbackAmount;
     cashSubAccount.balance += delta;
     await cashSubAccount.save();
     updatedSubAccounts.push(cashSubAccount);
@@ -297,69 +285,66 @@ const applyCashDeltaForInvestment = async (investment, userId, amount) => {
 };
 
 // GET todas las inversiones
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { subAccountId, accountId, includeClosed, status } = req.query;
     const query = { user: req.userId };
-    const includeClosedNormalized = String(includeClosed || "").toLowerCase();
+    const includeClosedNormalized = String(includeClosed || '').toLowerCase();
 
     if (status) {
       query.status = status;
-    } else if (!["1", "true", "yes"].includes(includeClosedNormalized)) {
-      query.status = { $ne: "closed" };
+    } else if (!['1', 'true', 'yes'].includes(includeClosedNormalized)) {
+      query.status = { $ne: 'closed' };
     }
 
     if (subAccountId) {
-      query.$or = [
-        { subAccount: subAccountId },
-        { "allocations.subAccount": subAccountId },
-      ];
+      query.$or = [{ subAccount: subAccountId }, { 'allocations.subAccount': subAccountId }];
     } else if (accountId) {
       // Si se busca por accountId, buscar inversiones directamente asociadas a la cuenta
       // o a través de subcuentas de inversión de esa cuenta
       const subAccounts = await SubAccount.find({
         account: accountId,
-        type: "investment",
+        type: 'investment',
         user: req.userId,
       });
       const subAccountIds = subAccounts.map((sa) => sa._id);
       query.$or = [
         { account: accountId },
         { subAccount: { $in: subAccountIds } },
-        { "allocations.account": accountId },
-        { "allocations.subAccount": { $in: subAccountIds } },
+        { 'allocations.account': accountId },
+        { 'allocations.subAccount': { $in: subAccountIds } },
       ];
     }
 
     const investments = await Investment.find(query)
       .populate({
-        path: "allocations.subAccount",
-        select: "name type balance currency",
+        path: 'allocations.subAccount',
+        select: 'name type balance currency',
         match: { user: req.userId },
         populate: {
-          path: "account",
-          select: "name bankName",
+          path: 'account',
+          select: 'name bankName',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "allocations.account",
-        select: "name bankName",
+        path: 'allocations.account',
+        select: 'name bankName',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
-        select: "name type balance currency",
+        path: 'subAccount',
+        select: 'name type balance currency',
         match: { user: req.userId },
         populate: {
-          path: "account",
-          select: "name bankName",
+          path: 'account',
+          select: 'name bankName',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "account",
-        select: "name bankName",
+        path: 'account',
+        select: 'name bankName',
         match: { user: req.userId },
       })
       .sort({ createdAt: -1 });
@@ -368,14 +353,11 @@ router.get("/", async (req, res) => {
         const allocationTotal = Array.isArray(investment.allocations)
           ? investment.allocations.reduce(
               (sum, allocation) => sum + (Number(allocation.amount) || 0),
-              0,
+              0
             )
           : 0;
         if (!investment.allocations?.length || allocationTotal <= 0) {
-          const rebuilt = await buildAllocationsFromHistory(
-            investment,
-            req.userId,
-          );
+          const rebuilt = await buildAllocationsFromHistory(investment, req.userId);
           if (rebuilt) {
             investment.allocations = rebuilt;
             if (rebuilt.length > 0) {
@@ -385,25 +367,25 @@ router.get("/", async (req, res) => {
             await investment.save();
             await Investment.populate(investment, [
               {
-                path: "allocations.subAccount",
-                select: "name type balance currency",
+                path: 'allocations.subAccount',
+                select: 'name type balance currency',
                 match: { user: req.userId },
                 populate: {
-                  path: "account",
-                  select: "name bankName",
+                  path: 'account',
+                  select: 'name bankName',
                   match: { user: req.userId },
                 },
               },
               {
-                path: "allocations.account",
-                select: "name bankName",
+                path: 'allocations.account',
+                select: 'name bankName',
                 match: { user: req.userId },
               },
             ]);
           }
         }
         return investment;
-      }),
+      })
     );
     res.json(normalizedInvestments);
   } catch (error) {
@@ -412,50 +394,50 @@ router.get("/", async (req, res) => {
 });
 
 // GET inversión por ID
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const investment = await Investment.findOne({
       _id: req.params.id,
       user: req.userId,
     })
       .populate({
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "allocations.account",
+        path: 'allocations.account',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
-    if (investment.status === "closed") {
-      return res.status(400).json({ message: "La inversión está cerrada" });
+    if (investment.status === 'closed') {
+      return res.status(400).json({ message: 'La inversión está cerrada' });
     }
-    if (investment.status === "closed") {
-      return res.status(400).json({ message: "La inversión está cerrada" });
+    if (investment.status === 'closed') {
+      return res.status(400).json({ message: 'La inversión está cerrada' });
     }
-    if (investment.status === "closed") {
-      return res.status(400).json({ message: "La inversión está cerrada" });
+    if (investment.status === 'closed') {
+      return res.status(400).json({ message: 'La inversión está cerrada' });
     }
-    if (investment.status === "closed") {
-      return res.status(400).json({ message: "La inversión está cerrada" });
+    if (investment.status === 'closed') {
+      return res.status(400).json({ message: 'La inversión está cerrada' });
     }
     res.json(investment);
   } catch (error) {
@@ -464,15 +446,14 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST crear nueva inversión
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const hasAllocations =
-      Array.isArray(req.body.allocations) && req.body.allocations.length > 0;
+    const hasAllocations = Array.isArray(req.body.allocations) && req.body.allocations.length > 0;
 
     // Validar que hay cuenta o asignaciones
     if (!hasAllocations && !req.body.account) {
       return res.status(400).json({
-        message: "Debe especificar una cuenta o al menos una asignación",
+        message: 'Debe especificar una cuenta o al menos una asignación',
       });
     }
 
@@ -481,10 +462,7 @@ router.post("/", async (req, res) => {
     let allocations = [];
 
     if (hasAllocations) {
-      const normalized = await normalizeAllocations(
-        req.body.allocations,
-        req.userId,
-      );
+      const normalized = await normalizeAllocations(req.body.allocations, req.userId);
       if (normalized.error) {
         return res.status(400).json({ message: normalized.error });
       }
@@ -497,7 +475,7 @@ router.post("/", async (req, res) => {
           subAccount: req.body.subAccount,
           amount: investmentAmount,
         },
-        req.userId,
+        req.userId
       );
       if (validation.error) {
         return res.status(400).json({ message: validation.error });
@@ -516,7 +494,7 @@ router.post("/", async (req, res) => {
 
     const totalAllocationAmount = allocations.reduce(
       (sum, allocation) => sum + (Number(allocation.amount) || 0),
-      0,
+      0
     );
     if (
       investmentAmount > 0 &&
@@ -524,8 +502,7 @@ router.post("/", async (req, res) => {
       Math.abs(totalAllocationAmount - investmentAmount) > 0.01
     ) {
       return res.status(400).json({
-        message:
-          "La suma de las asignaciones debe coincidir con el monto total invertido",
+        message: 'La suma de las asignaciones debe coincidir con el monto total invertido',
       });
     }
 
@@ -554,47 +531,43 @@ router.post("/", async (req, res) => {
     const populatePaths = [];
     populatePaths.push(
       {
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       },
       {
-        path: "allocations.account",
+        path: 'allocations.account',
         match: { user: req.userId },
-      },
+      }
     );
     if (savedInvestment.subAccount) {
       populatePaths.push({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       });
     }
     if (savedInvestment.account) {
       populatePaths.push({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
     }
 
     let populatedInvestment = await Investment.findById(savedInvestment._id);
     for (const populatePath of populatePaths) {
-      populatedInvestment = await Investment.populate(
-        populatedInvestment,
-        populatePath,
-      );
+      populatedInvestment = await Investment.populate(populatedInvestment, populatePath);
     }
 
     // Crear entrada inicial en el historial
     try {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
       const historyDate = req.body.purchaseDate
         ? new Date(req.body.purchaseDate)
         : req.body.date
@@ -614,7 +587,7 @@ router.post("/", async (req, res) => {
         savedInvestment._id,
         req.userId,
         totalValue,
-        historyDate,
+        historyDate
       );
 
       const initialHistoryEntry = new InvestmentHistory({
@@ -625,12 +598,10 @@ router.post("/", async (req, res) => {
         currentPrice: currentPrice,
         quantity: savedInvestment.quantity,
         totalValue: totalValue,
-        notes: req.body.notes || "Inversión inicial",
-        operation: "creation",
+        notes: req.body.notes || 'Inversión inicial',
+        operation: 'creation',
         operationAmount: investmentAmount,
-        operationPrice: savedInvestment.isAutomatedPortfolio
-          ? null
-          : savedInvestment.purchasePrice,
+        operationPrice: savedInvestment.isAutomatedPortfolio ? null : savedInvestment.purchasePrice,
         dailyChangeAmount: dailyChanges.dailyChangeAmount,
         dailyChangePercent: dailyChanges.dailyChangePercent,
       });
@@ -642,11 +613,7 @@ router.post("/", async (req, res) => {
     // Calcular variaciones históricas desde la fecha de compra hasta hoy (en segundo plano)
     // Solo si tiene símbolo y no es cartera automatizada
     if (savedInvestment.symbol && !savedInvestment.isAutomatedPortfolio) {
-      calculateHistoricalVariations(
-        savedInvestment._id,
-        req.userId,
-        savedInvestment,
-      ).catch(() => {
+      calculateHistoricalVariations(savedInvestment._id, req.userId, savedInvestment).catch(() => {
         // Fallar silenciosamente, no es crítico
       });
     }
@@ -658,7 +625,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT actualizar inversión
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     normalizeInvestmentClassification(req.body);
     // Obtener la inversión actual antes de actualizarla para comparar cambios críticos
@@ -668,45 +635,40 @@ router.put("/:id", async (req, res) => {
     });
 
     if (!oldInvestment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
-    if (Object.prototype.hasOwnProperty.call(req.body, "allocations")) {
+    if (Object.prototype.hasOwnProperty.call(req.body, 'allocations')) {
       if (!Array.isArray(req.body.allocations)) {
         return res.status(400).json({
-          message: "Las asignaciones deben ser un listado válido",
+          message: 'Las asignaciones deben ser un listado válido',
         });
       }
       if (req.body.allocations.length === 0 && !req.body.account) {
         return res.status(400).json({
-          message: "Debe especificar una cuenta o al menos una asignación",
+          message: 'Debe especificar una cuenta o al menos una asignación',
         });
       }
       if (req.body.allocations.length > 0) {
-        const normalized = await normalizeAllocations(
-          req.body.allocations,
-          req.userId,
-        );
+        const normalized = await normalizeAllocations(req.body.allocations, req.userId);
         if (normalized.error) {
           return res.status(400).json({ message: normalized.error });
         }
         req.body.allocations = normalized.allocations;
         if (normalized.allocations.length > 0) {
           req.body.account = normalized.allocations[0].account;
-          req.body.subAccount =
-            normalized.allocations[0].subAccount || undefined;
+          req.body.subAccount = normalized.allocations[0].subAccount || undefined;
         }
 
         const amountPayload = {
-          isAutomatedPortfolio:
-            req.body.isAutomatedPortfolio ?? oldInvestment.isAutomatedPortfolio,
+          isAutomatedPortfolio: req.body.isAutomatedPortfolio ?? oldInvestment.isAutomatedPortfolio,
           quantity: req.body.quantity ?? oldInvestment.quantity,
           purchasePrice: req.body.purchasePrice ?? oldInvestment.purchasePrice,
         };
         const investmentAmount = getInvestmentAmountFromPayload(amountPayload);
         const totalAllocationAmount = req.body.allocations.reduce(
           (sum, allocation) => sum + (Number(allocation.amount) || 0),
-          0,
+          0
         );
         if (
           investmentAmount > 0 &&
@@ -714,8 +676,7 @@ router.put("/:id", async (req, res) => {
           Math.abs(totalAllocationAmount - investmentAmount) > 0.01
         ) {
           return res.status(400).json({
-            message:
-              "La suma de las asignaciones debe coincidir con el monto total invertido",
+            message: 'La suma de las asignaciones debe coincidir con el monto total invertido',
           });
         }
       }
@@ -726,8 +687,7 @@ router.put("/:id", async (req, res) => {
       (req.body.purchaseDate &&
         new Date(req.body.purchaseDate).getTime() !==
           new Date(oldInvestment.purchaseDate).getTime()) ||
-      (req.body.purchasePrice &&
-        req.body.purchasePrice !== oldInvestment.purchasePrice) ||
+      (req.body.purchasePrice && req.body.purchasePrice !== oldInvestment.purchasePrice) ||
       (req.body.quantity &&
         req.body.quantity !== oldInvestment.quantity &&
         oldInvestment.quantity > 0) ||
@@ -736,10 +696,8 @@ router.put("/:id", async (req, res) => {
     // Si se cambian valores críticos, eliminar el historial anterior
     // porque los datos históricos ya no serían correctos
     if (criticalFieldsChanged) {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
-      const DailyVariation = (await import("../models/DailyVariation.js"))
-        .default;
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+      const DailyVariation = (await import('../models/DailyVariation.js')).default;
 
       const deletedHistory = await InvestmentHistory.deleteMany({
         user: req.userId,
@@ -758,52 +716,49 @@ router.put("/:id", async (req, res) => {
       {
         new: true,
         runValidators: true,
-      },
+      }
     );
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     // Populate según lo que tenga la inversión
     const populatePaths = [];
     populatePaths.push(
       {
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       },
       {
-        path: "allocations.account",
+        path: 'allocations.account',
         match: { user: req.userId },
-      },
+      }
     );
     if (investment.subAccount) {
       populatePaths.push({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       });
     }
     if (investment.account) {
       populatePaths.push({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
     }
 
     let populatedInvestment = investment;
     for (const populatePath of populatePaths) {
-      populatedInvestment = await Investment.populate(
-        populatedInvestment,
-        populatePath,
-      );
+      populatedInvestment = await Investment.populate(populatedInvestment, populatePath);
     }
 
     res.json(populatedInvestment);
@@ -813,19 +768,19 @@ router.put("/:id", async (req, res) => {
 });
 
 // POST añadir a una inversión (calcular nuevo precio medio)
-router.post("/:id/add", async (req, res) => {
+router.post('/:id/add', async (req, res) => {
   try {
     const { quantity, price, date, notes } = req.body;
     const investment = await Investment.findOne({
       _id: req.params.id,
       user: req.userId,
     }).populate({
-      path: "subAccount",
+      path: 'subAccount',
       match: { user: req.userId },
     });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     // Calcular el monto adicional a invertir
@@ -846,13 +801,11 @@ router.post("/:id/add", async (req, res) => {
     } else {
       // Para inversiones tradicionales: calcular nuevo precio medio
       const currentQuantity = investment.quantity;
-      const currentAvgPrice =
-        investment.averagePurchasePrice || investment.purchasePrice;
+      const currentAvgPrice = investment.averagePurchasePrice || investment.purchasePrice;
       const newQuantity = currentQuantity + quantity;
 
       // Calcular nuevo precio medio: (cantidad_actual * precio_medio_actual + cantidad_nueva * precio_nuevo) / cantidad_total
-      const newAveragePrice =
-        (currentQuantity * currentAvgPrice + quantity * price) / newQuantity;
+      const newAveragePrice = (currentQuantity * currentAvgPrice + quantity * price) / newQuantity;
 
       investment.quantity = newQuantity;
       investment.averagePurchasePrice = newAveragePrice;
@@ -865,10 +818,7 @@ router.post("/:id/add", async (req, res) => {
 
     ensureInvestmentAllocations(investment);
 
-    if (
-      Array.isArray(investment.allocations) &&
-      investment.allocations.length
-    ) {
+    if (Array.isArray(investment.allocations) && investment.allocations.length) {
       let targetAllocation = null;
       if (req.body.allocation?.account) {
         const validation = await validateAllocationEntry(
@@ -877,7 +827,7 @@ router.post("/:id/add", async (req, res) => {
             subAccount: req.body.allocation.subAccount || null,
             amount: 0,
           },
-          req.userId,
+          req.userId
         );
         if (validation.error) {
           return res.status(400).json({ message: validation.error });
@@ -888,7 +838,7 @@ router.post("/:id/add", async (req, res) => {
       if (targetAllocation) {
         const targetKey = getAllocationKey(targetAllocation);
         const existing = investment.allocations.find(
-          (allocation) => getAllocationKey(allocation) === targetKey,
+          (allocation) => getAllocationKey(allocation) === targetKey
         );
         if (existing) {
           existing.amount = (Number(existing.amount) || 0) + additionalAmount;
@@ -904,8 +854,7 @@ router.post("/:id/add", async (req, res) => {
             existing.quantity = newUnits;
             existing.averagePurchasePrice =
               newUnits > 0
-                ? (currentUnits * currentAvg + additionalUnits * price) /
-                  newUnits
+                ? (currentUnits * currentAvg + additionalUnits * price) / newUnits
                 : currentAvg;
             existing.amount = newUnits * existing.averagePurchasePrice;
           }
@@ -921,13 +870,12 @@ router.post("/:id/add", async (req, res) => {
       } else {
         const totalAllocated = investment.allocations.reduce(
           (sum, allocation) => sum + (Number(allocation.amount) || 0),
-          0,
+          0
         );
         if (totalAllocated > 0) {
           investment.allocations.forEach((allocation) => {
             const weight = (Number(allocation.amount) || 0) / totalAllocated;
-            allocation.amount =
-              (Number(allocation.amount) || 0) + additionalAmount * weight;
+            allocation.amount = (Number(allocation.amount) || 0) + additionalAmount * weight;
             if (!investment.isAutomatedPortfolio && price) {
               const additionalUnits = (quantity || 0) * weight;
               const currentUnits = Number(allocation.quantity) || 0;
@@ -940,21 +888,17 @@ router.post("/:id/add", async (req, res) => {
               allocation.quantity = newUnits;
               allocation.averagePurchasePrice =
                 newUnits > 0
-                  ? (currentUnits * currentAvg + additionalUnits * price) /
-                    newUnits
+                  ? (currentUnits * currentAvg + additionalUnits * price) / newUnits
                   : currentAvg;
               allocation.amount = newUnits * allocation.averagePurchasePrice;
             }
           });
         } else {
-          const perAllocation =
-            additionalAmount / investment.allocations.length;
+          const perAllocation = additionalAmount / investment.allocations.length;
           investment.allocations.forEach((allocation) => {
-            allocation.amount =
-              (Number(allocation.amount) || 0) + perAllocation;
+            allocation.amount = (Number(allocation.amount) || 0) + perAllocation;
             if (!investment.isAutomatedPortfolio && price) {
-              const additionalUnits =
-                (quantity || 0) / investment.allocations.length;
+              const additionalUnits = (quantity || 0) / investment.allocations.length;
               const currentUnits = Number(allocation.quantity) || 0;
               const currentAvg =
                 Number(allocation.averagePurchasePrice) ||
@@ -965,8 +909,7 @@ router.post("/:id/add", async (req, res) => {
               allocation.quantity = newUnits;
               allocation.averagePurchasePrice =
                 newUnits > 0
-                  ? (currentUnits * currentAvg + additionalUnits * price) /
-                    newUnits
+                  ? (currentUnits * currentAvg + additionalUnits * price) / newUnits
                   : currentAvg;
               allocation.amount = newUnits * allocation.averagePurchasePrice;
             }
@@ -979,8 +922,7 @@ router.post("/:id/add", async (req, res) => {
 
     // Crear entrada en el historial si se proporciona fecha
     if (date) {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
       const totalValue = investment.isAutomatedPortfolio
         ? investment.currentPrice
         : investment.quantity * investment.currentPrice;
@@ -990,7 +932,7 @@ router.post("/:id/add", async (req, res) => {
         investment._id,
         req.userId,
         totalValue,
-        date || new Date(),
+        date || new Date()
       );
 
       const historyEntry = new InvestmentHistory({
@@ -1003,8 +945,8 @@ router.post("/:id/add", async (req, res) => {
         totalValue: totalValue,
         notes:
           notes ||
-          `Añadido: ${quantity} ${investment.isAutomatedPortfolio ? "€" : "unidades"}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ""}`,
-        operation: "add",
+          `Añadido: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ''}`,
+        operation: 'add',
         operationAmount: additionalAmount,
         operationPrice: investment.isAutomatedPortfolio ? null : price,
         dailyChangeAmount: dailyChanges.dailyChangeAmount,
@@ -1014,24 +956,24 @@ router.post("/:id/add", async (req, res) => {
       await recalculateDailyVariationsForInvestmentFromDate(
         investment._id,
         req.userId,
-        date || new Date(),
+        date || new Date()
       );
     }
 
     const populatedInvestment = await Investment.findById(investment._id)
       .populate({
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         populate: {
-          path: "account",
+          path: 'account',
         },
       })
       .populate({
-        path: "allocations.account",
+        path: 'allocations.account',
       })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         populate: {
-          path: "account",
+          path: 'account',
         },
       });
 
@@ -1042,37 +984,29 @@ router.post("/:id/add", async (req, res) => {
 });
 
 // POST retirar parte o toda una inversión
-router.post("/:id/sell", async (req, res) => {
+router.post('/:id/sell', async (req, res) => {
   try {
-    const {
-      quantity,
-      price,
-      date,
-      notes,
-      returnToSubAccount = true,
-    } = req.body;
+    const { quantity, price, date, notes, returnToSubAccount = true } = req.body;
     const investment = await Investment.findOne({
       _id: req.params.id,
       user: req.userId,
     })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
       })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     // Validar cantidad a retirar
     if (!quantity || quantity <= 0) {
-      return res
-        .status(400)
-        .json({ message: "La cantidad a retirar debe ser mayor que 0" });
+      return res.status(400).json({ message: 'La cantidad a retirar debe ser mayor que 0' });
     }
 
     if (quantity > investment.quantity) {
@@ -1089,9 +1023,7 @@ router.post("/:id/sell", async (req, res) => {
     } else {
       // Para inversiones tradicionales, quantity * price
       if (!price || price <= 0) {
-        return res
-          .status(400)
-          .json({ message: "El precio de venta es requerido" });
+        return res.status(400).json({ message: 'El precio de venta es requerido' });
       }
       saleAmount = quantity * price;
     }
@@ -1104,21 +1036,17 @@ router.post("/:id/sell", async (req, res) => {
     // Si se retira todo, usar el cierre dedicado
     if (remainingQuantity <= 0) {
       return res.status(400).json({
-        message:
-          "Para retirar todo el capital usa la opción de cerrar la inversión",
+        message: 'Para retirar todo el capital usa la opción de cerrar la inversión',
       });
     }
 
     // Si queda cantidad, actualizar la inversión
     investment.quantity = remainingQuantity;
 
-    if (
-      Array.isArray(investment.allocations) &&
-      investment.allocations.length
-    ) {
+    if (Array.isArray(investment.allocations) && investment.allocations.length) {
       const totalAllocated = investment.allocations.reduce(
         (sum, allocation) => sum + (Number(allocation.amount) || 0),
-        0,
+        0
       );
       if (req.body.allocation?.account) {
         const validation = await validateAllocationEntry(
@@ -1127,31 +1055,30 @@ router.post("/:id/sell", async (req, res) => {
             subAccount: req.body.allocation.subAccount || null,
             amount: 0,
           },
-          req.userId,
+          req.userId
         );
         if (validation.error) {
           return res.status(400).json({ message: validation.error });
         }
         const targetKey = getAllocationKey(validation.allocation);
         const target = investment.allocations.find(
-          (allocation) => getAllocationKey(allocation) === targetKey,
+          (allocation) => getAllocationKey(allocation) === targetKey
         );
         if (!target) {
           return res.status(400).json({
-            message: "La asignación seleccionada no existe en esta inversión",
+            message: 'La asignación seleccionada no existe en esta inversión',
           });
         }
         if (totalAllocated <= 0) {
           return res.status(400).json({
-            message: "No se puede calcular la asignación a retirar",
+            message: 'No se puede calcular la asignación a retirar',
           });
         }
         if (!investment.isAutomatedPortfolio && target.quantity) {
           const currentUnits = Number(target.quantity) || 0;
           if (quantity > currentUnits + 0.000001) {
             return res.status(400).json({
-              message:
-                "La asignación seleccionada no tiene suficientes unidades para retirar",
+              message: 'La asignación seleccionada no tiene suficientes unidades para retirar',
             });
           }
           target.quantity = Math.max(0, currentUnits - quantity);
@@ -1165,36 +1092,25 @@ router.post("/:id/sell", async (req, res) => {
           target.amount = target.quantity * avgPrice;
         } else {
           const withdrawalRatio =
-            investment.quantity + quantity > 0
-              ? quantity / (investment.quantity + quantity)
-              : 0;
+            investment.quantity + quantity > 0 ? quantity / (investment.quantity + quantity) : 0;
           const investedReduction = totalAllocated * withdrawalRatio;
           const currentAmount = Number(target.amount) || 0;
           if (investedReduction > currentAmount + 0.01) {
             return res.status(400).json({
-              message:
-                "La asignación seleccionada no tiene suficiente capital para retirar",
+              message: 'La asignación seleccionada no tiene suficiente capital para retirar',
             });
           }
           target.amount = Math.max(0, currentAmount - investedReduction);
         }
       } else {
         const withdrawalRatio =
-          investment.quantity + quantity > 0
-            ? quantity / (investment.quantity + quantity)
-            : 0;
+          investment.quantity + quantity > 0 ? quantity / (investment.quantity + quantity) : 0;
         investment.allocations.forEach((allocation) => {
           const currentAmount = Number(allocation.amount) || 0;
-          allocation.amount = Math.max(
-            0,
-            currentAmount * (1 - withdrawalRatio),
-          );
+          allocation.amount = Math.max(0, currentAmount * (1 - withdrawalRatio));
           if (!investment.isAutomatedPortfolio && allocation.quantity) {
             const currentUnits = Number(allocation.quantity) || 0;
-            allocation.quantity = Math.max(
-              0,
-              currentUnits * (1 - withdrawalRatio),
-            );
+            allocation.quantity = Math.max(0, currentUnits * (1 - withdrawalRatio));
             const avgPrice =
               Number(allocation.averagePurchasePrice) ||
               investment.averagePurchasePrice ||
@@ -1225,19 +1141,18 @@ router.post("/:id/sell", async (req, res) => {
             subAccount: req.body.allocation.subAccount || null,
             amount: 0,
           },
-          req.userId,
+          req.userId
         );
         if (validation.error) {
           return res.status(400).json({ message: validation.error });
         }
         const cashSubAccount = await getCashSubAccountForAccount(
           validation.allocation.account,
-          req.userId,
+          req.userId
         );
         if (!cashSubAccount) {
           return res.status(400).json({
-            message:
-              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+            message: 'No se pudo encontrar la subcuenta Efectivo para devolver el dinero',
           });
         }
         cashSubAccount.balance += saleAmount;
@@ -1246,12 +1161,11 @@ router.post("/:id/sell", async (req, res) => {
         const cashSubAccounts = await applyCashDeltaForInvestment(
           investment,
           req.userId,
-          saleAmount,
+          saleAmount
         );
         if (!cashSubAccounts || cashSubAccounts.length === 0) {
           return res.status(400).json({
-            message:
-              "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+            message: 'No se pudo encontrar la subcuenta Efectivo para devolver el dinero',
           });
         }
       }
@@ -1260,8 +1174,7 @@ router.post("/:id/sell", async (req, res) => {
 
     // Crear entrada en el historial
     if (date) {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
       const totalValue = investment.isAutomatedPortfolio
         ? investment.currentPrice
         : remainingQuantity * price;
@@ -1271,7 +1184,7 @@ router.post("/:id/sell", async (req, res) => {
         investment._id,
         req.userId,
         totalValue,
-        date || new Date(),
+        date || new Date()
       );
 
       const historyEntry = new InvestmentHistory({
@@ -1279,15 +1192,13 @@ router.post("/:id/sell", async (req, res) => {
         investment: investment._id,
         date: date || new Date(),
         ...getHistoryAllocation(investment, req.body.allocation),
-        currentPrice: investment.isAutomatedPortfolio
-          ? investment.currentPrice
-          : price,
+        currentPrice: investment.isAutomatedPortfolio ? investment.currentPrice : price,
         quantity: remainingQuantity,
         totalValue: totalValue,
         notes:
           notes ||
-          `Retiro parcial: ${quantity} ${investment.isAutomatedPortfolio ? "€" : "unidades"}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ""}. Restante: ${remainingQuantity}`,
-        operation: "withdraw",
+          `Retiro parcial: ${quantity} ${investment.isAutomatedPortfolio ? '€' : 'unidades'}${!investment.isAutomatedPortfolio ? ` a ${price}€` : ''}. Restante: ${remainingQuantity}`,
+        operation: 'withdraw',
         operationAmount: saleAmount,
         operationPrice: investment.isAutomatedPortfolio ? null : price,
         dailyChangeAmount: dailyChanges.dailyChangeAmount,
@@ -1297,33 +1208,33 @@ router.post("/:id/sell", async (req, res) => {
       await recalculateDailyVariationsForInvestmentFromDate(
         investment._id,
         req.userId,
-        date || new Date(),
+        date || new Date()
       );
     }
 
     const populatedInvestment = await Investment.findById(investment._id)
       .populate({
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "allocations.account",
+        path: 'allocations.account',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
 
@@ -1339,7 +1250,7 @@ router.post("/:id/sell", async (req, res) => {
 });
 
 // POST cerrar una inversión (retirar todo el capital sin eliminar)
-router.post("/:id/close", async (req, res) => {
+router.post('/:id/close', async (req, res) => {
   try {
     const { price, date, notes } = req.body;
     const investment = await Investment.findOne({
@@ -1347,25 +1258,25 @@ router.post("/:id/close", async (req, res) => {
       user: req.userId,
     })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
       })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
-    if (investment.status === "closed") {
-      return res.status(400).json({ message: "La inversión ya está cerrada" });
+    if (investment.status === 'closed') {
+      return res.status(400).json({ message: 'La inversión ya está cerrada' });
     }
 
     const closeDate = date ? new Date(date) : new Date();
     const hasValidDate = !Number.isNaN(closeDate?.getTime?.());
     if (!hasValidDate) {
-      return res.status(400).json({ message: "Fecha de cierre inválida" });
+      return res.status(400).json({ message: 'Fecha de cierre inválida' });
     }
 
     let priceToUse = price;
@@ -1376,15 +1287,13 @@ router.post("/:id/close", async (req, res) => {
         Number(investment.purchasePrice) ||
         0;
       if (!priceToUse || priceToUse <= 0) {
-        return res
-          .status(400)
-          .json({ message: "El precio de cierre es requerido" });
+        return res.status(400).json({ message: 'El precio de cierre es requerido' });
       }
     }
 
     if (investment.quantity <= 0) {
       return res.status(400).json({
-        message: "No hay cantidad disponible para cerrar la inversión",
+        message: 'No hay cantidad disponible para cerrar la inversión',
       });
     }
 
@@ -1394,21 +1303,16 @@ router.post("/:id/close", async (req, res) => {
 
     if (!saleAmount || saleAmount <= 0) {
       return res.status(400).json({
-        message: "No se pudo calcular el monto a retirar",
+        message: 'No se pudo calcular el monto a retirar',
       });
     }
 
     ensureInvestmentAllocations(investment);
 
-    const cashSubAccounts = await applyCashDeltaForInvestment(
-      investment,
-      req.userId,
-      saleAmount,
-    );
+    const cashSubAccounts = await applyCashDeltaForInvestment(investment, req.userId, saleAmount);
     if (!cashSubAccounts || cashSubAccounts.length === 0) {
       return res.status(400).json({
-        message:
-          "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+        message: 'No se pudo encontrar la subcuenta Efectivo para devolver el dinero',
       });
     }
 
@@ -1417,7 +1321,7 @@ router.post("/:id/close", async (req, res) => {
       investment._id,
       req.userId,
       totalValue,
-      closeDate,
+      closeDate
     );
 
     const historyEntry = new InvestmentHistory({
@@ -1431,7 +1335,7 @@ router.post("/:id/close", async (req, res) => {
       notes:
         notes ||
         `Cierre de inversión: ${investment.isAutomatedPortfolio ? `${saleAmount} €` : `${investment.quantity} unidades`}`,
-      operation: "withdraw",
+      operation: 'withdraw',
       operationAmount: saleAmount,
       operationPrice: investment.isAutomatedPortfolio ? null : priceToUse,
       dailyChangeAmount: dailyChanges.dailyChangeAmount,
@@ -1439,7 +1343,7 @@ router.post("/:id/close", async (req, res) => {
     });
     await historyEntry.save();
 
-    investment.status = "closed";
+    investment.status = 'closed';
     investment.closedAt = closeDate;
     investment.autoUpdate = false;
     investment.dcaEnabled = false;
@@ -1465,23 +1369,22 @@ router.post("/:id/close", async (req, res) => {
     const summaryEntries = await InvestmentHistory.find({
       user: req.userId,
       investment: investment._id,
-      operation: { $in: ["creation", "add", "withdraw", "sell"] },
+      operation: { $in: ['creation', 'add', 'withdraw', 'sell'] },
     });
 
     let totalContributed = 0;
     let totalWithdrawn = 0;
     summaryEntries.forEach((entry) => {
       const amount = resolveOperationAmount(entry);
-      if (entry.operation === "creation" || entry.operation === "add") {
+      if (entry.operation === 'creation' || entry.operation === 'add') {
         totalContributed += amount;
-      } else if (entry.operation === "withdraw" || entry.operation === "sell") {
+      } else if (entry.operation === 'withdraw' || entry.operation === 'sell') {
         totalWithdrawn += Math.abs(amount);
       }
     });
 
     const resultAmount = totalWithdrawn - totalContributed;
-    const resultPercent =
-      totalContributed > 0 ? (resultAmount / totalContributed) * 100 : 0;
+    const resultPercent = totalContributed > 0 ? (resultAmount / totalContributed) * 100 : 0;
 
     investment.closeSummary = {
       totalContributed,
@@ -1492,30 +1395,26 @@ router.post("/:id/close", async (req, res) => {
 
     await investment.save();
 
-    await recalculateDailyVariationsForInvestmentFromDate(
-      investment._id,
-      req.userId,
-      closeDate,
-    );
+    await recalculateDailyVariationsForInvestmentFromDate(investment._id, req.userId, closeDate);
 
     const populatedInvestment = await Investment.findById(investment._id)
       .populate({
-        path: "allocations.subAccount",
-        populate: { path: "account" },
+        path: 'allocations.subAccount',
+        populate: { path: 'account' },
       })
       .populate({
-        path: "allocations.account",
+        path: 'allocations.account',
       })
       .populate({
-        path: "subAccount",
-        populate: { path: "account" },
+        path: 'subAccount',
+        populate: { path: 'account' },
       })
       .populate({
-        path: "account",
+        path: 'account',
       });
 
     res.json({
-      message: "Inversión cerrada correctamente",
+      message: 'Inversión cerrada correctamente',
       saleAmount,
       investment: populatedInvestment,
     });
@@ -1525,7 +1424,7 @@ router.post("/:id/close", async (req, res) => {
 });
 
 // POST actualizar precios de todas las inversiones con símbolo
-router.post("/update-prices", async (req, res) => {
+router.post('/update-prices', async (req, res) => {
   try {
     // Obtener todas las inversiones del usuario que tengan símbolo y autoUpdate activado
     // autoUpdate puede ser true o no existir (por defecto true para inversiones antiguas)
@@ -1534,18 +1433,15 @@ router.post("/update-prices", async (req, res) => {
       $and: [
         {
           $or: [
-            { symbol: { $exists: true, $ne: null, $ne: "" } },
-            { isin: { $exists: true, $ne: null, $ne: "" } },
+            { symbol: { $exists: true, $nin: [null, ''] } },
+            { isin: { $exists: true, $nin: [null, ''] } },
           ],
         },
         {
-          status: { $ne: "closed" },
+          status: { $ne: 'closed' },
         },
         {
-          $or: [
-            { account: { $exists: true, $ne: null } },
-            { "allocations.0": { $exists: true } },
-          ],
+          $or: [{ account: { $exists: true, $ne: null } }, { 'allocations.0': { $exists: true } }],
         },
         {
           $or: [
@@ -1558,7 +1454,7 @@ router.post("/update-prices", async (req, res) => {
 
     if (investments.length === 0) {
       return res.json({
-        message: "No hay inversiones con símbolo para actualizar",
+        message: 'No hay inversiones con símbolo para actualizar',
         updated: 0,
         failed: 0,
         results: [],
@@ -1569,8 +1465,7 @@ router.post("/update-prices", async (req, res) => {
     const quoteResults = await updateMultipleQuotes(investments);
 
     // Actualizar las inversiones en la base de datos y registrar en historial
-    const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-      .default;
+    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -1609,7 +1504,7 @@ router.post("/update-prices", async (req, res) => {
               investment._id,
               req.userId,
               totalValue,
-              today,
+              today
             );
 
             if (existingHistory) {
@@ -1618,16 +1513,14 @@ router.post("/update-prices", async (req, res) => {
               existingHistory.quantity = investment.quantity;
               existingHistory.totalValue = totalValue;
               existingHistory.date = new Date(); // Actualizar hora también
-              existingHistory.dailyChangeAmount =
-                dailyChanges.dailyChangeAmount;
-              existingHistory.dailyChangePercent =
-                dailyChanges.dailyChangePercent;
+              existingHistory.dailyChangeAmount = dailyChanges.dailyChangeAmount;
+              existingHistory.dailyChangePercent = dailyChanges.dailyChangePercent;
               // Mantener las notas originales si no son de actualización automática
               if (
                 !existingHistory.notes ||
-                existingHistory.notes === "Actualización automática diaria"
+                existingHistory.notes === 'Actualización automática diaria'
               ) {
-                existingHistory.notes = "Actualización automática diaria";
+                existingHistory.notes = 'Actualización automática diaria';
               }
               await existingHistory.save();
             } else {
@@ -1639,8 +1532,8 @@ router.post("/update-prices", async (req, res) => {
                 currentPrice: investment.currentPrice,
                 quantity: investment.quantity,
                 totalValue: totalValue,
-                notes: "Actualización automática diaria",
-                operation: "update",
+                notes: 'Actualización automática diaria',
+                operation: 'update',
                 dailyChangeAmount: dailyChanges.dailyChangeAmount,
                 dailyChangePercent: dailyChanges.dailyChangePercent,
               });
@@ -1671,7 +1564,7 @@ router.post("/update-prices", async (req, res) => {
 });
 
 // POST actualizar precio de una inversión específica
-router.post("/:id/update-price", async (req, res) => {
+router.post('/:id/update-price', async (req, res) => {
   try {
     const investment = await Investment.findOne({
       _id: req.params.id,
@@ -1679,18 +1572,18 @@ router.post("/:id/update-price", async (req, res) => {
     });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     const hasSymbol = investment.symbol && String(investment.symbol).trim();
     const hasIsin =
       investment.isin &&
       String(investment.isin).trim() &&
-      ["fund", "bond"].includes(investment.type);
+      ['fund', 'bond'].includes(investment.type);
     if (!hasSymbol && !hasIsin) {
       return res.status(400).json({
         message:
-          "La inversión no tiene símbolo ni ISIN definido (los fondos pueden actualizarse por ISIN)",
+          'La inversión no tiene símbolo ni ISIN definido (los fondos pueden actualizarse por ISIN)',
       });
     }
 
@@ -1700,7 +1593,7 @@ router.post("/:id/update-price", async (req, res) => {
       investment.type,
       investment.currency,
       investment.isin,
-      investment.name,
+      investment.name
     );
 
     // Actualizar el precio
@@ -1712,8 +1605,7 @@ router.post("/:id/update-price", async (req, res) => {
 
     // Registrar o actualizar historial diario
     try {
-      const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-        .default;
+      const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
@@ -1738,27 +1630,27 @@ router.post("/:id/update-price", async (req, res) => {
     // Populate para devolver la inversión completa
     const populatedInvestment = await Investment.findById(investment._id)
       .populate({
-        path: "allocations.subAccount",
+        path: 'allocations.subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "allocations.account",
+        path: 'allocations.account',
         match: { user: req.userId },
       })
       .populate({
-        path: "subAccount",
+        path: 'subAccount',
         match: { user: req.userId },
         populate: {
-          path: "account",
+          path: 'account',
           match: { user: req.userId },
         },
       })
       .populate({
-        path: "account",
+        path: 'account',
         match: { user: req.userId },
       });
 
@@ -1777,7 +1669,7 @@ router.post("/:id/update-price", async (req, res) => {
 });
 
 // PATCH actualizar solo el campo autoUpdate
-router.patch("/:id/auto-update", async (req, res) => {
+router.patch('/:id/auto-update', async (req, res) => {
   try {
     const { autoUpdate } = req.body;
     const investment = await Investment.findOne({
@@ -1786,14 +1678,14 @@ router.patch("/:id/auto-update", async (req, res) => {
     });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     investment.autoUpdate = autoUpdate !== undefined ? autoUpdate : true;
     await investment.save();
 
     res.json({
-      message: `Actualización automática ${autoUpdate ? "activada" : "desactivada"}`,
+      message: `Actualización automática ${autoUpdate ? 'activada' : 'desactivada'}`,
       investment,
     });
   } catch (error) {
@@ -1802,23 +1694,23 @@ router.patch("/:id/auto-update", async (req, res) => {
 });
 
 // DELETE eliminar inversión
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { returnMoney } = req.query;
     const investment = await Investment.findOne({
       _id: req.params.id,
       user: req.userId,
     }).populate({
-      path: "subAccount",
+      path: 'subAccount',
       match: { user: req.userId },
     });
 
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     // Si se solicita devolver el dinero, calcular el monto original invertido
-    if (returnMoney === "true") {
+    if (returnMoney === 'true') {
       let originalAmount = 0;
 
       if (investment.isAutomatedPortfolio) {
@@ -1826,8 +1718,7 @@ router.delete("/:id", async (req, res) => {
         originalAmount = investment.quantity;
       } else {
         // Para inversiones tradicionales, usar averagePurchasePrice o purchasePrice
-        const avgPrice =
-          investment.averagePurchasePrice || investment.purchasePrice;
+        const avgPrice = investment.averagePurchasePrice || investment.purchasePrice;
         originalAmount = investment.quantity * avgPrice;
       }
 
@@ -1835,12 +1726,11 @@ router.delete("/:id", async (req, res) => {
       const cashSubAccount = await applyCashDeltaForInvestment(
         investment,
         req.userId,
-        originalAmount,
+        originalAmount
       );
       if (!cashSubAccount || cashSubAccount.length === 0) {
         return res.status(400).json({
-          message:
-            "No se pudo encontrar la subcuenta Efectivo para devolver el dinero",
+          message: 'No se pudo encontrar la subcuenta Efectivo para devolver el dinero',
         });
       }
     }
@@ -1849,10 +1739,8 @@ router.delete("/:id", async (req, res) => {
 
     // IMPORTANTE: Eliminar TODOS los registros históricos de esta inversión
     // Si se elimina una inversión, debe desaparecer completamente del historial
-    const InvestmentHistory = (await import("../models/InvestmentHistory.js"))
-      .default;
-    const DailyVariation = (await import("../models/DailyVariation.js"))
-      .default;
+    const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
+    const DailyVariation = (await import('../models/DailyVariation.js')).default;
 
     const deletedHistory = await InvestmentHistory.deleteMany({
       user: req.userId,
@@ -1868,9 +1756,9 @@ router.delete("/:id", async (req, res) => {
     await Investment.findByIdAndDelete(req.params.id);
 
     const message =
-      returnMoney === "true"
-        ? "Inversión eliminada y dinero devuelto a Efectivo"
-        : "Inversión eliminada";
+      returnMoney === 'true'
+        ? 'Inversión eliminada y dinero devuelto a Efectivo'
+        : 'Inversión eliminada';
 
     res.json({ message });
   } catch (error) {
@@ -1879,7 +1767,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // POST ejecutar compras DCA automáticas
-router.post("/execute-dca", async (req, res) => {
+router.post('/execute-dca', async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1887,7 +1775,7 @@ router.post("/execute-dca", async (req, res) => {
     // Buscar todas las inversiones con DCA habilitado y próxima fecha <= hoy
     const investments = await Investment.find({
       user: req.userId,
-      status: { $ne: "closed" },
+      status: { $ne: 'closed' },
       dcaEnabled: true,
       dcaNextDate: { $lte: today },
       $or: [
@@ -1912,7 +1800,7 @@ router.post("/execute-dca", async (req, res) => {
         const hasIsin =
           investment.isin &&
           String(investment.isin).trim() &&
-          ["fund", "bond"].includes(investment.type);
+          ['fund', 'bond'].includes(investment.type);
 
         if ((hasSymbol || hasIsin) && investment.autoUpdate !== false) {
           try {
@@ -1921,7 +1809,7 @@ router.post("/execute-dca", async (req, res) => {
               investment.type,
               investment.currency,
               hasIsin ? investment.isin : null,
-              investment.name,
+              investment.name
             );
             if (quote && quote.price) {
               currentPrice = quote.price;
@@ -1934,7 +1822,7 @@ router.post("/execute-dca", async (req, res) => {
             // Si falla la obtención de cotización, usar el precio actual
             console.error(
               `Error obteniendo cotización para inversión ${investment._id} (${investment.name}):`,
-              error,
+              error
             );
           }
         }
@@ -1944,7 +1832,7 @@ router.post("/execute-dca", async (req, res) => {
             investmentId: investment._id,
             name: investment.name,
             success: false,
-            message: "No se pudo obtener el precio actual",
+            message: 'No se pudo obtener el precio actual',
           });
           continue;
         }
@@ -1970,12 +1858,10 @@ router.post("/execute-dca", async (req, res) => {
           investment.quantity += quantity;
         } else {
           const currentQuantity = investment.quantity;
-          const currentAvgPrice =
-            investment.averagePurchasePrice || investment.purchasePrice;
+          const currentAvgPrice = investment.averagePurchasePrice || investment.purchasePrice;
           const newQuantity = currentQuantity + quantity;
           const newAveragePrice =
-            (currentQuantity * currentAvgPrice + quantity * price) /
-            newQuantity;
+            (currentQuantity * currentAvgPrice + quantity * price) / newQuantity;
 
           investment.quantity = newQuantity;
           investment.averagePurchasePrice = newAveragePrice;
@@ -1996,9 +1882,7 @@ router.post("/execute-dca", async (req, res) => {
         };
 
         let nextDate = new Date(today);
-        nextDate.setDate(
-          nextDate.getDate() + daysToAdd[investment.dcaFrequency],
-        );
+        nextDate.setDate(nextDate.getDate() + daysToAdd[investment.dcaFrequency]);
 
         // Verificar si hay fecha de fin
         if (investment.dcaEndDate) {
@@ -2016,9 +1900,7 @@ router.post("/execute-dca", async (req, res) => {
         await investment.save();
 
         // Crear entrada en el historial
-        const InvestmentHistory = (
-          await import("../models/InvestmentHistory.js")
-        ).default;
+        const InvestmentHistory = (await import('../models/InvestmentHistory.js')).default;
         const totalValue = investment.isAutomatedPortfolio
           ? investment.currentPrice
           : investment.quantity * investment.currentPrice;
@@ -2027,7 +1909,7 @@ router.post("/execute-dca", async (req, res) => {
           investment._id,
           req.userId,
           totalValue,
-          today,
+          today
         );
 
         const historyEntry = new InvestmentHistory({
@@ -2038,8 +1920,8 @@ router.post("/execute-dca", async (req, res) => {
           currentPrice: investment.currentPrice,
           quantity: investment.quantity,
           totalValue: totalValue,
-          notes: `Compra DCA automática: ${investment.dcaAmount}${investment.isAutomatedPortfolio ? "€" : ` (${quantity.toFixed(4)} unidades a ${price.toFixed(4)}€)`}`,
-          operation: "add",
+          notes: `Compra DCA automática: ${investment.dcaAmount}${investment.isAutomatedPortfolio ? '€' : ` (${quantity.toFixed(4)} unidades a ${price.toFixed(4)}€)`}`,
+          operation: 'add',
           operationAmount: additionalAmount,
           operationPrice: investment.isAutomatedPortfolio ? null : price,
           dailyChangeAmount: dailyChanges.dailyChangeAmount,

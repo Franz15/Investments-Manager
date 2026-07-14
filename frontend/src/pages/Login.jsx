@@ -221,7 +221,8 @@ const Login = () => {
                     border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: '10px',
                     color: 'rgba(255,255,255,0.88)',
-                    fontSize: '0.875rem',
+                    // 16px evita el auto-zoom de iOS Safari al enfocar el input
+                    fontSize: '16px',
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'all 0.18s ease',
@@ -270,7 +271,8 @@ const Login = () => {
                     border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: '10px',
                     color: 'rgba(255,255,255,0.88)',
-                    fontSize: '0.875rem',
+                    // 16px evita el auto-zoom de iOS Safari al enfocar el input
+                    fontSize: '16px',
                     fontFamily: 'inherit',
                     outline: 'none',
                     transition: 'all 0.18s ease',
