@@ -433,7 +433,7 @@ router.get('/balance-chart', async (req, res) => {
 
       if (isCurrentMonth) {
         // Para el mes actual, usar valores actuales
-        investmentsValue = investments.reduce((sum, inv) => {
+        investmentsValue = perfInvestments.reduce((sum, inv) => {
           const value = inv.isAutomatedPortfolio
             ? inv.currentPrice
             : inv.quantity * inv.currentPrice;
@@ -458,7 +458,7 @@ router.get('/balance-chart', async (req, res) => {
         const investmentDetails = [];
         let skippedInvestments = 0;
         let processedInvestments = 0;
-        for (const inv of investments) {
+        for (const inv of perfInvestments) {
           // Verificar si esta inversión existía en ese mes (fecha de compra antes del fin del mes)
           const purchaseDate = new Date(inv.purchaseDate);
           if (purchaseDate > monthEndDate) {
