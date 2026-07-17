@@ -18,6 +18,7 @@ import PortfolioBuilder from './pages/PortfolioBuilder';
 import AdminAccess from './pages/AdminAccess';
 import Finances from './pages/Finances';
 import Reports from './pages/Reports';
+import BankCallback from './pages/BankCallback';
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useUser();
@@ -144,6 +145,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <AdminAccess />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bank-callback"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <BankCallback />
             </Layout>
           </ProtectedRoute>
         }
