@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import RecurringTransaction from '../models/RecurringTransaction.js';
 import Transaction from '../models/Transaction.js';
+import { syncAllActiveConnections } from '../services/bankSyncService.js';
 
 function advanceDate(date, frequency) {
   const d = new Date(date);
@@ -86,5 +87,19 @@ export function startScheduler() {
       console.error('[Scheduler] Error:', err);
     }
   });
+  // Sync bancario 1x/día (PSD2 permite máx. 4 accesos/día sin usuario presente).
+  // Solo si Enable Banking está configurado.
+  if (process.env.EB_APP_ID) {
+    cron.schedule('0 7 * * *', async () => {
+      console.log('[Scheduler] Sincronizando conexiones bancarias...');
+      try {
+        const count = await syncAllActiveConnections();
+        console.log(`[Scheduler] ${count} transacciones bancarias importadas`);
+      } catch (err) {
+        console.error('[Scheduler] Error en sync bancario:', err);
+      }
+    });
+  }
+
   console.log('[Scheduler] Iniciado — transacciones recurrentes a las 6:00 AM');
 }

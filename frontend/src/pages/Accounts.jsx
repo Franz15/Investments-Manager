@@ -12,8 +12,8 @@ import {
   TrendingDown,
   Clock,
   Bot,
+  Bitcoin,
 } from 'lucide-react';
-import { SiBitcoin } from 'react-icons/si';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -31,26 +31,8 @@ import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/TranslationContext';
-
-/**
- * Formatea precios con 4 decimales, pero muestra solo 2 si los dos últimos son 00
- */
-const formatPrice = (value, currency = 'EUR') => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '0,00 €';
-  }
-
-  const decimalPart = Math.abs((value * 10000) % 100);
-  const hasTrailingZeros = decimalPart === 0;
-  const decimals = hasTrailingZeros ? 2 : 4;
-
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-};
+import { formatPrice } from '../utils/format';
+import BankConnections from '../components/BankConnections';
 
 const Accounts = () => {
   const { t } = useTranslation();
@@ -1182,7 +1164,7 @@ const Accounts = () => {
                                                       }}
                                                     />
                                                   ) : investment.type === 'crypto' ? (
-                                                    <SiBitcoin
+                                                    <Bitcoin
                                                       className="h-4 w-4"
                                                       style={{
                                                         color: 'var(--user-color-600)',
@@ -1549,7 +1531,7 @@ const Accounts = () => {
                                       }}
                                     />
                                   ) : investment.type === 'crypto' ? (
-                                    <SiBitcoin
+                                    <Bitcoin
                                       className="h-4 w-4"
                                       style={{
                                         color: 'var(--user-color-600)',
@@ -1703,6 +1685,9 @@ const Accounts = () => {
           );
         })}
       </div>
+
+      {/* Conexiones bancarias (Enable Banking) */}
+      <BankConnections onSynced={fetchData} />
 
       {/* Modal para Cuenta Principal */}
       {showAccountModal &&
