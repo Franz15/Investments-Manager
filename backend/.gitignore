@@ -7,6 +7,7 @@ uploads/*
 !uploads/transactions/
 uploads/transactions/*
 !uploads/transactions/.gitkeep
+backups/
 
 
 

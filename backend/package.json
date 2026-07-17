@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "setup-env": "node setup-env.js"
+    "setup-env": "node setup-env.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint routes services middleware models scheduler server.js"
   },
   "keywords": [
     "investments",
@@ -33,6 +36,10 @@
     "yahoo-finance2": "^3.11.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "nodemon": "^3.0.2",
+    "vitest": "^4.1.10"
   }
 }

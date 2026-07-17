@@ -29,6 +29,12 @@ dotenv.config();
 // .env.local overrides .env — used for local dev (e.g. bypass mongodb+srv DNS)
 dotenv.config({ path: '.env.local', override: true });
 
+// Fail-fast: sin secreto JWT no se puede firmar/verificar de forma segura
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET no está definido. Configúralo en el entorno.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -62,8 +68,7 @@ app.use(
       callback(new Error('No permitido por CORS'));
     },
     credentials: true,
-    exposedHeaders: ['x-user-id'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 app.use(express.json());
@@ -95,7 +100,7 @@ app.use('/api/manual-assets', manualAssetRoutes);
 app.get('/', (req, res) => {
   res.json({
     message: 'Investments Manager API',
-    version: '0.0.3',
+    version: '0.2.4',
     endpoints: {
       health: '/api/health',
       auth: '/api/auth',
@@ -120,7 +125,6 @@ mongoose
     const dbName = mongoose.connection.db?.databaseName || 'unknown';
     console.log('MongoDB conectado correctamente');
     console.log(`Base de datos: ${dbName}`);
-    console.log(`MongoDB URI: ${MONGODB_URI.substring(0, 60)}...`);
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
       startScheduler();

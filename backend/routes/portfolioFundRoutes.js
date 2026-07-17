@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Fund from '../models/Fund.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { requireAdmin } from '../middleware/adminMiddleware.js';
 import { refreshMetricsByIsin } from '../services/morningstarService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,7 +59,7 @@ router.get('/category/:category', async (req, res) => {
 });
 
 // Crear fondo en el catálogo global (solo admin)
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const fund = new Fund(req.body);
     await fund.save();
@@ -70,7 +71,7 @@ router.post('/', async (req, res) => {
 });
 
 // Actualizar fondo del catálogo global (solo admin)
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const fund = await Fund.findById(req.params.id);
     if (!fund) return res.status(404).json({ message: 'Fondo no encontrado' });
@@ -84,7 +85,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Eliminar fondo del catálogo global (solo admin)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const fund = await Fund.findByIdAndDelete(req.params.id);
     if (!fund) return res.status(404).json({ message: 'Fondo no encontrado' });
@@ -97,7 +98,7 @@ router.delete('/:id', async (req, res) => {
 
 // Actualizar métricas desde Morningstar para el catálogo global de fondos (solo admin).
 // Body: { ids?: string[] }  — si se omite, actualiza todos los fondos con ISIN.
-router.post('/refresh-metrics', async (req, res) => {
+router.post('/refresh-metrics', requireAdmin, async (req, res) => {
   try {
     const query = { isin: { $exists: true, $ne: '' } };
     if (Array.isArray(req.body?.ids) && req.body.ids.length > 0) {
@@ -190,7 +191,7 @@ router.get('/stats/by-category', async (req, res) => {
 
 // Seed del catálogo global desde defaultPortfolioFunds.json (solo admin)
 // Borra la colección y la repuebla desde cero.
-router.post('/seed', async (req, res) => {
+router.post('/seed', requireAdmin, async (req, res) => {
   try {
     const jsonPath = path.join(__dirname, '../data/defaultPortfolioFunds.json');
     const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
