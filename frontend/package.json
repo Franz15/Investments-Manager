@@ -10,7 +10,6 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\" --ignore-path ../.prettierignore"
   },
   "dependencies": {
-    "@react-spring/web": "^9.7.3",
     "axios": "^1.6.2",
     "country-flag-icons": "^1.6.4",
     "date-fns": "^2.30.0",
@@ -18,7 +17,6 @@
     "react": "^18.2.0",
     "react-datepicker": "^9.1.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^5.5.0",
     "react-router-dom": "^6.20.1",
     "recharts": "^2.10.3"
   },

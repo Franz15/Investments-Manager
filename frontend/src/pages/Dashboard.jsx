@@ -38,24 +38,7 @@ import ToggleChip from '../components/ToggleChip';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/TranslationContext';
 import { useTheme } from '../contexts/ThemeContext';
-
-// Funciones auxiliares
-const formatPrice = (value, currency = 'EUR') => {
-  if (value === null || value === undefined || isNaN(value)) {
-    return '0,00 €';
-  }
-
-  const decimalPart = Math.abs((value * 10000) % 100);
-  const hasTrailingZeros = decimalPart === 0;
-  const decimals = hasTrailingZeros ? 2 : 4;
-
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-};
+import { formatPrice } from '../utils/format';
 
 // Esta función se moverá dentro del componente para usar traducciones
 

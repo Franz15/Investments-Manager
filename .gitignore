@@ -1,5 +1,7 @@
 node_modules/
 .env
+*.pem
+*.key
 *.log
 .DS_Store
 dist/

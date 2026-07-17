@@ -12,17 +12,19 @@ export const useUser = () => {
 };
 
 export const UserProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    // 1. Carga inmediata desde localStorage para no mostrar pantalla en blanco
+  // Inicialización síncrona desde localStorage: en el primer render ya hay usuario.
+  // Si fuera asíncrona (useEffect), cualquier carga directa de una ruta protegida
+  // (p. ej. el callback del banco) rebotaría a /login antes de hidratar la sesión.
+  const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = localStorage.getItem('currentUser');
     const savedToken = localStorage.getItem('authToken');
-    if (!savedUser || !savedToken) return;
+    return savedUser && savedToken ? JSON.parse(savedUser) : null;
+  });
 
-    setCurrentUser(JSON.parse(savedUser));
+  useEffect(() => {
+    if (!localStorage.getItem('authToken')) return;
 
-    // 2. Refresca desde el servidor para obtener permisos actualizados
+    // Refresca desde el servidor para obtener permisos actualizados
     //    (el admin puede haber cambiado permisos mientras la sesión estaba activa)
     api
       .get('/users/me')

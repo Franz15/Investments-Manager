@@ -23,6 +23,7 @@ import forecastRoutes from './routes/forecastRoutes.js';
 import businessRoutes from './routes/businessRoutes.js';
 import recurringTransactionRoutes from './routes/recurringTransactionRoutes.js';
 import manualAssetRoutes from './routes/manualAssetRoutes.js';
+import bankConnectionRoutes from './routes/bankConnectionRoutes.js';
 import { startScheduler } from './scheduler/recurringScheduler.js';
 
 dotenv.config();
@@ -95,6 +96,7 @@ app.use('/api/forecasts', forecastRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/recurring-transactions', recurringTransactionRoutes);
 app.use('/api/manual-assets', manualAssetRoutes);
+app.use('/api/bank-connections', bankConnectionRoutes);
 
 // Root route
 app.get('/', (req, res) => {
