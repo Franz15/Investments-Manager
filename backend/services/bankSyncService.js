@@ -82,6 +82,15 @@ export async function syncConnection(connection, { full = false, psuHeaders } = 
     const target = ebAccount.subAccount;
     if (!target) continue;
 
+    // FEAT-20: heredar el negocio de la cuenta padre (null = personal).
+    // Así las cuentas de empresa aparecen en Negocios y no en Finanzas personal.
+    const sub = await SubAccount.findOne({ _id: target, user: connection.user }).populate(
+      'account',
+      'business'
+    );
+    if (!sub) continue; // subcuenta borrada después de mapear
+    const business = sub.account?.business || null;
+
     // PSD2: >90 días de historial solo con usuario presente (full=true desde ruta manual).
     // Sin usuario (cron): incremental desde lastSyncedAt, o últimos 89 días si nunca se sincronizó.
     let dateFrom;
@@ -103,6 +112,7 @@ export async function syncConnection(connection, { full = false, psuHeaders } = 
         ...t,
         user: connection.user,
         subAccount: target,
+        business,
       }));
 
     if (docs.length) {
