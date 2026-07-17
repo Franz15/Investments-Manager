@@ -65,6 +65,16 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Identificador externo para transacciones sincronizadas del banco (dedupe)
+    externalId: {
+      type: String,
+      default: null,
+    },
+    source: {
+      type: String,
+      enum: ['manual', 'import', 'bank'],
+      default: 'manual',
+    },
   },
   {
     timestamps: true,
@@ -81,5 +91,11 @@ transactionSchema.pre('validate', function (next) {
 
 // Índice compuesto para búsquedas por negocio
 transactionSchema.index({ user: 1, business: 1 });
+
+// Dedupe de transacciones bancarias: único solo cuando externalId existe
+transactionSchema.index(
+  { user: 1, externalId: 1 },
+  { unique: true, partialFilterExpression: { externalId: { $type: 'string' } } }
+);
 
 export default mongoose.model('Transaction', transactionSchema);

@@ -8,7 +8,6 @@ import InvestmentHistory from '../models/InvestmentHistory.js';
 import Business from '../models/Business.js';
 import ManualAsset from '../models/ManualAsset.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
-import { getQuote } from '../services/quoteService.js';
 import { getLatestDailyVariation } from '../services/dailyVariationService.js';
 import {
   getPortfolioDailyReturn,
@@ -389,8 +388,6 @@ router.get('/balance-chart', async (req, res) => {
     // Las retiradas (withdraw) aumentan el cash porque el dinero vuelve a las cuentas
     // Para obtener el cash inicial, hacemos el proceso inverso: partimos del cash actual y "deshacemos" las operaciones
     let initialCash = currentCashBalance;
-    let totalContributions = 0;
-    let totalWithdrawals = 0;
 
     // Solo considerar operaciones desde el startMonth en adelante para calcular el cash inicial
     const operationsFromStart = allCapitalOperations.filter((op) => {
@@ -404,13 +401,11 @@ router.get('/balance-chart', async (req, res) => {
         const amount = op.operationAmount || op.quantity * (op.operationPrice || 0);
         // Para obtener el cash inicial, sumamos las aportaciones (proceso inverso)
         initialCash += amount;
-        totalContributions += amount;
       } else if (op.operation === 'withdraw') {
         // Usar operationAmount o calcular desde quantity * operationPrice
         const amount = Math.abs(op.operationAmount || op.quantity * (op.operationPrice || 0));
         // Para obtener el cash inicial, restamos las retiradas (proceso inverso)
         initialCash -= amount;
-        totalWithdrawals += amount;
       }
     });
     initialCash = Math.max(0, initialCash);
@@ -451,25 +446,15 @@ router.get('/balance-chart', async (req, res) => {
         // Buscar para cada inversión individualmente la variación más reciente antes del fin del mes
         // Esto asegura que encontremos el valor de TODAS las inversiones que existían en ese mes
         investmentsValue = 0;
-        let foundVariations = 0;
-        let foundHistories = 0;
-        let foundCapital = 0;
-
-        const investmentDetails = [];
-        let skippedInvestments = 0;
-        let processedInvestments = 0;
         for (const inv of perfInvestments) {
           // Verificar si esta inversión existía en ese mes (fecha de compra antes del fin del mes)
           const purchaseDate = new Date(inv.purchaseDate);
           if (purchaseDate > monthEndDate) {
             // Esta inversión no existía aún en este mes, saltarla
-            skippedInvestments++;
             continue;
           }
-          processedInvestments++;
 
           let invValue = 0;
-          let source = 'none';
 
           // Buscar el valor más reciente de esta inversión antes del fin del mes
           // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
@@ -484,9 +469,7 @@ router.get('/balance-chart', async (req, res) => {
 
           if (lastHistoryForInv && lastHistoryForInv.totalValue) {
             invValue = lastHistoryForInv.totalValue;
-            source = 'history';
             investmentsValue += invValue;
-            foundHistories++;
           } else {
             // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
             const lastVariationForInv = await DailyVariation.findOne({
@@ -499,9 +482,7 @@ router.get('/balance-chart', async (req, res) => {
 
             if (lastVariationForInv && lastVariationForInv.totalValue) {
               invValue = lastVariationForInv.totalValue;
-              source = 'variation';
               investmentsValue += invValue;
-              foundVariations++;
             } else {
               // PRIORIDAD 3: Calcular el capital invertido hasta ese momento
               const invHistoryBeforeMonth = allCapitalOperations.filter((op) => {
@@ -528,19 +509,9 @@ router.get('/balance-chart', async (req, res) => {
 
               if (invCapitalBeforeMonth > 0) {
                 invValue = invCapitalBeforeMonth;
-                source = 'capital';
                 investmentsValue += invValue;
-                foundCapital++;
               }
             }
-          }
-
-          if (invValue > 0) {
-            investmentDetails.push({
-              name: inv.name,
-              value: invValue.toFixed(2),
-              source,
-            });
           }
         }
 
@@ -554,21 +525,17 @@ router.get('/balance-chart', async (req, res) => {
 
         // Calcular el cambio de cash durante este mes
         let cashChangeThisMonth = 0;
-        let contributionsThisMonth = 0;
-        let withdrawalsThisMonth = 0;
         operationsInMonth.forEach((op) => {
           if (op.operation === 'creation' || op.operation === 'add') {
             // Las aportaciones reducen el cash
             // Usar operationAmount o calcular desde quantity * operationPrice
             const amount = op.operationAmount || op.quantity * (op.operationPrice || 0);
             cashChangeThisMonth -= amount;
-            contributionsThisMonth += amount;
           } else if (op.operation === 'withdraw') {
             // Los retiros aumentan el cash
             // Usar operationAmount o calcular desde quantity * operationPrice
             const amount = Math.abs(op.operationAmount || op.quantity * (op.operationPrice || 0));
             cashChangeThisMonth += amount;
-            withdrawalsThisMonth += amount;
           }
         });
 
@@ -607,7 +574,7 @@ router.get('/balance-chart', async (req, res) => {
     }
 
     res.json(data);
-  } catch (error) {
+  } catch {
     // Devolver array vacío en caso de error para que el dashboard no se rompa
     res.json([]);
   }
@@ -741,10 +708,6 @@ router.get('/balance-daily', async (req, res) => {
       (sum, subAcc) => sum + subAcc.balance,
       0
     );
-
-    // Log detallado de transacciones para debug
-    const incomeTransactions = allTransactions.filter((t) => t.type === 'income');
-    const expenseTransactions = allTransactions.filter((t) => t.type === 'expense');
 
     // Calcular cash inicial: partir del cash actual y "deshacer" operaciones desde startDate
     // Esto nos da el cash que había al inicio de startDate.
@@ -934,8 +897,6 @@ router.get('/balance-daily', async (req, res) => {
       const dateEndNormalized = new Date(date);
       dateEndNormalized.setHours(23, 59, 59, 999);
 
-      const cashBeforeDay = cash;
-
       // Aplicar efectivo inicial de subcuentas si su initialDate es este día
       // (solo para subcuentas que se crearon después de startDate)
       // Comparar por clave local (YYYY-MM-DD) para que el efectivo aparezca el día correcto y no se pierda por timezone
@@ -954,38 +915,26 @@ router.get('/balance-daily', async (req, res) => {
       if (useCashCalculation) {
         // Aplicar transacciones de este día
         const transactionsToday = transactionsByDate.get(dateKey) || [];
-        let incomeToday = 0;
-        let expenseToday = 0;
         transactionsToday.forEach((transaction) => {
           if (transaction.type === 'income') {
             cash += transaction.amount;
-            incomeToday += transaction.amount;
           } else if (transaction.type === 'expense') {
             cash -= transaction.amount;
-            expenseToday += transaction.amount;
           }
         });
 
         // Aplicar operaciones de capital de este día
         const operationsToday = operationsByDate.get(dateKey) || [];
-        let contributionsToday = 0;
-        let withdrawalsToday = 0;
         operationsToday.forEach((op) => {
           const amount = getOpAmount(op);
           if (op.operation === 'creation' || op.operation === 'add') {
             cash -= amount;
-            contributionsToday += amount;
           } else if (op.operation === 'withdraw' || op.operation === 'sell') {
             cash += amount;
-            withdrawalsToday += amount;
           }
         });
 
         cash = Math.max(0, cash);
-
-        // Log detallado para días con operaciones importantes
-        if (transactionsToday.length > 0 || operationsToday.length > 0) {
-        }
       }
 
       // Verificar si es el día de hoy (último día), usando clave local
@@ -1117,119 +1066,6 @@ router.get('/balance-daily', async (req, res) => {
         date: dateKey,
         balance: parseFloat(balanceTotal.toFixed(2)),
       });
-    }
-
-    if (result.length > 0) {
-      const lastBalance = result[result.length - 1];
-
-      // Calcular valores del último día para comparar con /stats
-      const lastDateKey = lastBalance.date;
-      const lastDateNormalized = new Date(lastDateKey);
-      lastDateNormalized.setHours(0, 0, 0, 0);
-
-      // Calcular cash del último día
-      // Para el último día (hoy), usar el cash actual directamente (igual que /stats)
-      const isLastDayToday = lastDateKey === getLocalDateKey(new Date());
-
-      let lastDayCash = 0;
-      if (useCashCalculation) {
-        if (isLastDayToday) {
-          // Para hoy, usar el cash actual directamente
-          lastDayCash = currentCashBalance;
-        } else {
-          // Para días pasados, calcular desde initialCash
-          lastDayCash = initialCash;
-
-          // Aplicar todas las operaciones hasta el último día
-          allCapitalOperations.forEach((op) => {
-            const opDate = new Date(op.date);
-            opDate.setHours(0, 0, 0, 0);
-            if (opDate <= lastDateNormalized) {
-              const amount = getOpAmount(op);
-              if (op.operation === 'creation' || op.operation === 'add') {
-                lastDayCash -= amount;
-              } else if (op.operation === 'withdraw' || op.operation === 'sell') {
-                lastDayCash += amount;
-              }
-            }
-          });
-
-          allTransactions.forEach((t) => {
-            const tDate = new Date(t.date);
-            tDate.setHours(0, 0, 0, 0);
-            if (tDate <= lastDateNormalized) {
-              if (t.type === 'income') lastDayCash += t.amount;
-              else if (t.type === 'expense') lastDayCash -= t.amount;
-            }
-          });
-
-          // Aplicar subcuentas con initialDate (comparar por clave local)
-          if (subAccountsAfterStart.length > 0) {
-            subAccountsAfterStart.forEach((subAcc) => {
-              const subAccDateKey = getLocalDateKey(subAcc.initialDate);
-              if (subAccDateKey <= lastDateKey) {
-                lastDayCash += subAcc.balance;
-              }
-            });
-          }
-
-          lastDayCash = Math.max(0, lastDayCash);
-        }
-      }
-
-      // Calcular inversiones del último día (usar modelo Investment directamente para hoy)
-      const isTodayForInvestments = lastDateKey === getLocalDateKey(new Date());
-
-      let lastDayInvestments = 0;
-      if (isTodayForInvestments) {
-        // Para hoy, usar el modelo Investment directamente (igual que /stats)
-        lastDayInvestments = perfInvestments.reduce((sum, inv) => {
-          const value = inv.isAutomatedPortfolio
-            ? inv.currentPrice || 0
-            : (inv.quantity || 0) * (inv.currentPrice || 0);
-          return sum + value;
-        }, 0);
-      } else {
-        // Para días pasados, usar el valor calculado
-        const lastDateEnd = new Date(lastDateKey);
-        lastDateEnd.setHours(23, 59, 59, 999);
-
-        for (const inv of perfInvestments) {
-          const creationOp = allHistoryEntries.find(
-            (h) =>
-              h.investment &&
-              h.investment.toString() === inv._id.toString() &&
-              h.operation === 'creation'
-          );
-          const creationDateValue = creationOp?.date || inv.purchaseDate || inv.createdAt;
-          if (!creationDateValue) continue;
-
-          const creationDate = new Date(creationDateValue);
-          creationDate.setHours(0, 0, 0, 0);
-          const creationDateEnd = new Date(creationDate);
-          creationDateEnd.setHours(23, 59, 59, 999);
-          if (creationDateEnd > lastDateEnd) continue;
-
-          const cacheKey = `${inv._id.toString()}_${lastDateKey}`;
-          if (investmentValuesByDate.has(cacheKey)) {
-            lastDayInvestments += investmentValuesByDate.get(cacheKey);
-          }
-        }
-      }
-
-      // Comparar con /stats
-      const totalCashSavings = cashSubAccounts.reduce((sum, sa) => sum + sa.balance, 0);
-      const totalInvestmentsStats = perfInvestments.reduce((sum, inv) => {
-        const value = inv.isAutomatedPortfolio
-          ? inv.currentPrice || 0
-          : (inv.quantity || 0) * (inv.currentPrice || 0);
-        return sum + value;
-      }, 0);
-      const totalBalanceStats = totalCashSavings + totalInvestmentsStats;
-      const netWorthStats = totalBalanceStats - currentTotalBadDebts;
-
-      // Verificar valores únicos
-      const uniqueBalances = [...new Set(result.map((r) => r.balance.toFixed(2)))];
     }
 
     res.json(result);
@@ -2032,17 +1868,17 @@ router.get('/performance', async (req, res) => {
         if (sp500Quote && sp500Quote.regularMarketPrice) {
           perfSp500Comparison.currentPrice = sp500Quote.regularMarketPrice;
         }
-      } catch (gspcError) {
+      } catch {
         try {
           const spyQuote = await yahooFinance.quote('SPY');
           if (spyQuote && spyQuote.regularMarketPrice) {
             perfSp500Comparison.currentPrice = spyQuote.regularMarketPrice;
           }
-        } catch (spyError) {
+        } catch {
           // ignore
         }
       }
-    } catch (sp500Error) {
+    } catch {
       // ignore
     }
 

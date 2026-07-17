@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import YahooFinanceClass from 'yahoo-finance2';
 
 const yahooFinance = new YahooFinanceClass({ suppressNotices: ['yahooSurvey'] });
