@@ -25,6 +25,7 @@ import recurringTransactionRoutes from './routes/recurringTransactionRoutes.js';
 import manualAssetRoutes from './routes/manualAssetRoutes.js';
 import bankConnectionRoutes from './routes/bankConnectionRoutes.js';
 import { startScheduler } from './scheduler/recurringScheduler.js';
+import { authenticateToken } from './middleware/authMiddleware.js';
 
 dotenv.config();
 // .env.local overrides .env — used for local dev (e.g. bypass mongodb+srv DNS)
@@ -75,8 +76,19 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir imágenes subidas como archivos estáticos
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Recibos y facturas: privados, solo con token (FEAT-28).
+// sendFile con `root` resuelve la ruta y bloquea path traversal (../).
+app.get('/uploads/*', authenticateToken, (req, res) => {
+  let relative;
+  try {
+    relative = decodeURIComponent(req.path.replace(/^\/uploads\//, ''));
+  } catch {
+    return res.status(400).json({ message: 'Ruta inválida' });
+  }
+  res.sendFile(relative, { root: path.join(__dirname, 'uploads') }, (err) => {
+    if (err && !res.headersSent) res.status(404).json({ message: 'Archivo no encontrado' });
+  });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
