@@ -316,7 +316,75 @@ Motor de reglas de categorización configurable, webhooks de EB, multi-divisa, s
 transacciones, notificaciones de sync, histórico de saldos bancarios, ML. Cualquiera se
 reevalúa cuando su ausencia duela con datos reales.
 
-## 9. Alternativa considerada
+## 9. Sprint de seguridad (FEAT-26+) — gate antes de datos bancarios reales
+
+> Auditoría 2026-07-18. Regla del sprint: primero lo que cierra puertas abiertas,
+> después lo que endurece. Nada de teatro criptográfico (CSFLE con la clave en la misma
+> caja que los datos no protege nada; los importes se computan, no se cifran).
+
+### Transversales (ops, sin código — el 90% del riesgo)
+
+**FEAT-26 — Rotación y purga de secretos** · S · **BLOQUEANTE para FEAT-25**
+
+- Rotar credenciales de MongoDB Atlas (usuario nuevo, borrar el antiguo).
+- Rotar `JWT_SECRET` en Railway (invalida sesiones activas: avisar a la familia).
+- Purgar del historial de git los backups/credenciales filtrados (`git filter-repo`),
+  force-push coordinado y re-clone.
+- AC: la connection string del historial ya no autentica; el repo no contiene secretos en
+  ningún commit.
+
+**FEAT-27 — Backups fiables** · S
+
+- Atlas M0 no tiene backup: `mongodump` programado (cron local o GitHub Action a storage
+  privado) o subir a tier con backup. **Nunca al repo.**
+- AC: restore probado una vez (dump → BD temporal → datos íntegros).
+
+### Backend
+
+**FEAT-28 — `/uploads` tras autenticación** · XS
+
+- `express.static` de uploads detrás de `authenticateToken` (ruta que sirve el fichero
+  tras validar token). Recibos/facturas dejan de ser públicos por URL.
+- AC: GET a un upload sin token → 401.
+
+**FEAT-29 — Rate-limit en login** · XS
+
+- `express-rate-limit` en `/api/auth/login` (p. ej. 10 intentos / 15 min / IP).
+- AC: intento 11 → 429.
+
+**FEAT-24 — Blindaje de tx bancarias** (ya en backlog §8) · XS
+
+- Encaja en este sprint: importe/fecha/borrado inmutables en `source: 'bank'`.
+
+### Frontend
+
+**FEAT-30 — Higiene de sesión** · S
+
+- Al recibir 401 con sesión previa: limpiar `localStorage` (ya lo hace el interceptor) y
+  mostrar aviso "sesión caducada" en Login en vez de aterrizar en frío.
+- Verificar que ningún componente use `dangerouslySetInnerHTML` (grep) — React escapa el
+  resto por defecto.
+- AC: caducidad de sesión → mensaje claro; grep limpio.
+
+### Extras (pedidos: más allá del mínimo — con su precio real)
+
+| Extra                                                                        | Talla | Beneficio honesto                                    | ¿Cuándo hacerlo?                            |
+| ---------------------------------------------------------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------- |
+| **FEAT-31** Auth por cookie httpOnly (+ CSRF) en vez de localStorage         | M     | El token deja de ser robable por XSS                 | Si la app sale del círculo familiar         |
+| **FEAT-32** CSP + security headers en Vercel (`vercel.json`) y helmet en API | S     | Mitiga XSS/clickjacking; barato                      | Vale la pena en este sprint si sobra tiempo |
+| **FEAT-33** Registro de accesos (colección `authlog`: login, sync, IP)       | S     | Forense básico: saber si pasó algo                   | Con bancos reales conectados, sí            |
+| **FEAT-34** `npm audit` + Dependabot en CI                                   | S     | Avisos de CVEs sin trabajo manual                    | Sí, es configuración una vez                |
+| 2FA / passkeys                                                               | L     | Real pero desproporcionado para 5 usuarios conocidos | Nunca, salvo apertura al público            |
+| IP fija Railway + Atlas allowlist                                            | €     | Cierra el `0.0.0.0/0`                                | Solo si Railway se paga por otra razón      |
+
+### Orden del sprint
+
+`26 → 28 → 29 → 24 → 27 → 30 → (32 → 34 → 33 si hay hueco)`. La 26 va primera y sola:
+rotar secretos con calma, sin mezclar con deploys de código. FEAT-25 (bancos reales) **no se
+completa hasta cerrar la 26** — conectar tu banco de verdad a una BD cuyas credenciales
+llevan meses filtradas en el historial es el orden equivocado.
+
+## 10. Alternativa considerada
 
 **GoCardless Bank Account Data** (ex-Nordigen): free tier similar, también cubre bancos españoles.
 Diferencia clave: GoCardless **almacena** los datos en sus servidores (más superficie de terceros);
