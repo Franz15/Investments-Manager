@@ -13,6 +13,33 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
   const [activeDebts, setActiveDebts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
+  // FEAT-28: /uploads requiere token y un <img src> no manda headers,
+  // así que se descarga con axios (que sí los añade) y se muestra como blob.
+  const [imageSrc, setImageSrc] = useState(null);
+
+  useEffect(() => {
+    if (!imageUrl) {
+      setImageSrc(null);
+      return;
+    }
+    let objectUrl;
+    let cancelled = false;
+    // En prod el backend vive en otro origen (Railway); en dev el proxy de Vite sirve /uploads
+    const backendOrigin = (api.defaults.baseURL || '/api').replace(/\/api$/, '');
+    api
+      .get(imageUrl, { baseURL: backendOrigin, responseType: 'blob' })
+      .then((res) => {
+        objectUrl = URL.createObjectURL(res.data);
+        if (!cancelled) setImageSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setImageSrc(null);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [imageUrl]);
   const [imageLoading, setImageLoading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const fileInputRef = useRef(null);
@@ -154,7 +181,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
           <X className="h-8 w-8" />
         </button>
         <img
-          src={imageUrl}
+          src={imageSrc}
           alt="Recibo"
           className="max-w-full max-h-full object-contain rounded-lg"
           onClick={(e) => e.stopPropagation()}
@@ -585,7 +612,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                     <span className="text-sm text-gray-600 dark:text-gray-400">Documento PDF</span>
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                       <a
-                        href={imageUrl}
+                        href={imageSrc}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600"
@@ -611,7 +638,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaction, onUpdate, onDele
                 ) : (
                   <div className="relative inline-block group">
                     <img
-                      src={imageUrl}
+                      src={imageSrc}
                       alt="Recibo"
                       className="h-40 w-auto rounded-lg object-cover border border-gray-200 dark:border-gray-700 cursor-zoom-in"
                       onClick={() => setLightboxOpen(true)}

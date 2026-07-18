@@ -1,0 +1,12 @@
+# <tipo>(<FEAT-NN>): <resumen en imperativo, ≤72 caracteres>
+#
+# tipos: feat | fix | chore | docs | refactor | test | security
+# Sin US asociada, usa el área como scope: (backend) (frontend) (deploy) (deps)
+#
+# Cuerpo opcional: el qué y el porqué (no el cómo), un guion por cambio.
+#
+# Ejemplo:
+#   feat(FEAT-21): autocategoriza transacciones importadas por descripción
+#
+#   - Copia la categoría de la última transacción con la misma descripción
+#   - Añade filtro "Sin categorizar" en Transacciones
