@@ -1,7 +1,8 @@
-# <tipo>(<FEAT-NN>): <resumen en imperativo, ≤72 caracteres>
+# <tipo>(<FEAT-NN|FIX-NN>): <resumen en imperativo, ≤72 caracteres>
 #
 # tipos: feat | fix | chore | docs | refactor | test | security
-# Sin US asociada, usa el área como scope: (backend) (frontend) (deploy) (deps)
+# Numeración única y lineal para todas las US: FEAT-NN (historia) o FIX-NN (bug)
+# continúan la misma serie. Sin ticket → área: (backend) (frontend) (deploy) (deps)
 #
 # Cuerpo opcional: el qué y el porqué (no el cómo), un guion por cambio.
 #

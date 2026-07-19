@@ -3,8 +3,17 @@ import BankConnection from '../models/BankConnection.js';
 import SubAccount from '../models/SubAccount.js';
 import { decryptSecret, getBalances, getTransactions } from './enableBankingService.js';
 
-const FULL_HISTORY_FROM = '2000-01-01';
 const INCREMENTAL_MARGIN_DAYS = 7; // margen para transacciones que pasan de PEND a BOOK
+
+// Cada banco limita cuánto historial deja pedir (BBVA → 422 "fuera de rango") y no
+// publican el tope. Escalera: del rango más amplio al más corto hasta que acepte.
+const FULL_SYNC_LADDER_DAYS = [3650, 1460, 730, 365, 179, 89];
+
+export function daysAgoIso(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
 
 export function maskIban(iban) {
   if (!iban) return null;
@@ -62,6 +71,20 @@ async function fetchAllTransactions(accountUid, dateFrom, psuHeaders) {
   return all;
 }
 
+// Historial completo bajando por la escalera hasta el rango que el banco acepte
+async function fetchFullHistory(accountUid, psuHeaders) {
+  let lastErr;
+  for (const days of FULL_SYNC_LADDER_DAYS) {
+    try {
+      return await fetchAllTransactions(accountUid, daysAgoIso(days), psuHeaders);
+    } catch (err) {
+      if (err.status !== 422) throw err; // 422 = rango no aceptado; otros errores, arriba
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
 /**
  * Sincroniza una conexión. `full: true` solo con usuario presente (PSD2: >90 días
  * de historial requiere PSU). Devuelve nº de transacciones creadas.
@@ -93,16 +116,18 @@ export async function syncConnection(connection, { full = false, psuHeaders } = 
 
     // PSD2: >90 días de historial solo con usuario presente (full=true desde ruta manual).
     // Sin usuario (cron): incremental desde lastSyncedAt, o últimos 89 días si nunca se sincronizó.
-    let dateFrom;
+    let ebTxs;
     if (full) {
-      dateFrom = FULL_HISTORY_FROM;
+      ebTxs = await fetchFullHistory(ebAccount.uid, psuHeaders);
     } else {
       const from = ebAccount.lastSyncedAt ? new Date(ebAccount.lastSyncedAt) : new Date();
       from.setDate(from.getDate() - (ebAccount.lastSyncedAt ? INCREMENTAL_MARGIN_DAYS : 89));
-      dateFrom = from.toISOString().slice(0, 10);
+      ebTxs = await fetchAllTransactions(
+        ebAccount.uid,
+        from.toISOString().slice(0, 10),
+        psuHeaders
+      );
     }
-
-    const ebTxs = await fetchAllTransactions(ebAccount.uid, dateFrom, psuHeaders);
     const booked = ebTxs.filter((t) => (t.status || 'BOOK') === 'BOOK');
 
     const docs = booked
