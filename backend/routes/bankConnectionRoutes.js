@@ -168,9 +168,11 @@ router.post('/:id/sync', async (req, res) => {
   } catch (error) {
     console.error('Error sincronizando:', error.message);
     const expired = error.status === 401 || error.status === 403;
-    if (expired) {
-      await BankConnection.updateOne({ _id: req.params.id }, { status: 'expired' });
-    }
+    // Persistir el error para poder diagnosticar sin acceso a los logs del servidor
+    await BankConnection.updateOne(
+      { _id: req.params.id, user: req.userId },
+      { lastSyncError: error.message?.slice(0, 500), ...(expired ? { status: 'expired' } : {}) }
+    ).catch(() => {});
     res.status(502).json({
       message: expired
         ? 'El consentimiento ha expirado. Reconecta el banco.'
