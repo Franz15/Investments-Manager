@@ -118,7 +118,7 @@ app.use('/api/bank-connections', bankConnectionRoutes);
 app.get('/', (req, res) => {
   res.json({
     message: 'Investments Manager API',
-    version: '0.2.4',
+    version: '0.3',
     endpoints: {
       health: '/api/health',
       auth: '/api/auth',
