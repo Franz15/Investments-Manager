@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 // El secreto se lee de forma diferida (en tiempo de request), no en el
 // top-level: los imports de rutas se ejecutan antes de dotenv.config() en
@@ -20,12 +21,28 @@ export const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Token de acceso requerido' });
   }
 
-  jwt.verify(token, getSecret(), { algorithms: ['HS256'] }, (err, decoded) => {
+  jwt.verify(token, getSecret(), { algorithms: ['HS256'] }, async (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: 'Token inválido o expirado' });
     }
 
     req.userId = decoded.userId;
+
+    // Impersonación (MCP/admin): actuar como otro perfil. Solo con role=admin;
+    // el lookup a BD ocurre únicamente cuando llega la cabecera.
+    const actAs = req.headers['x-act-as-user'];
+    if (actAs && actAs !== decoded.userId) {
+      try {
+        const me = await User.findOne({ id: decoded.userId }).select('role');
+        if (me?.role !== 'admin') {
+          return res.status(403).json({ message: 'Solo un admin puede actuar como otro usuario' });
+        }
+        req.userId = actAs;
+      } catch {
+        return res.status(500).json({ message: 'Error al verificar permisos' });
+      }
+    }
+
     next();
   });
 };

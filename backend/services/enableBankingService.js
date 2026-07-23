@@ -40,15 +40,27 @@ function getAppJwt() {
 
 /* ── HTTP ───────────────────────────────────────────────────────── */
 
+const EB_TIMEOUT_MS = 30_000; // los bancos (Redsys) a veces cuelgan la conexión sin responder
+
 async function ebFetch(path, { method = 'GET', body, psuHeaders } = {}) {
   const res = await fetch(`${EB_API}${path}`, {
     method,
+    signal: AbortSignal.timeout(EB_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${getAppJwt()}`,
       'Content-Type': 'application/json',
       ...(psuHeaders || {}),
     },
     body: body ? JSON.stringify(body) : undefined,
+  }).catch((err) => {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      const e = new Error(
+        `Enable Banking ${method} ${path} → timeout tras ${EB_TIMEOUT_MS / 1000}s`
+      );
+      e.status = 504;
+      throw e;
+    }
+    throw err;
   });
 
   if (!res.ok) {
