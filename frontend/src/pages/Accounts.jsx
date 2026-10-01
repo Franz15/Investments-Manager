@@ -13,6 +13,7 @@ import {
   Clock,
   Bot,
   Bitcoin,
+  Users,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -31,11 +32,13 @@ import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useUser } from '../contexts/UserContext';
 import { formatPrice } from '../utils/format';
 import BankConnections from '../components/BankConnections';
 
 const Accounts = () => {
   const { t } = useTranslation();
+  const { currentUser } = useUser();
   const [accounts, setAccounts] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [investments, setInvestments] = useState([]);
@@ -60,6 +63,7 @@ const Accounts = () => {
     initialBalance: 0,
     color: '#3b82f6', // Azul por defecto
     business: null,
+    members: '',
   });
   const [businesses, setBusinesses] = useState([]);
   const [subAccountFormData, setSubAccountFormData] = useState({
@@ -619,10 +623,17 @@ const Accounts = () => {
   const handleAccountSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...accountFormData,
+        members: accountFormData.members
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean),
+      };
       if (editingAccount) {
-        await api.put(`/accounts/${editingAccount._id}`, accountFormData);
+        await api.put(`/accounts/${editingAccount._id}`, payload);
       } else {
-        await api.post('/accounts', accountFormData);
+        await api.post('/accounts', payload);
       }
       fetchData();
       setShowAccountModal(false);
@@ -668,6 +679,7 @@ const Accounts = () => {
       initialBalance: 0, // No se usa en edición, solo en creación
       color: account.color || '#3b82f6',
       business: account.business?._id || account.business || null,
+      members: (account.members || []).join(', '),
     });
     setShowAccountModal(true);
   };
@@ -718,6 +730,7 @@ const Accounts = () => {
       initialBalance: 0,
       color: '#3b82f6', // Azul por defecto
       business: null,
+      members: '',
     });
     setEditingAccount(null);
   };
@@ -860,6 +873,7 @@ const Accounts = () => {
           const accountSubAccounts = getSubAccountsForAccount(account._id);
           const isExpanded = expandedAccounts.has(account._id);
           const totalBalance = calculateTotalBalance(account._id);
+          const isOwner = account.user === currentUser?.id;
 
           return (
             <div key={account._id} className="card">
@@ -886,6 +900,12 @@ const Accounts = () => {
                   <div className="ml-3 flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {account.name}
+                      {account.members?.length > 0 && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                          <Users className="h-3 w-3" />
+                          {t('accounts.joint')}
+                        </span>
+                      )}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                       {account.bankName}
@@ -927,31 +947,33 @@ const Accounts = () => {
                     })()}
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => {
-                      setSelectedAccountId(account._id);
-                      resetSubAccountForm();
-                      setShowSubAccountModal(true);
-                    }}
-                    className="btn-secondary text-sm flex items-center justify-center flex-1 sm:flex-none whitespace-nowrap"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t('accounts.newSubAccount')}
-                  </button>
-                  <button
-                    onClick={() => handleEditAccount(account)}
-                    className="px-3 py-2 btn-secondary"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setConfirmDeleteAccount(account)}
-                    className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                {isOwner && (
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => {
+                        setSelectedAccountId(account._id);
+                        resetSubAccountForm();
+                        setShowSubAccountModal(true);
+                      }}
+                      className="btn-secondary text-sm flex items-center justify-center flex-1 sm:flex-none whitespace-nowrap"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      {t('accounts.newSubAccount')}
+                    </button>
+                    <button
+                      onClick={() => handleEditAccount(account)}
+                      className="px-3 py-2 btn-secondary"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteAccount(account)}
+                      className="px-3 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {isExpanded && (
@@ -1822,6 +1844,26 @@ const Accounts = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('accounts.modals.sharedWith')} {t('common.optional')}
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={accountFormData.members}
+                    onChange={(e) =>
+                      setAccountFormData({
+                        ...accountFormData,
+                        members: e.target.value,
+                      })
+                    }
+                    placeholder={t('accounts.modals.sharedWithPlaceholder')}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t('accounts.modals.sharedWithDescription')}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

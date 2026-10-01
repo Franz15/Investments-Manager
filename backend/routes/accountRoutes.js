@@ -1,11 +1,12 @@
-import express from "express";
-import Account from "../models/Account.js";
-import SubAccount from "../models/SubAccount.js";
-import Investment from "../models/Investment.js";
-import Transaction from "../models/Transaction.js";
-import InvestmentHistory from "../models/InvestmentHistory.js";
-import DailyVariation from "../models/DailyVariation.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import Account from '../models/Account.js';
+import SubAccount from '../models/SubAccount.js';
+import Investment from '../models/Investment.js';
+import Transaction from '../models/Transaction.js';
+import InvestmentHistory from '../models/InvestmentHistory.js';
+import DailyVariation from '../models/DailyVariation.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+import { accountScope, cleanMembers } from '../services/sharedAccountService.js';
 
 const router = express.Router();
 
@@ -13,14 +14,14 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // GET todas las cuentas con sus subcuentas
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { business } = req.query;
-    const query = { user: req.userId };
+    const query = accountScope(req.userId);
 
     // Filtro por negocio
     if (business !== undefined) {
-      if (business === "null" || business === "") {
+      if (business === 'null' || business === '') {
         query.business = null;
       } else {
         query.business = business;
@@ -29,11 +30,10 @@ router.get("/", async (req, res) => {
 
     const accounts = await Account.find(query)
       .sort({ createdAt: -1 })
-      .populate("business", "name color")
+      .populate('business', 'name color')
       .populate({
-        path: "subAccounts",
-        select: "name type balance currency",
-        match: { user: req.userId },
+        path: 'subAccounts',
+        select: 'name type balance currency',
       });
     res.json(accounts);
   } catch (error) {
@@ -42,17 +42,14 @@ router.get("/", async (req, res) => {
 });
 
 // GET cuenta por ID con subcuentas
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const account = await Account.findOne({
       _id: req.params.id,
-      user: req.userId,
-    }).populate({
-      path: "subAccounts",
-      match: { user: req.userId },
-    });
+      ...accountScope(req.userId),
+    }).populate('subAccounts');
     if (!account) {
-      return res.status(404).json({ message: "Cuenta no encontrada" });
+      return res.status(404).json({ message: 'Cuenta no encontrada' });
     }
     res.json(account);
   } catch (error) {
@@ -61,7 +58,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST crear nueva cuenta
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { initialBalance, ...accountData } = req.body;
 
@@ -69,26 +66,26 @@ router.post("/", async (req, res) => {
     const account = new Account({
       ...accountData,
       user: req.userId,
+      members: await cleanMembers(accountData.members, req.userId),
     });
     const savedAccount = await account.save();
 
     // Crear automáticamente la subcuenta de efectivo "Efectivo"
-    const startingBalance =
-      initialBalance !== undefined ? Number(initialBalance) || 0 : 0;
+    const startingBalance = initialBalance !== undefined ? Number(initialBalance) || 0 : 0;
     const subAccount = new SubAccount({
       user: req.userId,
       account: savedAccount._id,
-      name: "Efectivo",
-      type: "cash",
+      name: 'Efectivo',
+      type: 'cash',
       balance: startingBalance,
       currency: savedAccount.currency,
-      description: "Subcuenta de efectivo de la cuenta",
+      description: 'Subcuenta de efectivo de la cuenta',
     });
     await subAccount.save();
 
     // Retornar la cuenta con sus subcuentas
     const populatedAccount = await Account.findById(savedAccount._id).populate({
-      path: "subAccounts",
+      path: 'subAccounts',
       match: { user: req.userId },
     });
 
@@ -99,18 +96,21 @@ router.post("/", async (req, res) => {
 });
 
 // PUT actualizar cuenta
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
+    if (req.body.members !== undefined) {
+      req.body.members = await cleanMembers(req.body.members, req.userId);
+    }
     const account = await Account.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
       req.body,
       {
         new: true,
         runValidators: true,
-      },
+      }
     );
     if (!account) {
-      return res.status(404).json({ message: "Cuenta no encontrada" });
+      return res.status(404).json({ message: 'Cuenta no encontrada' });
     }
     res.json(account);
   } catch (error) {
@@ -119,31 +119,29 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE eliminar cuenta (eliminación real)
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const account = await Account.findOne({
       _id: req.params.id,
       user: req.userId,
     });
     if (!account) {
-      return res.status(404).json({ message: "Cuenta no encontrada" });
+      return res.status(404).json({ message: 'Cuenta no encontrada' });
     }
 
     const subAccounts = await SubAccount.find({
       account: req.params.id,
       user: req.userId,
-    }).select("_id");
+    }).select('_id');
     const subAccountIds = subAccounts.map((sub) => sub._id);
 
     const investments = await Investment.find({
       user: req.userId,
       $or: [
         { account: req.params.id },
-        ...(subAccountIds.length > 0
-          ? [{ subAccount: { $in: subAccountIds } }]
-          : []),
+        ...(subAccountIds.length > 0 ? [{ subAccount: { $in: subAccountIds } }] : []),
       ],
-    }).select("_id");
+    }).select('_id');
     const investmentIds = investments.map((inv) => inv._id);
 
     if (investmentIds.length > 0) {
@@ -159,10 +157,8 @@ router.delete("/:id", async (req, res) => {
     }
 
     if (subAccountIds.length > 0) {
-      await Transaction.deleteMany({
-        user: req.userId,
-        subAccount: { $in: subAccountIds },
-      });
+      // Sin filtro de usuario: incluye los movimientos de los cotitulares
+      await Transaction.deleteMany({ subAccount: { $in: subAccountIds } });
       await SubAccount.deleteMany({
         account: req.params.id,
         user: req.userId,
@@ -172,7 +168,7 @@ router.delete("/:id", async (req, res) => {
     // Eliminar la cuenta
     await Account.findByIdAndDelete(req.params.id);
 
-    res.json({ message: "Cuenta y todas sus subcuentas eliminadas" });
+    res.json({ message: 'Cuenta y todas sus subcuentas eliminadas' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

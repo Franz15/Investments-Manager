@@ -8,6 +8,11 @@ import SubAccount from '../models/SubAccount.js';
 import Account from '../models/Account.js';
 import Debt from '../models/Debt.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import {
+  accountScope,
+  findAccessibleSubAccount,
+  txScope,
+} from '../services/sharedAccountService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, '..', 'uploads', 'transactions');
@@ -57,19 +62,18 @@ router.get('/', async (req, res) => {
   try {
     const { subAccountId, accountId, startDate, endDate, type, category, business, debt } =
       req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     if (subAccountId) {
       query.subAccount = subAccountId;
     } else if (accountId) {
       // Si se busca por accountId, buscar transacciones directas de la cuenta o de sus subcuentas
-      const subAccounts = await SubAccount.find({
-        account: accountId,
-        user: req.userId,
-      });
-      query.$or = [
-        { account: accountId },
-        { subAccount: { $in: subAccounts.map((sa) => sa._id) } },
+      // ($and para no pisar el $or del scope)
+      const subAccounts = await SubAccount.find({ account: accountId });
+      query.$and = [
+        {
+          $or: [{ account: accountId }, { subAccount: { $in: subAccounts.map((sa) => sa._id) } }],
+        },
       ];
     }
 
@@ -101,20 +105,11 @@ router.get('/', async (req, res) => {
     }
 
     const transactions = await Transaction.find(query)
-      .populate({
-        path: 'account',
-        select: 'name bankName currency',
-        match: { user: req.userId },
-      })
+      .populate({ path: 'account', select: 'name bankName currency' })
       .populate({
         path: 'subAccount',
         select: 'name type balance currency',
-        match: { user: req.userId },
-        populate: {
-          path: 'account',
-          select: 'name bankName',
-          match: { user: req.userId },
-        },
+        populate: { path: 'account', select: 'name bankName' },
       })
       .populate('business', 'name color')
       .populate('debt', 'name type remainingAmount totalAmount')
@@ -129,7 +124,7 @@ router.get('/', async (req, res) => {
 router.get('/oldest-date', async (req, res) => {
   try {
     const { business } = req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     // Filtro por negocio
     if (business !== undefined) {
@@ -161,7 +156,7 @@ router.get('/oldest-date', async (req, res) => {
 router.get('/statistics/summary', async (req, res) => {
   try {
     const { startDate, endDate, type, business } = req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     if (type) {
       query.type = type;
@@ -237,7 +232,7 @@ router.get('/statistics/summary', async (req, res) => {
 router.get('/statistics/by-period', async (req, res) => {
   try {
     const { period, startDate, endDate, business, compareWith } = req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     // Filtro por negocio
     if (business !== undefined) {
@@ -355,7 +350,7 @@ router.get('/statistics/by-period', async (req, res) => {
 router.get('/statistics/by-category', async (req, res) => {
   try {
     const { startDate, endDate, type, business } = req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     if (type) {
       query.type = type;
@@ -417,7 +412,7 @@ router.get('/statistics/by-category', async (req, res) => {
 router.get('/statistics/by-tag', async (req, res) => {
   try {
     const { startDate, endDate, type, business } = req.query;
-    const query = { user: req.userId };
+    const query = await txScope(req.userId);
 
     if (type) query.type = type;
 
@@ -460,20 +455,10 @@ router.get('/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findOne({
       _id: req.params.id,
-      user: req.userId,
+      ...(await txScope(req.userId)),
     })
-      .populate({
-        path: 'account',
-        match: { user: req.userId },
-      })
-      .populate({
-        path: 'subAccount',
-        match: { user: req.userId },
-        populate: {
-          path: 'account',
-          match: { user: req.userId },
-        },
-      })
+      .populate('account')
+      .populate({ path: 'subAccount', populate: { path: 'account' } })
       .populate('business', 'name color')
       .populate('debt', 'name type remainingAmount totalAmount monthlyPayment');
     if (!transaction) {
@@ -493,10 +478,7 @@ router.post('/', async (req, res) => {
 
     // Si se proporciona subAccount, usarla directamente
     if (req.body.subAccount) {
-      targetSubAccount = await SubAccount.findOne({
-        _id: req.body.subAccount,
-        user: req.userId,
-      });
+      targetSubAccount = await findAccessibleSubAccount(req.userId, req.body.subAccount);
       if (!targetSubAccount) {
         return res.status(404).json({ message: 'Subcuenta no encontrada' });
       }
@@ -505,7 +487,7 @@ router.post('/', async (req, res) => {
     else if (req.body.account) {
       const account = await Account.findOne({
         _id: req.body.account,
-        user: req.userId,
+        ...accountScope(req.userId),
       });
       if (!account) {
         return res.status(404).json({ message: 'Cuenta no encontrada' });
@@ -514,14 +496,13 @@ router.post('/', async (req, res) => {
       // Buscar una subcuenta de tipo cash en esta cuenta
       targetSubAccount = await SubAccount.findOne({
         account: req.body.account,
-        user: req.userId,
         type: 'cash',
       });
 
-      // Si no existe, crear una autom?ticamente
+      // Si no existe, crear una autom?ticamente (del dueño de la cuenta)
       if (!targetSubAccount) {
         targetSubAccount = new SubAccount({
-          user: req.userId,
+          user: account.user,
           account: req.body.account,
           name: 'Cuenta Principal',
           type: 'cash',
@@ -587,7 +568,7 @@ router.put('/:id', async (req, res) => {
     // Obtener la transacción original antes de actualizarla
     const oldTransaction = await Transaction.findOne({
       _id: req.params.id,
-      user: req.userId,
+      ...(await txScope(req.userId)),
     });
     if (!oldTransaction) {
       return res.status(404).json({ message: 'Transacción no encontrada' });
@@ -600,10 +581,7 @@ router.put('/:id', async (req, res) => {
     const newSubAccountId = req.body.subAccount || oldTransaction.subAccount;
 
     // Revertir el balance de la subcuenta original
-    const oldSubAccount = await SubAccount.findOne({
-      _id: oldTransaction.subAccount,
-      user: req.userId,
-    });
+    const oldSubAccount = await findAccessibleSubAccount(req.userId, oldTransaction.subAccount);
     if (oldSubAccount) {
       if (oldTransaction.type === 'income') {
         oldSubAccount.balance -= oldTransaction.amount;
@@ -616,15 +594,12 @@ router.put('/:id', async (req, res) => {
     // Obtener la nueva subcuenta
     let newSubAccount = null;
     if (newSubAccountId) {
-      newSubAccount = await SubAccount.findOne({
-        _id: newSubAccountId,
-        user: req.userId,
-      });
+      newSubAccount = await findAccessibleSubAccount(req.userId, newSubAccountId);
     } else if (newAccountId) {
       // Si se proporciona account pero no subAccount, buscar o crear una subcuenta de tipo cash
       const account = await Account.findOne({
         _id: newAccountId,
-        user: req.userId,
+        ...accountScope(req.userId),
       });
       if (!account) {
         // Revertir el cambio en la subcuenta original
@@ -642,14 +617,13 @@ router.put('/:id', async (req, res) => {
       // Buscar una subcuenta de tipo cash en esta cuenta
       newSubAccount = await SubAccount.findOne({
         account: newAccountId,
-        user: req.userId,
         type: 'cash',
       });
 
-      // Si no existe, crear una automáticamente
+      // Si no existe, crear una automáticamente (del dueño de la cuenta)
       if (!newSubAccount) {
         newSubAccount = new SubAccount({
-          user: req.userId,
+          user: account.user,
           account: newAccountId,
           name: 'Cuenta Principal',
           type: 'cash',
@@ -708,30 +682,27 @@ router.put('/:id', async (req, res) => {
     const oldAmount = oldTransaction.amount;
     const newAmountVal = req.body.amount !== undefined ? parseFloat(req.body.amount) : oldAmount;
 
+    // La deuda es del autor de la transacción (puede editarla un cotitular)
     if (oldDebtId && oldTransaction.type === 'expense') {
-      await reverseDebtPayment(oldDebtId, req.userId, oldAmount);
+      await reverseDebtPayment(oldDebtId, oldTransaction.user, oldAmount);
     }
     if (newDebtId && (req.body.type || oldTransaction.type) === 'expense') {
-      await applyDebtPayment(newDebtId, req.userId, newAmountVal);
+      await applyDebtPayment(newDebtId, oldTransaction.user, newAmountVal);
     }
 
-    // Actualizar la transacción
+    // Actualizar la transacción (el autor no cambia)
     const updateData = {
       ...req.body,
+      user: oldTransaction.user,
       account: newAccountId || oldTransaction.account,
       subAccount: newSubAccount._id,
     };
-    const transaction = await Transaction.findOneAndUpdate(
-      { _id: req.params.id, user: req.userId },
-      updateData,
-      { new: true, runValidators: true }
-    )
-      .populate({ path: 'account', match: { user: req.userId } })
-      .populate({
-        path: 'subAccount',
-        match: { user: req.userId },
-        populate: { path: 'account', match: { user: req.userId } },
-      })
+    const transaction = await Transaction.findOneAndUpdate({ _id: req.params.id }, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate('account')
+      .populate({ path: 'subAccount', populate: { path: 'account' } })
       .populate('business', 'name color')
       .populate('debt', 'name type remainingAmount totalAmount monthlyPayment');
     if (!transaction) {
@@ -749,7 +720,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const transaction = await Transaction.findOne({
       _id: req.params.id,
-      user: req.userId,
+      ...(await txScope(req.userId)),
     });
 
     if (!transaction) {
@@ -758,10 +729,7 @@ router.delete('/:id', async (req, res) => {
 
     // Revertir balance de la subcuenta (verificar que pertenece al usuario)
     if (transaction.subAccount) {
-      const subAccount = await SubAccount.findOne({
-        _id: transaction.subAccount,
-        user: req.userId,
-      });
+      const subAccount = await findAccessibleSubAccount(req.userId, transaction.subAccount);
       if (subAccount) {
         if (transaction.type === 'income') {
           subAccount.balance -= transaction.amount;
@@ -774,7 +742,7 @@ router.delete('/:id', async (req, res) => {
 
     // Si la transacción estaba vinculada a una deuda, restaurar el importe pendiente
     if (transaction.debt && transaction.type === 'expense') {
-      await reverseDebtPayment(transaction.debt, req.userId, transaction.amount);
+      await reverseDebtPayment(transaction.debt, transaction.user, transaction.amount);
     }
 
     await Transaction.findByIdAndDelete(req.params.id);
@@ -791,7 +759,10 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'No se ha enviado ninguna imagen' });
     }
 
-    const transaction = await Transaction.findOne({ _id: req.params.id, user: req.userId });
+    const transaction = await Transaction.findOne({
+      _id: req.params.id,
+      ...(await txScope(req.userId)),
+    });
     if (!transaction) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: 'Transacción no encontrada' });
@@ -820,7 +791,10 @@ router.post('/:id/image', upload.single('image'), async (req, res) => {
 // DELETE eliminar imagen de una transacción
 router.delete('/:id/image', async (req, res) => {
   try {
-    const transaction = await Transaction.findOne({ _id: req.params.id, user: req.userId });
+    const transaction = await Transaction.findOne({
+      _id: req.params.id,
+      ...(await txScope(req.userId)),
+    });
     if (!transaction) return res.status(404).json({ message: 'Transacción no encontrada' });
 
     if (transaction.imageUrl) {

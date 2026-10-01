@@ -1,7 +1,8 @@
-import express from "express";
-import SubAccount from "../models/SubAccount.js";
-import Account from "../models/Account.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import SubAccount from '../models/SubAccount.js';
+import Account from '../models/Account.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+import { findAccessibleSubAccount } from '../services/sharedAccountService.js';
 
 const router = express.Router();
 
@@ -9,16 +10,20 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // GET todas las subcuentas
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { accountId } = req.query;
-    const query = { user: req.userId };
+    // Propias + las de cuentas conjuntas donde soy cotitular
+    const sharedAccountIds = await Account.find({ members: req.userId }).distinct('_id');
+    const query = {
+      $or: [{ user: req.userId }, { account: { $in: sharedAccountIds } }],
+    };
     if (accountId) query.account = accountId;
 
     const subAccounts = await SubAccount.find(query)
       .populate({
-        path: "account",
-        select: "name bankName",
+        path: 'account',
+        select: 'name bankName',
       })
       .sort({ createdAt: -1 });
 
@@ -29,27 +34,20 @@ router.get("/", async (req, res) => {
 });
 
 // GET subcuenta por ID
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const subAccount = await SubAccount.findOne({
-      _id: req.params.id,
-      user: req.userId,
-    }).populate({
-      path: "account",
-      select: "name bankName",
-      match: { user: req.userId },
-    });
+    const subAccount = await findAccessibleSubAccount(req.userId, req.params.id);
     if (!subAccount) {
-      return res.status(404).json({ message: "Subcuenta no encontrada" });
+      return res.status(404).json({ message: 'Subcuenta no encontrada' });
     }
-    res.json(subAccount);
+    res.json(await subAccount.populate({ path: 'account', select: 'name bankName' }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
 // POST crear nueva subcuenta
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     // Verificar que la cuenta principal existe y pertenece al usuario
     const account = await Account.findOne({
@@ -57,9 +55,7 @@ router.post("/", async (req, res) => {
       user: req.userId,
     });
     if (!account) {
-      return res
-        .status(404)
-        .json({ message: "Cuenta principal no encontrada" });
+      return res.status(404).json({ message: 'Cuenta principal no encontrada' });
     }
 
     const subAccount = new SubAccount({
@@ -68,8 +64,8 @@ router.post("/", async (req, res) => {
     });
     const savedSubAccount = await subAccount.save();
     const populated = await SubAccount.findById(savedSubAccount._id).populate({
-      path: "account",
-      select: "name bankName",
+      path: 'account',
+      select: 'name bankName',
       match: { user: req.userId },
     });
     res.status(201).json(populated);
@@ -79,7 +75,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT actualizar subcuenta
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const subAccount = await SubAccount.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
@@ -87,14 +83,14 @@ router.put("/:id", async (req, res) => {
       {
         new: true,
         runValidators: true,
-      },
+      }
     ).populate({
-      path: "account",
-      select: "name bankName",
+      path: 'account',
+      select: 'name bankName',
       match: { user: req.userId },
     });
     if (!subAccount) {
-      return res.status(404).json({ message: "Subcuenta no encontrada" });
+      return res.status(404).json({ message: 'Subcuenta no encontrada' });
     }
     res.json(subAccount);
   } catch (error) {
@@ -103,26 +99,24 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE eliminar subcuenta (eliminación real)
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const subAccount = await SubAccount.findOne({
       _id: req.params.id,
       user: req.userId,
     });
     if (!subAccount) {
-      return res.status(404).json({ message: "Subcuenta no encontrada" });
+      return res.status(404).json({ message: 'Subcuenta no encontrada' });
     }
 
-    if (subAccount.type === "cash" && subAccount.name === "Efectivo") {
-      return res
-        .status(400)
-        .json({ message: "No se puede eliminar la subcuenta Efectivo" });
+    if (subAccount.type === 'cash' && subAccount.name === 'Efectivo') {
+      return res.status(400).json({ message: 'No se puede eliminar la subcuenta Efectivo' });
     }
 
     // Eliminar la subcuenta
     await SubAccount.findByIdAndDelete(req.params.id);
 
-    res.json({ message: "Subcuenta eliminada" });
+    res.json({ message: 'Subcuenta eliminada' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

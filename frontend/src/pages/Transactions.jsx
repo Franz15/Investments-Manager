@@ -22,9 +22,11 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import RecurringTransactionsModal from '../components/RecurringTransactionsModal';
 import { useTranslation } from '../contexts/TranslationContext';
+import { useUser } from '../contexts/UserContext';
 
 const Transactions = () => {
   const { t } = useTranslation();
+  const { currentUser } = useUser();
   const [transactions, setTransactions] = useState([]);
   const [subAccounts, setSubAccounts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -920,6 +922,10 @@ const Transactions = () => {
                     </td>
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
                       {transaction.description || '-'}
+                      {/* Autor: movimiento de un cotitular en una cuenta conjunta */}
+                      {transaction.user !== currentUser?.id && (
+                        <span className="ml-2 text-xs text-gray-400">· {transaction.user}</span>
+                      )}
                     </td>
                     <td
                       className={`py-3 px-4 text-right font-semibold ${

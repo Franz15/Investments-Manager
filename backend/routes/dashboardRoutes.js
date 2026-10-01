@@ -8,6 +8,7 @@ import InvestmentHistory from '../models/InvestmentHistory.js';
 import Business from '../models/Business.js';
 import ManualAsset from '../models/ManualAsset.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { accountScope, jointShares, prorate, txScope } from '../services/sharedAccountService.js';
 import { getLatestDailyVariation } from '../services/dailyVariationService.js';
 import {
   getPortfolioDailyReturn,
@@ -62,14 +63,15 @@ router.get('/stats', async (req, res) => {
     const { includeBusinessAccounts } = req.query;
     const includeBusiness = includeBusinessAccounts === 'true';
 
-    // Construir query para cuentas según el filtro
-    const accountQuery = { user: req.userId };
+    // Construir query para cuentas según el filtro (incluye cuentas conjuntas)
+    const accountQuery = accountScope(req.userId);
     if (!includeBusiness) {
       accountQuery.business = null; // Solo cuentas personales
     }
 
     // Total de cuentas del usuario (según filtro)
     const totalAccounts = await Account.countDocuments(accountQuery);
+    const shares = await jointShares(req.userId);
 
     // Obtener IDs de cuentas que cumplen el filtro
     const filteredAccounts = await Account.find(accountQuery).select('_id');
@@ -77,16 +79,23 @@ router.get('/stats', async (req, res) => {
 
     // Balance total de todas las subcuentas (efectivo + ahorro) del usuario
     // Solo de cuentas que cumplen el filtro
-    const cashSavingsSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: { $in: ['cash', 'savings'] },
-      account: { $in: filteredAccountIds },
-    });
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: 'investment',
-      account: { $in: filteredAccountIds },
-    });
+    // Saldos de cuentas conjuntas prorrateados por titular
+    const cashSavingsSubAccounts = prorate(
+      await SubAccount.find({
+        type: { $in: ['cash', 'savings'] },
+        account: { $in: filteredAccountIds },
+      }).lean(),
+      shares,
+      'balance'
+    );
+    const investmentSubAccounts = prorate(
+      await SubAccount.find({
+        type: 'investment',
+        account: { $in: filteredAccountIds },
+      }).lean(),
+      shares,
+      'balance'
+    );
     const totalCashSavings =
       cashSavingsSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0) +
       investmentSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
@@ -597,8 +606,8 @@ router.get('/balance-daily', async (req, res) => {
     const SubAccount = (await import('../models/SubAccount.js')).default;
     const Debt = (await import('../models/Debt.js')).default;
 
-    // Construir query para cuentas según el filtro
-    const accountQuery = { user: req.userId };
+    // Construir query para cuentas según el filtro (incluye cuentas conjuntas)
+    const accountQuery = accountScope(req.userId);
     if (!includeBusiness) {
       accountQuery.business = null; // Solo cuentas personales
     }
@@ -606,6 +615,18 @@ router.get('/balance-daily', async (req, res) => {
     // Obtener IDs de cuentas que cumplen el filtro
     const filteredAccounts = await Account.find(accountQuery).select('_id');
     const filteredAccountIds = filteredAccounts.map((acc) => acc._id);
+
+    // Saldos e importes de cuentas conjuntas prorrateados por titular
+    const shares = await jointShares(req.userId);
+    const findTxs = async () =>
+      prorate(
+        await Transaction.find(await txScope(req.userId, shares))
+          .sort({ date: 1 })
+          .lean(),
+        shares,
+        'amount',
+        'subAccount'
+      );
 
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const perfInvestments = await Investment.find({
@@ -615,7 +636,7 @@ router.get('/balance-daily', async (req, res) => {
 
     if (perfInvestments.length === 0) {
       // Sin inversiones: calcular evolución desde transacciones + cash actual
-      const noInvTxs = await Transaction.find({ user: req.userId }).sort({ date: 1 });
+      const noInvTxs = await findTxs();
       if (noInvTxs.length === 0) return res.json([]);
 
       const txStart = new Date(Math.min(...noInvTxs.map((t) => new Date(t.date))));
@@ -623,11 +644,14 @@ router.get('/balance-daily', async (req, res) => {
       const txEnd = new Date();
       txEnd.setHours(23, 59, 59, 999);
 
-      const cashSubs = await SubAccount.find({
-        user: req.userId,
-        type: { $in: ['cash', 'savings'] },
-        account: { $in: filteredAccountIds },
-      });
+      const cashSubs = prorate(
+        await SubAccount.find({
+          type: { $in: ['cash', 'savings'] },
+          account: { $in: filteredAccountIds },
+        }).lean(),
+        shares,
+        'balance'
+      );
       let initCash = cashSubs.reduce((s, sa) => s + (sa.balance || 0), 0);
 
       const startKey = getLocalDateKey(txStart);
@@ -671,9 +695,7 @@ router.get('/balance-daily', async (req, res) => {
         investment: { $in: activeInvestmentIds }, // Solo inversiones activas
         operation: { $in: ['creation', 'add', 'withdraw', 'sell'] },
       }).sort({ date: 1 }),
-      Transaction.find({
-        user: req.userId,
-      }).sort({ date: 1 }),
+      findTxs(),
     ]);
 
     // Encontrar la fecha más antigua de cualquier operación
@@ -693,16 +715,22 @@ router.get('/balance-daily', async (req, res) => {
     endDate.setHours(23, 59, 59, 999);
 
     // Obtener balance actual de cash (solo de cuentas que cumplen el filtro)
-    const cashSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: { $in: ['cash', 'savings'] },
-      account: { $in: filteredAccountIds },
-    });
-    const investmentSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: 'investment',
-      account: { $in: filteredAccountIds },
-    });
+    const cashSubAccounts = prorate(
+      await SubAccount.find({
+        type: { $in: ['cash', 'savings'] },
+        account: { $in: filteredAccountIds },
+      }).lean(),
+      shares,
+      'balance'
+    );
+    const investmentSubAccounts = prorate(
+      await SubAccount.find({
+        type: 'investment',
+        account: { $in: filteredAccountIds },
+      }).lean(),
+      shares,
+      'balance'
+    );
     const currentCashBalance = cashSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
     const currentInvestmentSubAccountBalance = investmentSubAccounts.reduce(
       (sum, subAcc) => sum + subAcc.balance,
@@ -1113,8 +1141,8 @@ router.get('/distribution-by-asset-class', async (req, res) => {
     const { includeBusinessAccounts } = req.query;
     const includeBusiness = includeBusinessAccounts === 'true';
 
-    // Construir query para cuentas según el filtro
-    const accountQuery = { user: req.userId };
+    // Construir query para cuentas según el filtro (incluye cuentas conjuntas)
+    const accountQuery = accountScope(req.userId);
     if (!includeBusiness) {
       accountQuery.business = null; // Solo cuentas personales
     }
@@ -1162,11 +1190,14 @@ router.get('/distribution-by-asset-class', async (req, res) => {
 
     // Obtener total de cash (efectivo + ahorro) del usuario
     // Solo de cuentas que cumplen el filtro
-    const cashSubAccounts = await SubAccount.find({
-      user: req.userId,
-      type: { $in: ['cash', 'savings'] },
-      account: { $in: filteredAccountIds },
-    });
+    const cashSubAccounts = prorate(
+      await SubAccount.find({
+        type: { $in: ['cash', 'savings'] },
+        account: { $in: filteredAccountIds },
+      }).lean(),
+      await jointShares(req.userId),
+      'balance'
+    );
     const totalCash = cashSubAccounts.reduce((sum, subAcc) => sum + subAcc.balance, 0);
 
     const data = [
@@ -1351,8 +1382,8 @@ router.get('/distribution-by-bank', async (req, res) => {
     const { includeBusinessAccounts } = req.query;
     const includeBusiness = includeBusinessAccounts === 'true';
 
-    // Construir query para cuentas según el filtro
-    const accountQuery = { user: req.userId };
+    // Construir query para cuentas según el filtro (incluye cuentas conjuntas)
+    const accountQuery = accountScope(req.userId);
     if (!includeBusiness) {
       accountQuery.business = null; // Solo cuentas personales
     }
@@ -1362,9 +1393,9 @@ router.get('/distribution-by-bank', async (req, res) => {
       .populate({
         path: 'subAccounts',
         select: 'name type balance currency',
-        match: { user: req.userId },
       })
       .sort({ bankName: 1 });
+    const shares = await jointShares(req.userId);
 
     // Obtener IDs de cuentas que cumplen el filtro
     const filteredAccountIds = accounts.map((acc) => acc._id);
@@ -1494,7 +1525,7 @@ router.get('/distribution-by-bank', async (req, res) => {
 
       // Procesar cada subcuenta
       account.subAccounts.forEach((subAccount) => {
-        let subAccountValue = subAccount.balance;
+        let subAccountValue = subAccount.balance * (shares.get(String(subAccount._id)) ?? 1);
 
         // Si es subcuenta de inversión, usar el valor de las inversiones
         if (subAccount.type === 'investment') {

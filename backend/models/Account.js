@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const accountSchema = new mongoose.Schema(
   {
@@ -24,8 +24,8 @@ const accountSchema = new mongoose.Schema(
     currency: {
       type: String,
       required: true,
-      default: "EUR",
-      enum: ["EUR", "USD", "GBP"],
+      default: 'EUR',
+      enum: ['EUR', 'USD', 'GBP'],
     },
     description: {
       type: String,
@@ -34,7 +34,7 @@ const accountSchema = new mongoose.Schema(
     color: {
       type: String,
       trim: true,
-      default: "#3b82f6", // Azul por defecto
+      default: '#3b82f6', // Azul por defecto
       match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
     },
     isActive: {
@@ -43,25 +43,31 @@ const accountSchema = new mongoose.Schema(
     },
     business: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Business",
+      ref: 'Business',
       default: null, // null = personal
+    },
+    // Cotitulares (ids de User) de una cuenta conjunta; el dueño sigue en `user`
+    members: {
+      type: [String],
+      default: [],
+      index: true,
     },
   },
   {
     timestamps: true,
-  },
+  }
 );
 
 // Virtual para obtener todas las subcuentas
-accountSchema.virtual("subAccounts", {
-  ref: "SubAccount",
-  localField: "_id",
-  foreignField: "account",
+accountSchema.virtual('subAccounts', {
+  ref: 'SubAccount',
+  localField: '_id',
+  foreignField: 'account',
 });
 
-accountSchema.set("toJSON", { virtuals: true });
+accountSchema.set('toJSON', { virtuals: true });
 
 // Índice compuesto para búsquedas eficientes
 accountSchema.index({ user: 1, isActive: 1, business: 1 });
 
-export default mongoose.model("Account", accountSchema);
+export default mongoose.model('Account', accountSchema);
