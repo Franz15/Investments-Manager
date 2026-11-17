@@ -16,6 +16,7 @@ import {
   getCapitalFlowsForPeriod,
 } from '../services/portfolioReturnService.js';
 import PeriodVariation from '../models/PeriodVariation.js';
+import { latestCursor, sumCursor } from '../services/historyCursor.js';
 import YahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
@@ -892,10 +893,46 @@ router.get('/balance-daily', async (req, res) => {
     // Mapa para almacenar el valor de cada inversión por fecha
     const investmentValuesByDate = new Map();
 
+    // Índices por inversión construidos una sola vez: el bucle diario avanza cursores en vez de
+    // filtrar y ordenar todo el historial por cada día (antes O(días × inversiones × historial)).
+    const dayStartMs = (d) => new Date(d).setHours(0, 0, 0, 0);
+    const indexByInv = new Map(
+      perfInvestments.map((inv) => [
+        inv._id.toString(),
+        { creationDate: null, values: [], variations: [], capitalOps: [] },
+      ])
+    );
+    const cursorItem = (entry, value) => ({
+      key: dayStartMs(entry.date),
+      time: new Date(entry.date).getTime(),
+      value,
+    });
+    allHistoryEntries.forEach((h) => {
+      const idx = h.investment && indexByInv.get(h.investment.toString());
+      if (!idx) return;
+      if (h.operation === 'creation' && !idx.creationDate) idx.creationDate = h.date;
+      if (h.totalValue && h.totalValue > 0) idx.values.push(cursorItem(h, h.totalValue));
+      if (['creation', 'add', 'withdraw', 'sell'].includes(h.operation)) {
+        const amount = getOpAmount(h);
+        idx.capitalOps.push({
+          key: dayStartMs(h.date),
+          amount: h.operation === 'creation' || h.operation === 'add' ? amount : -amount,
+        });
+      }
+    });
+    allDailyVariations.forEach((v) => {
+      const idx = v.investment && indexByInv.get(v.investment.toString());
+      if (idx) idx.variations.push(cursorItem(v, v.totalValue));
+    });
+    indexByInv.forEach((idx) => {
+      idx.latestValue = latestCursor(idx.values);
+      idx.latestVariation = latestCursor(idx.variations);
+      idx.capitalUpTo = sumCursor(idx.capitalOps);
+    });
+
     for (const date of dates) {
       const dateKey = getLocalDateKey(date);
-      const dateEndNormalized = new Date(date);
-      dateEndNormalized.setHours(23, 59, 59, 999);
+      const dateDay = dayStartMs(date);
 
       // Aplicar efectivo inicial de subcuentas si su initialDate es este día
       // (solo para subcuentas que se crearon después de startDate)
@@ -944,25 +981,15 @@ router.get('/balance-daily', async (req, res) => {
       let investmentsValue = 0;
 
       for (const inv of perfInvestments) {
+        const idx = indexByInv.get(inv._id.toString());
         // Buscar la fecha de creación de esta inversión
-        const creationOp = allHistoryEntries.find(
-          (h) =>
-            h.investment &&
-            h.investment.toString() === inv._id.toString() &&
-            h.operation === 'creation'
-        );
-        const creationDateValue = creationOp?.date || inv.purchaseDate || inv.createdAt;
+        const creationDateValue = idx.creationDate || inv.purchaseDate || inv.createdAt;
         if (!creationDateValue) {
           continue;
         }
 
-        const creationDate = new Date(creationDateValue);
-        creationDate.setHours(0, 0, 0, 0);
-        const creationDateEnd = new Date(creationDate);
-        creationDateEnd.setHours(23, 59, 59, 999);
-
         // Solo incluir inversiones que existían hasta esta fecha
-        if (creationDateEnd > dateEndNormalized) {
+        if (dayStartMs(creationDateValue) > dateDay) {
           continue;
         }
 
@@ -982,65 +1009,18 @@ router.get('/balance-daily', async (req, res) => {
           } else {
             // Para días pasados, buscar en InvestmentHistory o DailyVariation
             // PRIORIDAD 1: InvestmentHistory (datos más actualizados, reflejan correcciones manuales)
-            const historyForThisInv = allHistoryEntries.filter(
-              (h) => h.investment && h.investment.toString() === inv._id.toString()
-            );
+            const lastHistory = idx.latestValue(dateDay);
+            const lastVariation = idx.latestVariation(dateDay);
+            const capital = idx.capitalUpTo(dateDay);
 
-            const lastHistory = historyForThisInv
-              .filter((h) => {
-                const hDate = new Date(h.date);
-                hDate.setHours(0, 0, 0, 0);
-                const hDateEnd = new Date(hDate);
-                hDateEnd.setHours(23, 59, 59, 999);
-                return hDateEnd <= dateEndNormalized && h.totalValue && h.totalValue > 0;
-              })
-              .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-            if (lastHistory && lastHistory.totalValue) {
-              invValue = lastHistory.totalValue;
-            } else {
+            if (lastHistory) {
+              invValue = lastHistory.value;
+            } else if (lastVariation && lastVariation.value && lastVariation.value > 0) {
               // PRIORIDAD 2: DailyVariation (solo como fallback si no hay InvestmentHistory)
-              const variationsForThisInv = allDailyVariations.filter(
-                (v) => v.investment && v.investment.toString() === inv._id.toString()
-              );
-
-              const lastVariation = variationsForThisInv
-                .filter((v) => {
-                  const vDate = new Date(v.date);
-                  vDate.setHours(0, 0, 0, 0);
-                  const vDateEnd = new Date(vDate);
-                  vDateEnd.setHours(23, 59, 59, 999);
-                  return vDateEnd <= dateEndNormalized;
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-              if (lastVariation && lastVariation.totalValue && lastVariation.totalValue > 0) {
-                invValue = lastVariation.totalValue;
-              } else {
-                // PRIORIDAD 3: Calcular capital acumulado
-                const capitalOperations = historyForThisInv.filter((h) => {
-                  const hDate = new Date(h.date);
-                  hDate.setHours(0, 0, 0, 0);
-                  const hDateEnd = new Date(hDate);
-                  hDateEnd.setHours(23, 59, 59, 999);
-                  return (
-                    hDateEnd <= dateEndNormalized &&
-                    ['creation', 'add', 'withdraw', 'sell'].includes(h.operation)
-                  );
-                });
-
-                let capital = 0;
-                capitalOperations.forEach((op) => {
-                  const amount = getOpAmount(op);
-                  if (op.operation === 'creation' || op.operation === 'add') {
-                    capital += amount;
-                  } else if (op.operation === 'withdraw' || op.operation === 'sell') {
-                    capital -= amount;
-                  }
-                });
-
-                invValue = Math.max(0, capital);
-              }
+              invValue = lastVariation.value;
+            } else {
+              // PRIORIDAD 3: Calcular capital acumulado
+              invValue = Math.max(0, capital);
             }
           }
 

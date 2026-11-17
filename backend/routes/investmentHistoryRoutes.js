@@ -1,45 +1,41 @@
-import express from "express";
-import InvestmentHistory from "../models/InvestmentHistory.js";
-import Investment from "../models/Investment.js";
-import DailyVariation from "../models/DailyVariation.js";
-import Account from "../models/Account.js";
-import SubAccount from "../models/SubAccount.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import express from 'express';
+import InvestmentHistory from '../models/InvestmentHistory.js';
+import Investment from '../models/Investment.js';
+import DailyVariation from '../models/DailyVariation.js';
+import Account from '../models/Account.js';
+import SubAccount from '../models/SubAccount.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+import { latestCursor, sumCursor } from '../services/historyCursor.js';
 import {
   saveDailyVariation,
   getDailyVariations,
   recalculateDailyVariationsForInvestmentFromDate,
   calculateDailyChangeFromHistory,
-} from "../services/dailyVariationService.js";
+} from '../services/dailyVariationService.js';
 import {
   migrateExistingDailyVariations,
   calculateHistoricalVariations,
-} from "../services/historicalVariationService.js";
+} from '../services/historicalVariationService.js';
 import {
   normalizeDay,
   resolveOperationAmount,
   getSignedOperationAmount,
-} from "../services/variationEngine.js";
+} from '../services/variationEngine.js';
 
 const router = express.Router();
 
 // Función helper para calcular diferencias respecto al día anterior
-async function calculateDailyChanges(
-  investmentId,
-  userId,
-  currentTotalValue,
-  date,
-) {
+async function calculateDailyChanges(investmentId, userId, currentTotalValue, date) {
   return await calculateDailyChangeFromHistory(
     investmentId,
     userId,
     currentTotalValue,
-    date || new Date(),
+    date || new Date()
   );
 }
 
 const getAllocationKey = (accountId, subAccountId) =>
-  `${accountId?.toString?.() || accountId}-${subAccountId?.toString?.() || subAccountId || "none"}`;
+  `${accountId?.toString?.() || accountId}-${subAccountId?.toString?.() || subAccountId || 'none'}`;
 
 const ensureInvestmentAllocations = (investment) => {
   if (Array.isArray(investment.allocations) && investment.allocations.length) {
@@ -67,15 +63,13 @@ const adjustAllocationAmount = (investment, accountId, subAccountId, delta) => {
   }
   const key = getAllocationKey(accountId, subAccountId);
   const existing = investment.allocations.find(
-    (allocation) =>
-      getAllocationKey(allocation.account, allocation.subAccount) === key,
+    (allocation) => getAllocationKey(allocation.account, allocation.subAccount) === key
   );
   if (existing) {
     existing.amount = (Number(existing.amount) || 0) + delta;
     if (existing.amount <= 0) {
       investment.allocations = investment.allocations.filter(
-        (allocation) =>
-          getAllocationKey(allocation.account, allocation.subAccount) !== key,
+        (allocation) => getAllocationKey(allocation.account, allocation.subAccount) !== key
       );
     }
     return;
@@ -89,17 +83,13 @@ const adjustAllocationAmount = (investment, accountId, subAccountId, delta) => {
   }
 };
 
-const validateHistoryAccountSelection = async (
-  accountId,
-  subAccountId,
-  userId,
-) => {
+const validateHistoryAccountSelection = async (accountId, subAccountId, userId) => {
   if (!accountId) {
-    return { error: "Debe especificar una cuenta" };
+    return { error: 'Debe especificar una cuenta' };
   }
   const account = await Account.findOne({ _id: accountId, user: userId });
   if (!account) {
-    return { error: "Cuenta no encontrada" };
+    return { error: 'Cuenta no encontrada' };
   }
 
   if (subAccountId) {
@@ -108,15 +98,15 @@ const validateHistoryAccountSelection = async (
       user: userId,
     });
     if (!subAccount) {
-      return { error: "Subcuenta no encontrada" };
+      return { error: 'Subcuenta no encontrada' };
     }
-    if (subAccount.type !== "investment") {
-      return { error: "La subcuenta debe ser de tipo inversión" };
+    if (subAccount.type !== 'investment') {
+      return { error: 'La subcuenta debe ser de tipo inversión' };
     }
     const subAccountAccountId =
       subAccount.account?._id?.toString() || subAccount.account?.toString();
     if (subAccountAccountId !== accountId.toString()) {
-      return { error: "La subcuenta no pertenece a la cuenta seleccionada" };
+      return { error: 'La subcuenta no pertenece a la cuenta seleccionada' };
     }
   }
 
@@ -127,7 +117,7 @@ const validateHistoryAccountSelection = async (
 router.use(authenticateToken);
 
 // GET historial de una inversión
-router.get("/investment/:investmentId", async (req, res) => {
+router.get('/investment/:investmentId', async (req, res) => {
   try {
     const { investmentId } = req.params;
     const { startDate, endDate, limit } = req.query;
@@ -138,7 +128,7 @@ router.get("/investment/:investmentId", async (req, res) => {
       user: req.userId,
     });
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     const query = { investment: investmentId, user: req.userId };
@@ -154,12 +144,7 @@ router.get("/investment/:investmentId", async (req, res) => {
       .limit(limit ? parseInt(limit) : 0);
 
     // Obtener variaciones diarias y combinarlas con el historial
-    const dailyVariations = await getDailyVariations(
-      investmentId,
-      req.userId,
-      startDate,
-      endDate,
-    );
+    const dailyVariations = await getDailyVariations(investmentId, req.userId, startDate, endDate);
 
     // Combinar historial con variaciones diarias
     // Las variaciones diarias tienen prioridad sobre los campos dailyChangeAmount/Percent del historial
@@ -187,7 +172,7 @@ router.get("/investment/:investmentId", async (req, res) => {
 });
 
 // GET variaciones diarias de una inversión (para gráficas)
-router.get("/investment/:investmentId/daily-variations", async (req, res) => {
+router.get('/investment/:investmentId/daily-variations', async (req, res) => {
   try {
     const { investmentId } = req.params;
     const { startDate, endDate, limit } = req.query;
@@ -198,16 +183,11 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       user: req.userId,
     });
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     // Obtener variaciones diarias
-    let variations = await getDailyVariations(
-      investmentId,
-      req.userId,
-      startDate,
-      endDate,
-    );
+    let variations = await getDailyVariations(investmentId, req.userId, startDate, endDate);
 
     // Calcular el valor actual en tiempo real
     const currentTotalValue = investment.isAutomatedPortfolio
@@ -280,9 +260,7 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
       const valueChange = currentTotalValue - previousEntry.totalValue;
       todayChangeAmount = valueChange - capitalChangeToday;
       todayChangePercent =
-        previousEntry.totalValue !== 0
-          ? (todayChangeAmount / previousEntry.totalValue) * 100
-          : 0;
+        previousEntry.totalValue !== 0 ? (todayChangeAmount / previousEntry.totalValue) * 100 : 0;
     } else {
       todayChangeAmount = 0;
       todayChangePercent = 0;
@@ -293,12 +271,8 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
     if (todayVariationIndex >= 0) {
       // Actualizar la variación existente con valores en tiempo real
       variations[todayVariationIndex].totalValue = currentTotalValue;
-      variations[todayVariationIndex].changeAmount = parseFloat(
-        todayChangeAmount.toFixed(2),
-      );
-      variations[todayVariationIndex].changePercent = parseFloat(
-        todayChangePercent.toFixed(2),
-      );
+      variations[todayVariationIndex].changeAmount = parseFloat(todayChangeAmount.toFixed(2));
+      variations[todayVariationIndex].changePercent = parseFloat(todayChangePercent.toFixed(2));
     } else {
       // Crear nueva entrada para hoy con valores en tiempo real
       variations.push({
@@ -333,7 +307,7 @@ router.get("/investment/:investmentId/daily-variations", async (req, res) => {
 });
 
 // POST crear nueva entrada de historial
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { investmentId, date, currentPrice, quantity, notes } = req.body;
 
@@ -343,14 +317,13 @@ router.post("/", async (req, res) => {
       user: req.userId,
     });
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
-    const operation = req.body.operation || "update";
-    if (investment.status === "closed" && operation === "update") {
+    const operation = req.body.operation || 'update';
+    if (investment.status === 'closed' && operation === 'update') {
       return res.status(400).json({
-        message:
-          "No se pueden registrar actualizaciones en una inversión cerrada",
+        message: 'No se pueden registrar actualizaciones en una inversión cerrada',
       });
     }
     const entryDate = date ? new Date(date) : new Date();
@@ -361,12 +334,12 @@ router.post("/", async (req, res) => {
     // Regla: UNA cotización por día y por inversión.
     // Si la operación es 'update' y ya existe una entrada de ese día,
     // la nueva actualización pisa a la anterior (no se crea otra fila).
-    if (operation === "update") {
+    if (operation === 'update') {
       const existingSameDayEntry = await InvestmentHistory.findOne({
         user: req.userId,
         investment: investmentId,
         date: { $gte: entryDate, $lt: nextDay },
-        operation: "update",
+        operation: 'update',
       }).sort({ date: -1 });
 
       const resolveOperationAmount = (op, totalValueToUse) => {
@@ -376,7 +349,7 @@ router.post("/", async (req, res) => {
         if (req.body.operationPrice && quantity) {
           return req.body.operationPrice * quantity;
         }
-        if (op === "creation" && totalValueToUse) {
+        if (op === 'creation' && totalValueToUse) {
           return totalValueToUse;
         }
         return undefined;
@@ -396,7 +369,7 @@ router.post("/", async (req, res) => {
           investmentId,
           req.userId,
           totalValueUpdate,
-          date || existingSameDayEntry.date,
+          date || existingSameDayEntry.date
         );
 
         existingSameDayEntry.date = date || existingSameDayEntry.date;
@@ -404,15 +377,10 @@ router.post("/", async (req, res) => {
         existingSameDayEntry.quantity = quantity;
         existingSameDayEntry.totalValue = totalValueUpdate;
         existingSameDayEntry.notes = notes;
-        existingSameDayEntry.operationAmount = resolveOperationAmount(
-          operation,
-          totalValueUpdate,
-        );
+        existingSameDayEntry.operationAmount = resolveOperationAmount(operation, totalValueUpdate);
         existingSameDayEntry.operationPrice = req.body.operationPrice;
-        existingSameDayEntry.dailyChangeAmount =
-          dailyChangesUpdate.dailyChangeAmount;
-        existingSameDayEntry.dailyChangePercent =
-          dailyChangesUpdate.dailyChangePercent;
+        existingSameDayEntry.dailyChangeAmount = dailyChangesUpdate.dailyChangeAmount;
+        existingSameDayEntry.dailyChangePercent = dailyChangesUpdate.dailyChangePercent;
 
         const updatedEntry = await existingSameDayEntry.save();
 
@@ -424,7 +392,7 @@ router.post("/", async (req, res) => {
         await recalculateDailyVariationsForInvestmentFromDate(
           investmentId,
           req.userId,
-          existingSameDayEntry.date || new Date(),
+          existingSameDayEntry.date || new Date()
         );
         return res.status(200).json(updatedEntry);
       }
@@ -446,7 +414,7 @@ router.post("/", async (req, res) => {
       investmentId,
       req.userId,
       totalValue,
-      date || new Date(),
+      date || new Date()
     );
 
     // Crear entrada de historial
@@ -475,7 +443,7 @@ router.post("/", async (req, res) => {
     await recalculateDailyVariationsForInvestmentFromDate(
       investmentId,
       req.userId,
-      historyEntry.date || new Date(),
+      historyEntry.date || new Date()
     );
     res.status(201).json(savedEntry);
   } catch (error) {
@@ -484,7 +452,7 @@ router.post("/", async (req, res) => {
 });
 
 // GET historial de todas las inversiones (para gráficas generales)
-router.get("/all", async (req, res) => {
+router.get('/all', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -497,8 +465,8 @@ router.get("/all", async (req, res) => {
 
     const history = await InvestmentHistory.find(query)
       .populate({
-        path: "investment",
-        select: "name symbol type isAutomatedPortfolio currency",
+        path: 'investment',
+        select: 'name symbol type isAutomatedPortfolio currency',
         match: { user: req.userId },
       })
       .sort({ date: 1 });
@@ -510,20 +478,16 @@ router.get("/all", async (req, res) => {
 });
 
 // GET resumen de evolución de inversiones (agrupado por fecha)
-router.get("/evolution", async (req, res) => {
+router.get('/evolution', async (req, res) => {
   try {
     // Importar DailyVariation
-    const DailyVariation = (await import("../models/DailyVariation.js"))
-      .default;
+    const DailyVariation = (await import('../models/DailyVariation.js')).default;
 
     // Obtener todas las inversiones ACTIVAS del usuario (solo las que existen actualmente)
     const investments = await Investment.find({
       user: req.userId,
-      status: { $ne: "closed" },
-      $or: [
-        { account: { $exists: true, $ne: null } },
-        { "allocations.0": { $exists: true } },
-      ],
+      status: { $ne: 'closed' },
+      $or: [{ account: { $exists: true, $ne: null } }, { 'allocations.0': { $exists: true } }],
     });
 
     if (investments.length === 0) {
@@ -537,7 +501,7 @@ router.get("/evolution", async (req, res) => {
     const firstCreation = await InvestmentHistory.findOne({
       user: req.userId,
       investment: { $in: activeInvestmentIds }, // Solo inversiones activas
-      operation: "creation",
+      operation: 'creation',
       operationAmount: { $exists: true, $ne: null },
     }).sort({ date: 1 });
 
@@ -562,7 +526,7 @@ router.get("/evolution", async (req, res) => {
       $or: [
         { totalValue: { $exists: true, $ne: null, $gt: 0 } },
         {
-          operation: { $in: ["creation", "add", "withdraw"] },
+          operation: { $in: ['creation', 'add', 'withdraw'] },
           operationAmount: { $exists: true, $ne: null },
         },
       ],
@@ -592,11 +556,35 @@ router.get("/evolution", async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Cursores por inversión construidos una sola vez, en vez de filtrar todo el
+    // historial por cada día e inversión (antes O(días × inversiones × historial))
+    const cursorsByInv = new Map(
+      investments.map((inv) => [inv._id.toString(), { values: [], capitalOps: [] }])
+    );
+    allHistoryEntries.forEach((h) => {
+      const entry = cursorsByInv.get(h.investment.toString());
+      if (!entry) return;
+      const time = h.date.getTime();
+      if (h.totalValue && h.totalValue > 0) {
+        entry.values.push({ key: time, time, value: h.totalValue });
+      }
+      if (['creation', 'add', 'withdraw'].includes(h.operation) && h.operationAmount) {
+        entry.capitalOps.push({
+          key: time,
+          amount: h.operation === 'withdraw' ? -Math.abs(h.operationAmount) : h.operationAmount,
+        });
+      }
+    });
+    cursorsByInv.forEach((entry) => {
+      entry.latestValue = latestCursor(entry.values);
+      entry.capitalUpTo = sumCursor(entry.capitalOps);
+    });
+
     for (const date of dates) {
       const dateEnd = new Date(date);
       dateEnd.setHours(23, 59, 59, 999);
-      const dateKey = date.toISOString().split("T")[0];
-      const isToday = dateKey === today.toISOString().split("T")[0];
+      const dateKey = date.toISOString().split('T')[0];
+      const isToday = dateKey === today.toISOString().split('T')[0];
 
       let totalValue = 0;
 
@@ -611,9 +599,7 @@ router.get("/evolution", async (req, res) => {
         let invValue = 0;
 
         // Calcular días desde hoy
-        const daysSinceToday = Math.floor(
-          (today - date) / (1000 * 60 * 60 * 24),
-        );
+        const daysSinceToday = Math.floor((today - date) / (1000 * 60 * 60 * 24));
 
         // Si es el día de hoy o estamos en los últimos 3 días, usar el valor actual del modelo Investment
         // Esto asegura que los últimos días tengan valores consistentes y actualizados
@@ -622,40 +608,15 @@ router.get("/evolution", async (req, res) => {
         } else {
           // Para días más antiguos, usar exclusivamente InvestmentHistory
           // De esta forma, si borras/ajustas cotizaciones antiguas, el Dashboard se actualiza en tiempo real
-          const lastHistory = allHistoryEntries
-            .filter(
-              (h) =>
-                h.investment.toString() === inv._id.toString() &&
-                h.date <= dateEnd &&
-                h.totalValue &&
-                h.totalValue > 0,
-            )
-            .sort((a, b) => b.date - a.date)[0];
+          const cursors = cursorsByInv.get(inv._id.toString());
+          const lastHistory = cursors.latestValue(dateEnd.getTime());
+          // Si no hay datos históricos, calcular el capital invertido hasta esta fecha
+          const capital = cursors.capitalUpTo(dateEnd.getTime());
 
-          if (lastHistory && lastHistory.totalValue) {
-            invValue = lastHistory.totalValue;
-          } else {
-            // Si no hay datos históricos, calcular el capital invertido hasta esta fecha
-            const capitalOperations = allHistoryEntries.filter(
-              (h) =>
-                h.investment.toString() === inv._id.toString() &&
-                h.date <= dateEnd &&
-                ["creation", "add", "withdraw"].includes(h.operation) &&
-                h.operationAmount,
-            );
-
-            let capital = 0;
-            capitalOperations.forEach((op) => {
-              if (op.operation === "creation" || op.operation === "add") {
-                capital += op.operationAmount || 0;
-              } else if (op.operation === "withdraw") {
-                capital -= Math.abs(op.operationAmount || 0);
-              }
-            });
-
-            if (capital > 0) {
-              invValue = capital;
-            }
+          if (lastHistory) {
+            invValue = lastHistory.value;
+          } else if (capital > 0) {
+            invValue = capital;
           }
         }
 
@@ -675,7 +636,7 @@ router.get("/evolution", async (req, res) => {
 });
 
 // PUT actualizar entrada de historial
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const {
       date,
@@ -694,9 +655,7 @@ router.put("/:id", async (req, res) => {
       user: req.userId,
     });
     if (!historyEntry) {
-      return res
-        .status(404)
-        .json({ message: "Entrada de historial no encontrada" });
+      return res.status(404).json({ message: 'Entrada de historial no encontrada' });
     }
 
     // Verificar que la inversión existe y pertenece al usuario
@@ -705,7 +664,7 @@ router.put("/:id", async (req, res) => {
       user: req.userId,
     });
     if (!investment) {
-      return res.status(404).json({ message: "Inversión no encontrada" });
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
 
     const previousOperation = historyEntry.operation;
@@ -714,9 +673,7 @@ router.put("/:id", async (req, res) => {
     const previousAmount = resolveOperationAmount(historyEntry);
 
     const operationToUse = operation ?? historyEntry.operation;
-    const requiresAccount = ["creation", "add", "withdraw"].includes(
-      operationToUse,
-    );
+    const requiresAccount = ['creation', 'add', 'withdraw'].includes(operationToUse);
 
     if (requiresAccount) {
       const targetAccount = account ?? historyEntry.account;
@@ -724,7 +681,7 @@ router.put("/:id", async (req, res) => {
       const validation = await validateHistoryAccountSelection(
         targetAccount,
         targetSubAccount,
-        req.userId,
+        req.userId
       );
       if (validation.error) {
         return res.status(400).json({ message: validation.error });
@@ -742,18 +699,15 @@ router.put("/:id", async (req, res) => {
     if (quantity !== undefined) historyEntry.quantity = quantity;
     if (notes !== undefined) historyEntry.notes = notes;
     if (operation !== undefined) historyEntry.operation = operation;
-    if (operationAmount !== undefined)
-      historyEntry.operationAmount = operationAmount;
-    if (operationPrice !== undefined)
-      historyEntry.operationPrice = operationPrice;
+    if (operationAmount !== undefined) historyEntry.operationAmount = operationAmount;
+    if (operationPrice !== undefined) historyEntry.operationPrice = operationPrice;
 
     // Recalcular totalValue
     if (currentPrice !== undefined || quantity !== undefined) {
       if (investment.isAutomatedPortfolio) {
         historyEntry.totalValue = historyEntry.currentPrice;
       } else {
-        historyEntry.totalValue =
-          historyEntry.quantity * historyEntry.currentPrice;
+        historyEntry.totalValue = historyEntry.quantity * historyEntry.currentPrice;
       }
 
       // Recalcular diferencias diarias
@@ -761,7 +715,7 @@ router.put("/:id", async (req, res) => {
         historyEntry.investment,
         req.userId,
         historyEntry.totalValue,
-        historyEntry.date,
+        historyEntry.date
       );
       historyEntry.dailyChangeAmount = dailyChanges.dailyChangeAmount;
       historyEntry.dailyChangePercent = dailyChanges.dailyChangePercent;
@@ -780,25 +734,11 @@ router.put("/:id", async (req, res) => {
 
     if (previousSigned !== 0 || nextSigned !== 0) {
       ensureInvestmentAllocations(investment);
-      adjustAllocationAmount(
-        investment,
-        previousAccount,
-        previousSubAccount,
-        -previousSigned,
-      );
-      adjustAllocationAmount(
-        investment,
-        historyEntry.account,
-        historyEntry.subAccount,
-        nextSigned,
-      );
-      if (
-        Array.isArray(investment.allocations) &&
-        investment.allocations.length
-      ) {
+      adjustAllocationAmount(investment, previousAccount, previousSubAccount, -previousSigned);
+      adjustAllocationAmount(investment, historyEntry.account, historyEntry.subAccount, nextSigned);
+      if (Array.isArray(investment.allocations) && investment.allocations.length) {
         investment.account = investment.allocations[0].account;
-        investment.subAccount =
-          investment.allocations[0].subAccount || undefined;
+        investment.subAccount = investment.allocations[0].subAccount || undefined;
       }
       await investment.save();
     }
@@ -811,19 +751,17 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE eliminar entrada de historial
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const deleted = await InvestmentHistory.findOne({
       _id: req.params.id,
       user: req.userId,
     });
     if (!deleted) {
-      return res
-        .status(404)
-        .json({ message: "Entrada de historial no encontrada" });
+      return res.status(404).json({ message: 'Entrada de historial no encontrada' });
     }
     await InvestmentHistory.findByIdAndDelete(req.params.id);
-    res.json({ message: "Entrada de historial eliminada" });
+    res.json({ message: 'Entrada de historial eliminada' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -832,7 +770,7 @@ router.delete("/:id", async (req, res) => {
 // POST registrar valores diarios de todas las inversiones
 // Este endpoint registra el valor actual de todas las inversiones del usuario
 // Solo crea una entrada por inversión si no existe ya una entrada para hoy
-router.post("/register-daily-values", async (req, res) => {
+router.post('/register-daily-values', async (req, res) => {
   try {
     // Obtener todas las inversiones del usuario
     const investments = await Investment.find({
@@ -842,7 +780,7 @@ router.post("/register-daily-values", async (req, res) => {
 
     if (investments.length === 0) {
       return res.json({
-        message: "No hay inversiones para registrar",
+        message: 'No hay inversiones para registrar',
         registered: 0,
         skipped: 0,
       });
@@ -882,7 +820,7 @@ router.post("/register-daily-values", async (req, res) => {
 });
 
 // POST migrar variaciones diarias existentes de InvestmentHistory a DailyVariation
-router.post("/migrate-daily-variations", async (req, res) => {
+router.post('/migrate-daily-variations', async (req, res) => {
   try {
     const result = await migrateExistingDailyVariations(req.userId);
     res.json(result);
@@ -892,31 +830,24 @@ router.post("/migrate-daily-variations", async (req, res) => {
 });
 
 // POST calcular variaciones históricas para una inversión específica
-router.post(
-  "/investment/:investmentId/calculate-historical",
-  async (req, res) => {
-    try {
-      const { investmentId } = req.params;
+router.post('/investment/:investmentId/calculate-historical', async (req, res) => {
+  try {
+    const { investmentId } = req.params;
 
-      // Verificar que la inversión pertenece al usuario
-      const investment = await Investment.findOne({
-        _id: investmentId,
-        user: req.userId,
-      });
-      if (!investment) {
-        return res.status(404).json({ message: "Inversión no encontrada" });
-      }
-
-      const result = await calculateHistoricalVariations(
-        investmentId,
-        req.userId,
-        investment,
-      );
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+    // Verificar que la inversión pertenece al usuario
+    const investment = await Investment.findOne({
+      _id: investmentId,
+      user: req.userId,
+    });
+    if (!investment) {
+      return res.status(404).json({ message: 'Inversión no encontrada' });
     }
-  },
-);
+
+    const result = await calculateHistoricalVariations(investmentId, req.userId, investment);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 export default router;
